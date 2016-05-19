@@ -3,14 +3,15 @@ clear
 close all
 
 % default directory
-DirectoryRead = 'C:\Users\Ana Andres\Documents\NanoPhotonics\Laboratory\';
-FolderRead = '';
-FolderPathRead = [DirectoryRead FolderRead];
-FileNameRead = '';
+% DirectoryRead = 'C:\Users\Ana Andres\Documents\NanoPhotonics\Laboratory\';
+% FolderRead = '';
+% FolderPathRead = [DirectoryRead FolderRead];
+% FileNameRead = '';
 
 % prompt to choose file
 [FileNameRead, FolderPathRead, ~] = uigetfile('.h5',...
-    'H5 file to read:',[FolderPathRead FileNameRead],'MultiSelect','off');
+    'H5 file to read:','MultiSelect','off');
+%     'H5 file to read:',[FolderPathRead FileNameRead],'MultiSelect','off');
 slash_index = strfind(FolderPathRead, '\');
 FolderRead = FolderPathRead(slash_index(end-1)+1:end-1);
 FilePathRead = [FolderPathRead FileNameRead];
@@ -67,14 +68,19 @@ if menu_python_analysis == 2 % just BG
     for i = 1:1:number_of_spectra
         data_python(i,:) = data_sort(i,:) - background';
     end
+    title_colourmap{5} = 'Python Background Correction';
 elseif menu_python_analysis == 3 % just REF
     for i = 1:1:number_of_spectra
         data_python(i,:) = data_sort(i,:) ./ reference';
     end
+    title_colourmap{5} = 'Python Reference Correction';
 elseif menu_python_analysis == 4 % BG & REF
     for i = 1:1:number_of_spectra
         data_python(i,:) = (data_sort(i,:) - background') ./ (reference' - background');
     end
+    title_colourmap{5} = 'Python Background and Reference Correction';
+else
+    title_colourmap{5} = 'No Correction in Python';
 end
 
 
@@ -112,7 +118,8 @@ index_time = index_time_all(1):time_interval_index:index_time_all(end);
 % *************************************************************************
 
 menu_ref = 1;
-menu_ref = menu('Correct for the System Response?', 'NO', 'YES (data/reference)');
+menu_ref = menu('Correct for the System Response?', 'NO', 'YES (data/reference)', ...
+    'YES (data/1st spectra)');
 data_corrected = data_python;
 if menu_ref == 2
     
@@ -203,32 +210,46 @@ if menu_ref == 2
         data_corrected(i,:) = data_sort(i,:)./data_ref_mean;
     end
     
-%     title_colourmap{4} = ['Reference: ' ...
-%         strrep(TimelapseInfoRef.Name, [fileInfo.Groups(menu_group).Name '/'], '')];
-%     title_colourmap{5} = ['Start t = ' num2str(time_ref(index_time_ref(1)))...
-%     ' s // End t = ' num2str(time_ref(index_time_ref(end)))...
-%     ' s // Delta t = ' num2str(time_interval_index_ref*time_interval_ref) ' s.'];
 
-title_colourmap{5} = ['REFERENCE: ' FileNameReadRef ' // ' TimelapseInfoRef.Name(2:end) ' // ' info_string_ref];
-title_colourmap{6} = ['Start t = ' num2str(time_ref(index_time_ref(1)))...
+title_colourmap{6} = ['REFERENCE: ' FileNameReadRef ' // ' TimelapseInfoRef.Name(2:end) ' // ' info_string_ref];
+title_colourmap{7} = ['Start t = ' num2str(time_ref(index_time_ref(1)))...
     ' s // End t = ' num2str(time_ref(index_time_ref(end)))...
     ' s // Delta t = ' num2str(time_interval_index_ref*time_interval_ref) ' s.'];
+
+elseif menu_ref == 3
+    for i = 1:1:number_of_spectra
+        data_corrected(i,:) = data_python(i,:)./data_python(1,:);
+    end
+    title_colourmap{6} = 'REFERENCE: same timelapse at t = 0s';
 end
 
 
-%% transmission / absorbance
+%% transmission / absorbance / molar attenuation coefficient
 % *************************************************************************
 data_spectra = data_corrected;
 string_spectra = 'Transmission (a.u.)';
 
 if menu_ref || menu_python == 2   % reference corrected
     menu_spectra = 1;
-    menu_spectra = menu('Spectra', 'Transmission', 'Absorbance (-log(data))');
+    menu_spectra = menu('Spectra', 'Transmission', 'Absorbance (-log(data))', 'Molar Attenuation Coefficient');
     if menu_spectra == 2 % absorbance
         for i = 1:1:number_of_spectra
             data_spectra(i,:) = -log(data_corrected(i,:));
         end
         string_spectra = 'Absorbance (a.u.)';
+    end
+    if menu_spectra == 3 % molar attenuation coefficient
+        input_title = 'Choose Concentration and Sample length'; 
+        input_data = {'Concentration of MV (mol/L)', 'Sample length (cm)'}; 
+        resize = 'on'; dim = [1 80];
+        valdef = {num2str(40E-6), num2str(13)};
+        answer = inputdlg(input_data,input_title,dim,valdef,resize);
+        concentration = str2double(answer{1});
+        length = str2double(answer{2});
+        for i = 1:1:number_of_spectra
+            data_spectra(i,:) = (-log(data_corrected(i,:))./(concentration * length));
+        end
+        string_spectra = 'Molar Attenuation Coefficient (M^{-1}cm^{-1})';
     end
 end
 
@@ -271,7 +292,7 @@ menu_plot2D = 2;
 menu_plot2D = menu('Plot 2D Colourmap?', 'NO', 'YES');
 
 title_colourmap{1} = FolderRead;
-title_colourmap{2} = ['DATA: ' FileNameRead ' // ' TimelapseInfo.Name(2:end)];
+title_colourmap{2} = ['DATA: ' FileNameRead ' // ' strrep(TimelapseInfo.Name(2:end), '_', '\_')];
 % title_colourmap{3} = [info_string ' // ' string_spectra ' // ' string_scale];
 title_colourmap{3} = [info_string ' // ' string_spectra];
 title_colourmap{4} = ['Start t = ' num2str(time(index_time(1)))...
@@ -286,15 +307,16 @@ if menu_plot2D == 2
     contourf(wavelengths(index_wavelengths), ...
         time(index_time),...
         data_plot(index_time,index_wavelengths), ...
-        'LineStyle', 'none',...
-        'LevelListMode', 'manual', 'LevelList', nlevels)
+        'LineStyle', 'none');%,...
+%         'LevelStepMode', 'manual', 'LevelStep', 10)
+%         'LevelListMode', 'manual', 'LevelList', nlevels)
     colormap(jet)
     colorbar
     xlabel('Wavelength (nm)')
     ylabel('Time (s)')
     set(gca, 'FontSize', 12)
     set(gca, 'FontSize', 12)
-    title(title_colourmap, 'interpreter', 'none')
+    title(title_colourmap)
 end
 
 
@@ -330,7 +352,7 @@ if menu_evolution == 2
         legend(legn_individual)
     end
     set(gca, 'FontSize', 12)
-    title(title_colourmap, 'interpreter', 'none')
+    title(title_colourmap)
 end
 
 %% plotting trace
@@ -374,7 +396,8 @@ if menu_trace == 2
     
     data_plot_mean = mean(data_plot(:,index_wavelengths_trace),2);
     
-    title_trace = title_colourmap(1:3);
+    title_trace = title_colourmap;
+%     title_trace = title_colourmap(1:3);
 %     title_trace{4} = ['Start t = ' num2str(time(index_time_trace(1)))...
 %         ' s // End t = ' num2str(time(index_time_trace(end)))...
 %         ' s // Delta t = ' num2str(time_interval_index_trace*time_interval) ' s.'];
@@ -397,7 +420,7 @@ if menu_trace == 2
     xlabel('Time (s)')
     ylabel(['Averaged ' string_spectra])
     set(gca, 'FontSize', 12)
-    title(title_trace, 'interpreter', 'none')
+    title(title_trace)
     y = ylim;
 end
 
@@ -441,7 +464,7 @@ if menu_fit == 2
     xlabel('Time (s)')
     ylabel(['Averaged ' string_spectra])
     set(gca, 'FontSize', 12)
-    title(title_trace, 'interpreter', 'none')
+    title(title_trace)
     y = ylim;   
     
     value_a = -1;
