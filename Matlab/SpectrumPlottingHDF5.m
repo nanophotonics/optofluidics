@@ -247,7 +247,6 @@ if menu_ref == 2 || 4
         
         for i = 1:1:number_of_spectra
             data_corrected(i,:) = (data_sort(i,:)-data_bg_mean)./(data_ref_mean-data_bg_mean);
-            % test change
         end
     end
     
@@ -279,14 +278,26 @@ string_spectra = 'Transmission (a.u.)';
 
 if menu_ref || menu_python == 2   % reference corrected
     menu_spectra = 1;
-    menu_spectra = menu('Spectra', 'Transmission', 'Absorbance (-log(data))', 'Molar Attenuation Coefficient');
+    menu_spectra = menu('Spectra', 'Transmission', 'Absorbance (-log(data))', 'Absorbance/Sample Length', 'Molar Attenuation Coefficient');
     if menu_spectra == 2 % absorbance
         for i = 1:1:number_of_spectra
             data_spectra(i,:) = -log(data_corrected(i,:));
         end
         string_spectra = 'Absorbance (a.u.)';
     end
-    if menu_spectra == 3 % molar attenuation coefficient
+     if menu_spectra == 3 % Absorbance/Sample Length
+      input_title = 'Choose Sample length'; 
+    input_data = {'Sample length (cm)'}; 
+    resize = 'on'; dim = [1 80];
+    valdef = {num2str(4.8)};
+    answer = inputdlg(input_data,input_title,dim,valdef,resize);
+        length = str2double(answer{1});
+        for i = 1:1:number_of_spectra
+            data_spectra(i,:) = (-log(data_corrected(i,:))./ length);
+        end
+        string_spectra = 'Absorbance / Sample Length (cm^{-1})';
+    end
+    if menu_spectra == 4 % molar attenuation coefficient
         input_title = 'Choose Concentration and Sample length'; 
         input_data = {'Concentration of MV (mol/L)', 'Sample length (cm)'}; 
         resize = 'on'; dim = [1 80];
