@@ -244,6 +244,10 @@ if menu_ref == 2 || 4
         index_time_bg = index_time_all_bg(1):time_interval_index_bg:index_time_all_bg(end);
 
         data_bg_mean = mean(data_sort_bg(index_time_bg,:),1);
+        
+        for i = 1:1:number_of_spectra
+            data_corrected(i,:) = (data_sort(i,:)-data_bg_mean)./(data_ref_mean-data_bg_mean);
+        end
     end
     
     title_colourmap{6} = ['REFERENCE: ' FileNameReadRef ' // ' ...
