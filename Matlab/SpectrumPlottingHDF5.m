@@ -247,6 +247,7 @@ if menu_ref == 2 || 4
         
         for i = 1:1:number_of_spectra
             data_corrected(i,:) = (data_sort(i,:)-data_bg_mean)./(data_ref_mean-data_bg_mean);
+            % test change
         end
     end
     
