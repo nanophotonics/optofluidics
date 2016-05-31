@@ -119,32 +119,32 @@ index_time = index_time_all(1):time_interval_index:index_time_all(end);
 
 menu_ref = 1;
 menu_ref = menu('Correct for the System Response?', 'NO', 'YES (data/reference)', ...
-    'YES (data/1st spectra)');
-data_corrected = data_python;
-if menu_ref == 2
-    
-    % default directory
-    FolderPathReadRef = FolderPathRead;
+    'YES (data/1st spectra)', 'YES ((data-background)/(reference-background))');
 
-    % prompt to choose file
+data_corrected = data_python;
+
+if menu_ref == 2 || 4
+
+    % prompt to choose reference file
     [FileNameReadRef, FolderPathReadRef, ~] = uigetfile('.h5',...
         'H5 file to read: REFERENCE:',[FolderPathRead FileNameRead],'MultiSelect','off');
     slash_index = strfind(FolderPathReadRef, '\');
     FilePathReadRef = [FolderPathReadRef FileNameReadRef];
 
-    % selecting a timelapse (custom function)
+    % selecting a reference timelapse (custom function)
     TimelapseInfoRef = h5_TimelapseInfo(FilePathReadRef);
     number_of_spectra_ref = size(TimelapseInfoRef.Datasets,1);
     number_of_wavelengths_ref = TimelapseInfoRef.Datasets(1).Dataspace.Size;
 
-    % reading the data
+    % reading the reference data
     data_ref = zeros(number_of_spectra_ref, number_of_wavelengths_ref);
     for i = 1:1:number_of_spectra_ref
         DatasetNameRef = [TimelapseInfoRef.Name '/' TimelapseInfoRef.Datasets(i).Name];
         data_ref(i,:) = h5read(TimelapseInfoRef.Filename, DatasetNameRef);
     end
 
-    % information (use the last dataset, assume they all have the same parameters)
+    % reference information 
+    % (use the last dataset, assume they all have the same parameters)
     % assume same wavelengths as data file
     integration_time_ref = h5readatt(TimelapseInfoRef.Filename, DatasetNameRef, 'integration_time');
     info_string_ref = h5readatt(TimelapseInfoRef.Filename, DatasetNameRef, 'information');
@@ -152,36 +152,12 @@ if menu_ref == 2
     time_ref = 0:1:number_of_spectra_ref-1;
     time_ref = time_ref * time_interval_ref;
 
-    % sort the data array by time
+    % sort the reference data array by time
     index_sort_ref = zeros(number_of_spectra_ref,1);
     for i = 1:1:number_of_spectra_ref
         index_sort_ref(i) = str2double(TimelapseInfoRef.Datasets(i).Name(10:end))+1;
     end
     data_sort_ref(index_sort_ref,:) = data_ref;
-
-%     menu_timelapse_ref = 1;
-% %     menu_timelapse_ref = menu('Choose a Reference Timelapse:', groupInfo.Groups.Name);  
-%     menu_timelapse_ref = menu('Choose a Reference Timelapse:', timelapseOptions);
-% 
-%     TimelapseInfo_ref = h5info([FolderPathRead FileNameRead], groupInfo.Groups(menu_timelapse_ref).Name);
-%     number_of_spectra_ref = size(groupInfo.Groups(menu_timelapse_ref).Datasets,1);
-%     data_ref = zeros(number_of_spectra_ref, number_of_wavelengths);
-%     for i = 1:1:number_of_spectra_ref
-%         data_ref(i,:) = h5read([FolderPathRead FileNameRead], ...
-%             [TimelapseInfo_ref.Name '/' TimelapseInfo_ref.Datasets(i).Name]);
-%     end
-
-%     time_interval_ref = h5readatt([FolderPathRead FileNameRead],...
-%         [TimelapseInfo_ref.Name '/' TimelapseInfo_ref.Datasets(1).Name], 'time_interval');
-%     time_interval_ref = 1;
-%     time_ref = 0:1:number_of_spectra_ref-1;
-%     time_ref = time_ref * time_interval_ref;
-
-%     index_sort_ref = zeros(number_of_spectra_ref,1);
-%     for i = 1:1:number_of_spectra_ref
-%         index_sort_ref(i) = str2double(TimelapseInfo_ref.Datasets(i).Name(10:end))+1;
-%     end
-%     data_sort_ref(index_sort_ref,:) = data_ref;
     
     time_start_ref = 0; % seconds
     time_end_ref = 900; % seconds
@@ -206,15 +182,82 @@ if menu_ref == 2
 
     data_ref_mean = mean(data_sort_ref(index_time_ref,:),1);
     
-    for i = 1:1:number_of_spectra
-        data_corrected(i,:) = data_sort(i,:)./data_ref_mean;
+    if menu_ref == 2
+        for i = 1:1:number_of_spectra
+            data_corrected(i,:) = data_sort(i,:)./data_ref_mean;
+        end
+        
+    elseif menu_ref == 4
+        % prompt to choose background file
+        [FileNameReadBG, FolderPathReadBG, ~] = uigetfile('.h5',...
+            'H5 file to read: BACKGROUND:',[FolderPathReadRef FileNameReadRef],'MultiSelect','off');
+        slash_index = strfind(FolderPathReadBG, '\');
+        FilePathReadBG = [FolderPathReadBG FileNameReadBG];
+
+        % selecting a background timelapse (custom function)
+        TimelapseInfoBG = h5_TimelapseInfo(FilePathReadBG);
+        number_of_spectra_bg = size(TimelapseInfoBG.Datasets,1);
+        number_of_wavelengths_bg = TimelapseInfoBG.Datasets(1).Dataspace.Size;
+
+        % reading the background data
+        data_bg = zeros(number_of_spectra_bg, number_of_wavelengths_bg);
+        for i = 1:1:number_of_spectra_bg
+            DatasetNameBG = [TimelapseInfoBG.Name '/' TimelapseInfoBG.Datasets(i).Name];
+            data_bg(i,:) = h5read(TimelapseInfoBG.Filename, DatasetNameBG);
+        end
+
+        % background information 
+        % (use the last dataset, assume they all have the same parameters)
+        % assume same wavelengths as data file
+        integration_time_bg = h5readatt(TimelapseInfoBG.Filename, DatasetNameBG, 'integration_time');
+        info_string_bg = h5readatt(TimelapseInfoBG.Filename, DatasetNameBG, 'information');
+        time_interval_bg = h5readatt(TimelapseInfoBG.Filename, DatasetNameBG, 'time_interval');
+        time_bg = 0:1:number_of_spectra_bg-1;
+        time_bg = time_bg * time_interval_bg;
+
+        % sort the background data array by time
+        index_sort_bg = zeros(number_of_spectra_bg,1);
+        for i = 1:1:number_of_spectra_bg
+            index_sort_bg(i) = str2double(TimelapseInfoBG.Datasets(i).Name(10:end))+1;
+        end
+        data_sort_bg(index_sort_bg,:) = data_bg;
+
+        time_start_bg = 0; % seconds
+        time_end_bg = 900; % seconds
+        time_interval_plot_bg = time_interval_bg; % seconds
+
+        input_title = 'Background Selection'; 
+        input_data = {'Start Time (s):',...
+            ['End Time (s) (data recorded for ' num2str(time_bg(end)) ' s) :'], ...
+            ['Time Interval for Plotting (s) (multiple of ' num2str(time_interval_bg) ' s):']};
+        resize = 'on'; dim = [1 80];
+        valdef = {num2str(time_start_bg),num2str(time_end_bg),num2str(time_interval_plot_bg)};
+        answer = inputdlg(input_data,input_title,dim,valdef,resize);
+        time_start_bg = str2double(answer{1});
+        time_end_bg = str2double(answer{2});
+        time_interval_plot_bg = str2double(answer{3});
+
+        [~,index_time_start_bg] = find(time_bg >= time_start_bg);
+        [~,index_time_end_bg] = find(time_bg <= time_end_bg);
+        index_time_all_bg = intersect(index_time_start_bg,index_time_end_bg);
+        time_interval_index_bg = round(time_interval_plot_bg/time_interval_bg);
+        index_time_bg = index_time_all_bg(1):time_interval_index_bg:index_time_all_bg(end);
+
+        data_bg_mean = mean(data_sort_bg(index_time_bg,:),1);
     end
     
-
-title_colourmap{6} = ['REFERENCE: ' FileNameReadRef ' // ' TimelapseInfoRef.Name(2:end) ' // ' info_string_ref];
-title_colourmap{7} = ['Start t = ' num2str(time_ref(index_time_ref(1)))...
-    ' s // End t = ' num2str(time_ref(index_time_ref(end)))...
-    ' s // Delta t = ' num2str(time_interval_index_ref*time_interval_ref) ' s.'];
+    title_colourmap{6} = ['REFERENCE: ' FileNameReadRef ' // ' ...
+        strrep(TimelapseInfo.Name(2:end), '_', '\_') ' // ' info_string_ref];
+    title_colourmap{7} = ['Start t = ' num2str(time_ref(index_time_ref(1)))...
+        ' s // End t = ' num2str(time_ref(index_time_ref(end)))...
+        ' s // Delta t = ' num2str(time_interval_index_ref*time_interval_ref) ' s.'];
+    if menu_ref == 4
+        title_colourmap{8} = ['BACKGROUND: ' FileNameReadBG ' // ' ...
+            strrep(TimelapseInfo.Name(2:end), '_', '\_') ' // ' info_string_bg];
+        title_colourmap{9} = ['Start t = ' num2str(time_bg(index_time_bg(1)))...
+            ' s // End t = ' num2str(time_bg(index_time_bg(end)))...
+            ' s // Delta t = ' num2str(time_interval_index_bg*time_interval_bg) ' s.'];
+    end
 
 elseif menu_ref == 3
     for i = 1:1:number_of_spectra
