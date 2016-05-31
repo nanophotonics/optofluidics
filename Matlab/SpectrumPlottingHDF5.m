@@ -472,8 +472,7 @@ if menu_trace == 2
     plot(time(index_time_trace), data_plot_mean(index_time_trace), ...
         'LineWidth', 2), hold all
     legn_trace{end+1} = ['\lambda = ' num2str(wavelength_start_trace) ' to ' ...
-        num2str(wavelength_end_trace) ' nm, t = ' num2str(time_start_trace) ' to ' ...
-        num2str(time_end_trace) ' s'];
+        num2str(wavelength_end_trace) ' nm'];
     
     legend(legn_trace, 'Location', 'SE')
     xlabel('Time (s)')
