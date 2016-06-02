@@ -123,7 +123,7 @@ menu_ref = menu('Correct for the System Response?', 'NO', 'YES (data/reference)'
 
 data_corrected = data_python;
 
-if menu_ref == 2 || 4
+if menu_ref == 2 || menu_ref == 4
 
     % prompt to choose reference file
     [FileNameReadRef, FolderPathReadRef, ~] = uigetfile('.h5',...
@@ -455,6 +455,22 @@ if menu_trace == 2
     
     data_plot_mean = mean(data_plot(:,index_wavelengths_trace),2);
     
+    % smoothing the trace
+    menu_smoothing = 1;
+    menu_smoothing = menu('Smooth trace?', 'NO', 'YES');
+    
+    if menu_smoothing == 2 % smoothing
+        smoothing = 5;
+        input_data = {'Number of data points to average (not zero):'};
+        input_title = 'Smoothing parameter'; 
+        input_resize = 'on'; input_dim = [1 60 ];
+        input_valdef = {num2str(smoothing)};
+        input_answer = inputdlg(input_data,input_title,input_dim,input_valdef,input_resize);
+        smoothing = str2double(input_answer{1});
+        
+        data_plot_mean = smooth(data_plot_mean, smoothing);
+    end
+    
     title_trace = title_colourmap;
 %     title_trace = title_colourmap(1:3);
 %     title_trace{4} = ['Start t = ' num2str(time(index_time_trace(1)))...
@@ -473,6 +489,9 @@ if menu_trace == 2
         'LineWidth', 2), hold all
     legn_trace{end+1} = ['\lambda = ' num2str(wavelength_start_trace) ' to ' ...
         num2str(wavelength_end_trace) ' nm'];
+    if menu_smoothing == 2 % smoothing
+        legn_trace{end} = [legn_trace{end} ' // smoothing = ' num2str(smoothing) ' points'];
+    end
     
     legend(legn_trace, 'Location', 'SE')
     xlabel('Time (s)')
