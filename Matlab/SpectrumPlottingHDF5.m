@@ -386,6 +386,10 @@ menu_evolution = 1;
 menu_evolution = menu('Plot Individual Spectra?', 'NO', 'YES');
 
 if menu_evolution == 2
+menu_irregular_interval = menu('Plot spectra with irregular interval? ','NO','YES');
+end
+
+if menu_irregular_interval == 1
     gradient_type = {'DEFAULT','yellow' 'red', 'green', 'aqua', 'blue', 'purple', 'gray'};
     menu_gradient = 1; 
     menu_gradient = menu('Which colour scheme to use?', gradient_type);
@@ -413,6 +417,55 @@ if menu_evolution == 2
     set(gca, 'FontSize', 12)
     title(title_colourmap)
 end
+
+if menu_irregular_interval == 2
+    input_title = 'Choose how many spectra to plot';
+    input_data = {'Number of spectra'};
+    resize = 'on'; dim = [1 80];
+    valdef = {'1'};
+    answer = inputdlg(input_data,input_title,dim,valdef,resize);
+    num_of_spectra = str2double(answer{1});
+    clear valdef
+    clear input_data
+    input_title = 'Select times for spectra plotting'; 
+    valdef = cell(1, num_of_spectra);
+    input_data = cell(1, num_of_spectra);
+    for i = 1:num_of_spectra
+      input_data{i} = ['Time for Spectrum ' num2str(i) ' (s)'];  
+      valdef{i} = '1';
+    end
+    valdef{1} = '0';
+    valdef{2} = '60';
+    valdef{3} = '300';
+    valdef{4} = '600';
+    valdef{5} = '1200';
+    valdef{6} = '1800';
+    
+    resize = 'on'; dim = [1 80];
+    answer = inputdlg(input_data,input_title,dim, valdef,resize);
+    
+    select_time = zeros(1, num_of_spectra);
+    select_index = zeros(1, num_of_spectra);
+    select_legend = cell(1, num_of_spectra);
+    for i = 1:num_of_spectra
+        select_time(i) = str2double(answer{i});
+        [~, select_index(i)] = min(abs(time - select_time(i)));
+        
+        plot(wavelengths, data_plot(select_index(i),:),'linewidth',2);
+        hold all
+        select_legend{i} = [num2str(time(select_index(i))) ' s'];
+    end
+    xlabel('Wavelength (nm)');
+    ylabel('Absorbance (a.u.)');
+    legend(select_legend);
+    set(gca, 'FontSize', 20);
+    title(title_colourmap);
+    
+end
+
+
+
+
 
 %% plotting trace
 % *************************************************************************
@@ -500,6 +553,7 @@ if menu_trace == 2
     title(title_trace)
     y = ylim;
 end
+
 
 
 %% fitting trace
