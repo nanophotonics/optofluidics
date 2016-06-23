@@ -566,7 +566,7 @@ end
     legn_trace{end+1} = ['\lambda = ' num2str(wavelength_start_trace) ' to ' ...
         num2str(wavelength_end_trace) ' nm'];
     if menu_smoothing == 2 % smoothing
-        legn_trace{end} = [legn_trace{end},', ' title_cell{2}] %' // Polynomial order = ' num2str(polynomial_order), ' // Frame size = ' num2str(frame_size),' points'];
+        legn_trace{end} = [legn_trace{end},', ' title_cell{2}]; %' // Polynomial order = ' num2str(polynomial_order), ' // Frame size = ' num2str(frame_size),' points'];
     end
     
     legend(legn_trace, 'Location', 'SE')
