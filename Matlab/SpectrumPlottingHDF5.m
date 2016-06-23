@@ -509,20 +509,43 @@ if menu_trace == 2
     data_plot_mean = mean(data_plot(:,index_wavelengths_trace),2);
     
     % smoothing the trace
+%     menu_smoothing = 1;
+%     menu_smoothing = menu('Smooth trace?', 'NO', 'YES');
+%     
+%     if menu_smoothing == 2 % smoothing
+%         smoothing = 5;
+%         input_data = {'Number of data points to average (not zero):'};
+%         input_title = 'Smoothing parameter'; 
+%         input_resize = 'on'; input_dim = [1 60 ];
+%         input_valdef = {num2str(smoothing)};
+%         input_answer = inputdlg(input_data,input_title,input_dim,input_valdef,input_resize);
+%         smoothing = str2double(input_answer{1});
+%         
+%         data_plot_mean = smooth(data_plot_mean, smoothing);
+%     end
+% plot(time(index_time_trace), data_plot_mean(index_time_trace))
     menu_smoothing = 1;
-    menu_smoothing = menu('Smooth trace?', 'NO', 'YES');
-    
-    if menu_smoothing == 2 % smoothing
-        smoothing = 5;
-        input_data = {'Number of data points to average (not zero):'};
-        input_title = 'Smoothing parameter'; 
-        input_resize = 'on'; input_dim = [1 60 ];
-        input_valdef = {num2str(smoothing)};
+    menu_smoothing = menu('Smooth Data?', 'NO', 'YES: Savitzky-Golay filtering');
+
+    polynomial_order = 4; % must be less than the frame size
+    %     if polynomial_order = 1 then this becomes a moving average
+    frame_size = 21; % must be odd
+%     
+if menu_smoothing == 2 % Savitzky-Golay filtering
+    input_data = {'Polynomial order (must be less than the frame size)', 'Frame size (must be odd)'};
+        input_title = 'Parameters for Savitzky-Golay filtering'; 
+        input_resize = 'on'; input_dim = [1 60];
+        input_valdef = {num2str(polynomial_order), num2str(frame_size)};
         input_answer = inputdlg(input_data,input_title,input_dim,input_valdef,input_resize);
-        smoothing = str2double(input_answer{1});
-        
-        data_plot_mean = smooth(data_plot_mean, smoothing);
-    end
+        polynomial_order = str2double(input_answer{1});
+        frame_size = str2double(input_answer{2});
+
+    title_cell{2} = ['Savitzky-Golay filtering,'...
+        ' Polynomial order = ' num2str(polynomial_order),','...
+        ' Frame size =  ' num2str(frame_size) ' points.'];
+    
+        data_plot_mean = sgolayfilt(data_plot_mean,polynomial_order,frame_size);
+end
     
     title_trace = title_colourmap;
 %     title_trace = title_colourmap(1:3);
@@ -543,7 +566,7 @@ if menu_trace == 2
     legn_trace{end+1} = ['\lambda = ' num2str(wavelength_start_trace) ' to ' ...
         num2str(wavelength_end_trace) ' nm'];
     if menu_smoothing == 2 % smoothing
-        legn_trace{end} = [legn_trace{end} ' // smoothing = ' num2str(smoothing) ' points'];
+        legn_trace{end} = [legn_trace{end},', ' title_cell{2}] %' // Polynomial order = ' num2str(polynomial_order), ' // Frame size = ' num2str(frame_size),' points'];
     end
     
     legend(legn_trace, 'Location', 'SE')
