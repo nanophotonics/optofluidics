@@ -283,7 +283,7 @@ if menu_ref || menu_python == 2   % reference corrected
         for i = 1:1:number_of_spectra
             data_spectra(i,:) = -log(data_corrected(i,:));
         end
-        string_spectra = 'Absorbance (a.u.)';
+        string_spectra = 'Absorbance';
     end
      if menu_spectra == 3 % Absorbance/Sample Length
       input_title = 'Choose Sample length'; 
@@ -456,9 +456,9 @@ if menu_irregular_interval == 2
         select_legend{i} = [num2str(time(select_index(i))) ' s'];
     end
     xlabel('Wavelength (nm)');
-    ylabel('Absorbance (a.u.)');
+    ylabel(string_spectra);
     legend(select_legend);
-    set(gca, 'FontSize', 20);
+    set(gca, 'FontSize', 12);
     title(title_colourmap);
     
 end
