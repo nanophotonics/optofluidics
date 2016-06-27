@@ -622,20 +622,21 @@ if menu_fit == 2
     y = ylim;   
     
     value_a = -1;
-    value_b = 1.4;
+%     value_b = 1.4;
     value_tau = -200;    
+    value_to = 100;
     
-    input_title = 'Choose Starting Parameters for a*exp((x)/tau)+b';
-    input_data = {'a','b','tau (s)'};
+    input_title = 'Choose Starting Parameters for a*(1 - exp((x-to)/tau))';
+    input_data = {'a','tau (s)', 't_0 (s)'};
     resize = 'on'; dim = [1 90];
-    valdef = {num2str(value_a),num2str(value_b), num2str(value_tau)};
+    valdef = {num2str(value_a), num2str(value_tau), num2str(value_to)};
     answer = inputdlg(input_data,input_title,dim,valdef,resize);
     value_a = str2double(answer{1});
-    value_b = str2double(answer{2});
-    value_tau = str2double(answer{3});
+    value_tau = str2double(answer{2});
+    value_to = str2double(answer{3});
     
-    Exponential = fittype('a*exp((x)/tau)+b');
-    Exponential_Start = [value_a, value_b, value_tau];
+    Exponential = fittype('a*(1 - exp((x-to)/tau))');
+    Exponential_Start = [value_a, value_tau, value_to];
     [fit_trace,gof_trace] = fit(time(index_time_trace)', data_plot_mean(index_time_trace),...
         Exponential, 'Startpoint', Exponential_Start);
     p = plot(fit_trace, '--k');
@@ -653,16 +654,16 @@ if menu_fit == 2
 
     fit_trace_confint = confint(fit_trace);
     fit_trace_delta_a = abs(fit_trace_confint(1,1) - fit_trace_confint(2,1))/2;
-    fit_trace_delta_b = abs(fit_trace_confint(1,2) - fit_trace_confint(2,2))/2;
-    fit_trace_delta_tau = abs(fit_trace_confint(1,3) - fit_trace_confint(2,3))/2;
+    fit_trace_delta_tau = abs(fit_trace_confint(1,2) - fit_trace_confint(2,2))/2;
+    fit_trace_delta_to = abs(fit_trace_confint(1,3) - fit_trace_confint(2,3))/2;
 
-    text_fit{1} = 'Exponential Fit: a*exp((x)/\tau)+b';
+    text_fit{1} = 'Exponential Fit: a*(1 - exp((x-to)/tau))';
     text_fit{2} = ['a = ' num2str(fit_trace.a, '%.2f') ' \pm ' ...
         num2str(fit_trace_delta_a, '%.2f') ' (a.u.)'];
-    text_fit{3} = ['b = ' num2str(fit_trace.b, '%.3f') ' \pm ' ...
-        num2str(fit_trace_delta_b, '%.3f') ' (a.u.)'];
-    text_fit{4} = ['\tau = ' num2str(fit_trace.tau, '%.0f') ' \pm ' ...
-        num2str(fit_trace_delta_tau, '%.0f') ' s'];
+    text_fit{3} = ['\tau = ' num2str(fit_trace.tau, '%.3f') ' \pm ' ...
+        num2str(fit_trace_delta_tau, '%.3f') ' (a.u.)'];
+    text_fit{4} = ['t_0 = ' num2str(fit_trace.to, '%.0f') ' \pm ' ...
+        num2str(fit_trace_delta_to, '%.0f') ' s'];
     text('Units','normalized','Position',[0.1,0.9],'VerticalAlignment','top','String',text_fit)
     
     
