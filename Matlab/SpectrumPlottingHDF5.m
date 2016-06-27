@@ -387,7 +387,7 @@ menu_evolution = menu('Plot Individual Spectra?', 'NO', 'YES');
 
 if menu_evolution == 2
 menu_irregular_interval = menu('Plot spectra with irregular interval? ','NO','YES');
-end
+
 
 if menu_irregular_interval == 1
     gradient_type = {'DEFAULT','yellow' 'red', 'green', 'aqua', 'blue', 'purple', 'gray'};
@@ -463,7 +463,7 @@ if menu_irregular_interval == 2
     
 end
 
-
+end
 
 
 
