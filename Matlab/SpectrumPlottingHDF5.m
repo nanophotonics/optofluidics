@@ -606,7 +606,7 @@ if menu_fit == 2
     time_interval_index_trace = round(time_interval_plot_trace/time_interval);
     index_time_trace = index_time_all_fit(1):time_interval_index_trace:index_time_all_fit(end);
     
-    data_plot_mean = mean(data_plot(:,index_wavelengths_trace),2);
+%     data_plot_mean = mean(data_plot(:,index_wavelengths_trace),2);
     
     plot(time(index_time_trace), data_plot_mean(index_time_trace), ...
         'LineWidth', 2), hold all
@@ -628,7 +628,7 @@ if menu_fit == 2
     
     input_title = 'Choose Starting Parameters for a*(1 - exp((x-to)/tau))';
     input_data = {'a','tau (s)', 't_0 (s)'};
-    resize = 'on'; dim = [1 90];
+    resize = 'on'; dim = [1 120];
     valdef = {num2str(value_a), num2str(value_tau), num2str(value_to)};
     answer = inputdlg(input_data,input_title,dim,valdef,resize);
     value_a = str2double(answer{1});
@@ -659,9 +659,9 @@ if menu_fit == 2
 
     text_fit{1} = 'Exponential Fit: a*(1 - exp((x-to)/tau))';
     text_fit{2} = ['a = ' num2str(fit_trace.a, '%.2f') ' \pm ' ...
-        num2str(fit_trace_delta_a, '%.2f') ' (a.u.)'];
-    text_fit{3} = ['\tau = ' num2str(fit_trace.tau, '%.3f') ' \pm ' ...
-        num2str(fit_trace_delta_tau, '%.3f') ' (a.u.)'];
+        num2str(fit_trace_delta_a, '%.2f')];
+    text_fit{3} = ['\tau = ' num2str(fit_trace.tau, '%.0f') ' \pm ' ...
+        num2str(fit_trace_delta_tau, '%.0f') ' s'];
     text_fit{4} = ['t_0 = ' num2str(fit_trace.to, '%.0f') ' \pm ' ...
         num2str(fit_trace_delta_to, '%.0f') ' s'];
     text('Units','normalized','Position',[0.1,0.9],'VerticalAlignment','top','String',text_fit)
