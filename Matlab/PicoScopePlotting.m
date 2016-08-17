@@ -11,7 +11,7 @@ close all
 % *************************************************************************
 
 % specify default path
-file_path = 'C:\Users\Ana Andres\Documents\NanoPhotonics\Laboratory\2016.06.21 - 60 nm Au PicoScope\';
+file_path = 'R:\aa938\NanoPhotonics\Laboratory\';
 
 % pop up window to choose the file(s) to read
 [file_name, file_path, ~] = uigetfile('.txt',...
@@ -119,19 +119,21 @@ end
 
 %% PLOTTING FIGURES
 % *************************************************************************
-% close all
-figure_picoscope = figure('Units','normalized','Position',[0.01 0.07 0.6 0.8],'tag','figure_picoscope');
+close all
+figure_picoscope = figure('Units','normalized','Position',[0.01 0.07 0.75 0.8],'tag','figure_picoscope');
 subplot_channels = subplot(1,1,1);
 if menu_divide == 2
     subplot_channels = subplot(2,1,1);
     subplot_division = subplot(2,1,2);
 end
 channel_factor = [1,1,1,1];
+measurement_factor = ones(size(file_name));
 % measurement_factor = [1,1,1,1,1,1,1,1,1,1,1];
-measurement_factor = [1.86,1,1,1,1,1,1,1,1,1,1];
+% measurement_factor = [1.86,1,1,1,1,1,1,1,1,1,1];
 % measurement_factor = [26,1,26,28,22,1,1,1,1,1,1];
+centre_wavelength = zeros(size(file_name));
 % centre_wavelength = [592, 592, 676.2, 744.5, 831.0];
-centre_wavelength = [698.5, 698.5, 698.5, 698.5, 698.5];
+% centre_wavelength = [698.5, 698.5, 698.5, 698.5, 698.5];
 
 % plotting raw or smoothed channels
 subplot(subplot_channels)
@@ -146,27 +148,37 @@ for i = 1:1:number_of_files % files
             ylabel('Channel A (V)')
             grid on
             legend_A{end+1} = [file_name{i}(1:end-4) ' // ' ...
-                channel_name{i,j} ' x ' num2str(channel_factor(j)*measurement_factor(i), '%01.2f')...
+                channel_name{i,j} ...
+%                 ' x ' num2str(channel_factor(j)*measurement_factor(i), '%01.2f')...
 %                 ' // centre = ' num2str(centre_wavelength(i), '%03.1f') ' nm'...
                 ];
-            ylim([-1,4])
+%             ylim([-1,4])
+            pause(0.1)
         elseif strfind(channel_name{i,j}, 'Channel B')
             subplot(subplot_channels)
             yyaxis right
             ylabel('Channel B (V)')
             grid on
             legend_B{end+1} = [file_name{i}(1:end-4) ' // ' ...
-                channel_name{i,j} ' x ' num2str(channel_factor(j)*measurement_factor(i), '%01.2f')...
+                channel_name{i,j} ...
+%                 ' x ' num2str(channel_factor(j)*measurement_factor(i), '%01.2f')...
 %                 ' // centre = ' num2str(centre_wavelength(i), '%03.1f') ' nm'...
                 ];
-            ylim([-2,8])
+%             ylim([-2,8])
         end
         
         plot(smoothed_data{i}(:,1), ...
             smoothed_data{i}(:,j)*channel_factor(j)*measurement_factor(i),...
-            'LineWidth', 2), hold all
+            'LineWidth', 1), hold all
     end
 end
+yyaxis left
+ylabel('Channel A (V)')
+grid on
+yyaxis right
+ylabel('Channel B (V)')
+grid on
+
 legend_channels = [legend_A, legend_B];
 legend(legend_channels, 'Location', 'S', 'interpreter', 'none')
 title(title_cell_channels, 'interpreter', 'none')
