@@ -43,8 +43,8 @@ class SpectrometerTimelapse(nplab.instrument.Instrument, HasTraits):
                         Item("info_string", label = "Information", resizable=True, springy=False),     
                         )
     traits_view.title = "Spectrometer Timelapse"
-    traits_view.x = 1600
-    traits_view.y = 1400
+    traits_view.x = 200
+    traits_view.y = 200
     traits_view.resizable = True
     
     def __init__(self,spectrometer):
