@@ -174,9 +174,9 @@ menu_colour = 1;
 % menu_colour = menu('Which colour scheme to use?', colour_type);
 files_to_plot = 1:1:number_of_files;
 % files_to_plot = 2:1:number_of_files;
-% channels_to_plot = 2:3; % A and B
+channels_to_plot = 2:3; % A and B
 % channels_to_plot = 2; % A
-channels_to_plot = 3; % B
+% channels_to_plot = 3; % B
 % files_to_plot = 3:4;
 legend_location = 'SE';
 
@@ -205,7 +205,7 @@ for i = files_to_plot % files
             pause(0.1)
         elseif strfind(channel_name{i,j}, 'Channel B')
             subplot(subplot_channels)
-%             yyaxis right
+            yyaxis right
             if menu_normalise == 1
                 ylabel('Channel B (V)')
             elseif menu_normalise == 2
@@ -256,9 +256,9 @@ title(title_cell_channels, 'interpreter', 'none')
 xlabel('Time (ms)')
 % xlim([-50,250])
 % xlim([-320,-80])
-xlim([-50,750])
+% xlim([-50,750])
 % ylim([0.8,1.1])
-ylim([0.35,0.47])
+% ylim([0.35,0.47])
 
 % plotting ratio B/A
 if menu_divide == 2
