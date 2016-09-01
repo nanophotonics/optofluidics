@@ -35,22 +35,44 @@ for i = 1:1:number_of_spectra
 end
 data_sort(index_sort,:) = data;
 
-% information (use the last dataset, assume they all have the same parameters)
+% information (use the last dataset, assumed they all have the same parameters)
 info_string = h5readatt(TimelapseInfo.Filename, DatasetName, 'information');
 
 wavelengths = h5readatt(TimelapseInfo.Filename, DatasetName, 'wavelengths');
 wavelength_start = round(wavelengths(1)); % nm
 wavelength_end = round(wavelengths(end)); % nm
 
+
+%% Timestamp
+
 integration_time = h5readatt(TimelapseInfo.Filename, DatasetName, 'integration_time');
-time_interval = h5readatt(TimelapseInfo.Filename, DatasetName, 'time_interval');
+% time_interval = h5readatt(TimelapseInfo.Filename, DatasetName, 'time_interval');
 % time_interval = 1;
 % info_string = 'Info';
-time = 0:1:number_of_spectra-1;
-time = time * time_interval;
-time_start = time(1); % seconds
-time_end = time(end); % seconds
-time_interval_plot = time_interval; % seconds
+% time = 0:1:number_of_spectra-1;
+% time = time * time_interval;
+% time_start = time(1); % seconds
+% time_end = time(end); % seconds
+% time_interval_plot = time_interval; % seconds
+
+
+creation_timestamp = cell(number_of_spectra,1);
+% time_datetime = zeros(number_of_spectra,1);
+time_unsorted = zeros(number_of_spectra,1);
+time = zeros(number_of_spectra,1);
+for i = 1:1:number_of_spectra
+    DatasetName = [TimelapseInfo.Name '/' TimelapseInfo.Datasets(i).Name];
+    creation_timestamp{i} = h5readatt(TimelapseInfo.Filename, DatasetName, 'creation_timestamp');
+    time_datetime(i) = datetime(creation_timestamp{i}, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSSSSS');
+    time_unsorted(i) = etime(datevec(time_datetime(i)),datevec(time_datetime(1)));
+end
+time(index_sort) = time_unsorted;
+time = time';
+time_interval = time(2);
+time_interval_plot = time(2);
+time_start = time(1);
+time_end = time(end);
+
 
 %% python analysis
 % *************************************************************************
@@ -114,7 +136,7 @@ index_time_all = intersect(index_time_start,index_time_end);
 time_interval_index = round(time_interval_plot/time_interval);
 index_time = index_time_all(1):time_interval_index:index_time_all(end);
 
-%% system response reference
+% %% system response reference
 % *************************************************************************
 
 menu_ref = 1;
@@ -301,7 +323,7 @@ if menu_ref || menu_python == 2   % reference corrected
         input_title = 'Choose Concentration and Sample length'; 
         input_data = {'Concentration of MV (mol/L)', 'Sample length (cm)'}; 
         resize = 'on'; dim = [1 80];
-        valdef = {num2str(40E-6), num2str(13)};
+        valdef = {num2str(40E-6), num2str(4.8)};
         answer = inputdlg(input_data,input_title,dim,valdef,resize);
         concentration = str2double(answer{1});
         length = str2double(answer{2});
@@ -347,8 +369,8 @@ data_plot = data_norm;
 %% plotting 2D colourmap
 % *************************************************************************
 
-menu_plot2D = 2;
-menu_plot2D = menu('Plot 2D Colourmap?', 'NO', 'YES');
+menu_plot2D = 1;
+% menu_plot2D = menu('Plot 2D Colourmap?', 'NO', 'YES');
 
 title_colourmap{1} = FolderRead;
 title_colourmap{2} = ['DATA: ' FileNameRead ' // ' strrep(TimelapseInfo.Name(2:end), '_', '\_')];
@@ -456,9 +478,10 @@ if menu_irregular_interval == 2
         select_legend{i} = [num2str(time(select_index(i))) ' s'];
     end
     xlabel('Wavelength (nm)');
+    xlim([450 800])
     ylabel(string_spectra);
     legend(select_legend);
-    set(gca, 'FontSize', 12);
+    set(gca, 'FontSize', 16);
     title(title_colourmap);
     
 end
@@ -474,8 +497,8 @@ menu_trace = 1;
 menu_trace = menu('Plot Trace?', 'NO', 'YES');
 
 if menu_trace == 2
-    wavelength_start_trace = wavelength_start; % nm
-    wavelength_end_trace = wavelength_end; % nm
+    wavelength_start_trace = 603; % nm
+    wavelength_end_trace = 604; % nm
     time_start_trace = time_start; % seconds
     time_end_trace = time_end; % seconds
     time_interval_plot_trace = time_interval_plot; % seconds
@@ -509,43 +532,28 @@ if menu_trace == 2
     data_plot_mean = mean(data_plot(:,index_wavelengths_trace),2);
     
     % smoothing the trace
-%     menu_smoothing = 1;
-%     menu_smoothing = menu('Smooth trace?', 'NO', 'YES');
-%     
-%     if menu_smoothing == 2 % smoothing
-%         smoothing = 5;
-%         input_data = {'Number of data points to average (not zero):'};
-%         input_title = 'Smoothing parameter'; 
-%         input_resize = 'on'; input_dim = [1 60 ];
-%         input_valdef = {num2str(smoothing)};
-%         input_answer = inputdlg(input_data,input_title,input_dim,input_valdef,input_resize);
-%         smoothing = str2double(input_answer{1});
-%         
-%         data_plot_mean = smooth(data_plot_mean, smoothing);
-%     end
-% plot(time(index_time_trace), data_plot_mean(index_time_trace))
     menu_smoothing = 1;
     menu_smoothing = menu('Smooth Data?', 'NO', 'YES: Savitzky-Golay filtering');
 
-    polynomial_order = 4; % must be less than the frame size
-    %     if polynomial_order = 1 then this becomes a moving average
-    frame_size = 21; % must be odd
-%     
-if menu_smoothing == 2 % Savitzky-Golay filtering
-    input_data = {'Polynomial order (must be less than the frame size)', 'Frame size (must be odd)'};
-        input_title = 'Parameters for Savitzky-Golay filtering'; 
-        input_resize = 'on'; input_dim = [1 60];
-        input_valdef = {num2str(polynomial_order), num2str(frame_size)};
-        input_answer = inputdlg(input_data,input_title,input_dim,input_valdef,input_resize);
-        polynomial_order = str2double(input_answer{1});
-        frame_size = str2double(input_answer{2});
-
-    title_cell{2} = ['Savitzky-Golay filtering,'...
-        ' Polynomial order = ' num2str(polynomial_order),','...
-        ' Frame size =  ' num2str(frame_size) ' points.'];
+    polynomial_order = 1; % must be less than the frame size
+    % if polynomial_order = 1 then this becomes a moving average
+    frame_size = 51; % must be odd
     
-        data_plot_mean = sgolayfilt(data_plot_mean,polynomial_order,frame_size);
-end
+    if menu_smoothing == 2 % Savitzky-Golay filtering
+        input_data = {'Polynomial order (must be less than the frame size)', 'Frame size (must be odd)'};
+            input_title = 'Parameters for Savitzky-Golay filtering'; 
+            input_resize = 'on'; input_dim = [1 60];
+            input_valdef = {num2str(polynomial_order), num2str(frame_size)};
+            input_answer = inputdlg(input_data,input_title,input_dim,input_valdef,input_resize);
+            polynomial_order = str2double(input_answer{1});
+            frame_size = str2double(input_answer{2});
+
+        title_cell{2} = ['Savitzky-Golay filtering,'...
+            ' Polynomial order = ' num2str(polynomial_order),','...
+            ' Frame size =  ' num2str(frame_size) ' points.'];
+
+            data_plot_mean = sgolayfilt(data_plot_mean,polynomial_order,frame_size);
+    end
     
     title_trace = title_colourmap;
 %     title_trace = title_colourmap(1:3);
@@ -572,18 +580,18 @@ end
     legend(legn_trace, 'Location', 'SE')
     xlabel('Time (s)')
     ylabel(['Averaged ' string_spectra])
-    set(gca, 'FontSize', 12)
+    set(gca, 'FontSize', 16)
     title(title_trace)
     y = ylim;
 end
 
 
 
-%% fitting trace
+%% fitting trace, saturation function
 % *************************************************************************
 menu_fit = 1;
 if menu_trace == 2
-    menu_fit = menu('Fit Trace?', 'NO', 'YES');
+    menu_fit = menu('Fit Trace, Saturation?', 'NO', 'YES');
 end
 
 if menu_fit == 2
@@ -621,13 +629,13 @@ if menu_fit == 2
     title(title_trace)
     y = ylim;   
     
-    value_a = -1;
+    value_a = 2.5;
 %     value_b = 1.4;
-    value_tau = -200;    
+    value_tau = 100;    
     value_to = 100;
     
-    input_title = 'Choose Starting Parameters for a*(1 - exp((x-to)/tau))';
-    input_data = {'a','tau (s)', 't_0 (s)'};
+    input_title = 'Choose Starting Parameters for a*(1 - exp(-(x-t_0)/tau))';
+    input_data = {'a','tau (s)', 't_0 (s)'}; % need to be in alphabetical order!!
     resize = 'on'; dim = [1 120];
     valdef = {num2str(value_a), num2str(value_tau), num2str(value_to)};
     answer = inputdlg(input_data,input_title,dim,valdef,resize);
@@ -635,8 +643,8 @@ if menu_fit == 2
     value_tau = str2double(answer{2});
     value_to = str2double(answer{3});
     
-    Exponential = fittype('a*(1 - exp((x-to)/tau))');
-    Exponential_Start = [value_a, value_tau, value_to];
+    Exponential = fittype('a*(1 - exp(-((x-to)/tau)))');
+    Exponential_Start = [value_a, value_tau, value_to]; % need to be in alphabetical order!!
     [fit_trace,gof_trace] = fit(time(index_time_trace)', data_plot_mean(index_time_trace),...
         Exponential, 'Startpoint', Exponential_Start);
     p = plot(fit_trace, '--k');
@@ -657,20 +665,134 @@ if menu_fit == 2
     fit_trace_delta_tau = abs(fit_trace_confint(1,2) - fit_trace_confint(2,2))/2;
     fit_trace_delta_to = abs(fit_trace_confint(1,3) - fit_trace_confint(2,3))/2;
 
-    text_fit{1} = 'Exponential Fit: a*(1 - exp((x-to)/tau))';
+    text_fit{1} = 'Exponential Fit: a*(1 - exp(-(x-t_0)/\tau))';
     text_fit{2} = ['a = ' num2str(fit_trace.a, '%.2f') ' \pm ' ...
         num2str(fit_trace_delta_a, '%.2f')];
     text_fit{3} = ['\tau = ' num2str(fit_trace.tau, '%.0f') ' \pm ' ...
         num2str(fit_trace_delta_tau, '%.0f') ' s'];
     text_fit{4} = ['t_0 = ' num2str(fit_trace.to, '%.0f') ' \pm ' ...
         num2str(fit_trace_delta_to, '%.0f') ' s'];
-    text('Units','normalized','Position',[0.1,0.9],'VerticalAlignment','top','String',text_fit)
-    
-    
-    
+    text('Units','normalized','Position',[0.1,0.9],'VerticalAlignment','top','String',text_fit) 
+
+    nameSave = 'Exp_1_TauAndT0.dat';
+    pause(0.1)
+    [nameSave,dirSave,~] = uiputfile(['.' 'dat'],...
+        'New File to save values of the exponential fit',...
+        [FolderPathRead nameSave]); % choosing the file name
+    fid3 = fopen([dirSave nameSave], 'wt');
+    fprintf(fid3, 'Tau = %.2f +- %.2f (s)\n',...
+        fit_trace.tau, fit_trace_delta_tau);
+    fprintf(fid3, 't_0 = %.2f +- %.2f (s)\n',...
+       fit_trace.to, fit_trace_delta_to);
+    fprintf(fid3, 'a = %.2f +- %.2f\n',...
+        fit_trace.a, fit_trace_delta_a);
+	fclose(fid3);
 end
+   
+% 
+%% fitting trace, decay function
+% *************************************************************************
+menu_fit = 1;
+if menu_trace == 2
+    menu_fit = menu('Fit Trace, Decay?', 'NO', 'YES');
+end
+if menu_fit == 2
+    time_start_fit = 300; % seconds
+    time_end_fit = 900; % seconds
+
+    input_title = 'Time Selection for Curve Fitting'; 
+    input_data = {'Start Time (s):',...
+        ['End Time (s) (data recorded for ' num2str(time(end)) ' s) :']};
+    resize = 'on'; dim = [1 80];
+    valdef = {num2str(time_start_fit),num2str(time_end_fit)};
+    answer = inputdlg(input_data,input_title,dim,valdef,resize);
+    time_start_fit = str2double(answer{1});
+    time_end_fit = str2double(answer{2});
 
 
+    [~,index_time_start_fit] = find(time >= time_start_fit);
+    [~,index_time_end_fit] = find(time <= time_end_fit);
+    index_time_all_fit = intersect(index_time_start_fit,index_time_end_fit);
+    time_interval_index_trace = round(time_interval_plot_trace/time_interval);
+    index_time_trace = index_time_all_fit(1):time_interval_index_trace:index_time_all_fit(end);
+    
+%     data_plot_mean = mean(data_plot(:,index_wavelengths_trace),2);
+    
+    plot(time(index_time_trace), data_plot_mean(index_time_trace), ...
+        'LineWidth', 2), hold all
+    legn_trace{end+1} = ['\lambda = ' num2str(wavelength_start_trace) ' to ' ...
+        num2str(wavelength_end_trace) ' nm, t = ' num2str(time_start_fit) ' to ' ...
+        num2str(time_end_fit) ' s'];
+    
+    legend(legn_trace, 'Location', 'SE')
+    xlabel('Time (s)')
+    ylabel(['Averaged ' string_spectra])
+    set(gca, 'FontSize', 12)
+    title(title_trace)
+    y = ylim;   
+    
+    value_a = 1.5;
+    value_tau = 100;    
+    value_to = 300;
+    value_b = 2.5;
+    
+    input_title = 'Choose Starting Parameters for a*(exp(-(x-t_0)/tau))';
+    input_data = {'a','tau (s)', 't_0 (s)', 'b'};
+    resize = 'on'; dim = [1 120];
+    valdef = {num2str(value_a), num2str(value_tau), num2str(value_to), num2str(value_b)};
+    answer = inputdlg(input_data,input_title,dim,valdef,resize);
+    value_a = str2double(answer{1});
+    value_tau = str2double(answer{2});
+    value_to = str2double(answer{3});
+    value_b = str2double(answer{4});
+    
+    Exponential = fittype('-a*(1-exp(-(x-to)/tau))+ b');
+    Exponential_Start = [value_a, value_b, value_tau, value_to];
+    [fit_trace,gof_trace] = fit(time(index_time_trace)', data_plot_mean(index_time_trace),...
+        Exponential, 'Startpoint', Exponential_Start, 'Lower', [0, 0, 0, time_start_fit], 'Upper', [Inf, Inf, Inf, time_start_fit])
+    p = plot(fit_trace, '--k');
+    p.LineWidth = 1.5;
+    
+    ylim(y)
+    xlabel('Time (s)')
+    ylabel(['Averaged ' string_spectra])
+    legend('Location', 'SE')
+    
+    line([time(index_time_trace(1)), time(index_time_trace(1))], y, ...
+        'Color', 'k', 'LineWidth', 1.5)
+    line([time(index_time_trace(end)), time(index_time_trace(end))], y, ...
+        'Color', 'k', 'LineWidth', 1.5)
+
+    fit_trace_confint = confint(fit_trace);
+    fit_trace_delta_a = abs(fit_trace_confint(1,1) - fit_trace_confint(2,1))/2;
+    fit_trace_delta_tau = abs(fit_trace_confint(1,3) - fit_trace_confint(2,3))/2;
+    fit_trace_delta_b = abs(fit_trace_confint(1,2) - fit_trace_confint(2,2))/2;
+
+    text_fit{1} = 'Exponential Fit: -a*(1-exp(-(x-to)/tau))+ b';
+    text_fit{2} = ['a = ' num2str(fit_trace.a, '%.2f') ' \pm ' ...
+        num2str(fit_trace_delta_a, '%.2f')];
+    text_fit{3} = ['\tau = ' num2str(fit_trace.tau, '%.0f') ' \pm ' ...
+        num2str(fit_trace_delta_tau, '%.0f') ' s'];
+    text_fit{4} = ['t_0 = ' num2str(time_start_fit, '%.0f'),' s'];
+    text_fit{5} = ['b = ' num2str(fit_trace.b, '%.1f') ' \pm ' ...
+        num2str(fit_trace_delta_b, '%.1f') ' s'];
+    text('Units','normalized','Position',[0.1,0.9],'VerticalAlignment','top','String',text_fit) 
+
+        nameSave = 'Exp_1_TauAndT0.dat';
+        pause(0.1)
+        [nameSave,dirSave,~] = uiputfile(['.' 'dat'],...
+            'New File to save values of the exponential fit',[FolderPathRead nameSave]); % choosing the file name
+        
+        fid3 = fopen([dirSave nameSave], 'wt');
+        fprintf(fid3, 'Tau = %.2f +- %.2f (s)\n',...
+            fit_trace.tau, fit_trace_delta_tau);
+        fprintf(fid3, 't_0 = %.2f +- %.2f (s)\n',...
+           fit_trace.to, fit_trace_delta_to);
+        fprintf(fid3, 'a = %.2f +- %.2f\n',...
+            fit_trace.a, fit_trace_delta_a);
+	fclose(fid3);
+end
+   
 
 %% saving the figures
 % *************************************************************************
@@ -689,8 +811,8 @@ if menu_save_fig == 2
         [nameSave,pathSave,~] = uiputfile(['.' 'png'],...
             'New File to Save the Figure',[pathSave nameSave]);
         hgexport(fig_timelapse, [pathSave nameSave], hgexport('factorystyle'), 'Format', 'png')
-%         nameSave = strrep(nameSave, 'png', 'fig');    
-%         saveas(fig_timelapse, [pathSave nameSave], 'fig');
+        nameSave = strrep(nameSave, 'png', 'fig');    
+        saveas(fig_timelapse, [pathSave nameSave], 'fig');
         
     end
     
