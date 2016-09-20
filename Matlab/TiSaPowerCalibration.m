@@ -2,8 +2,8 @@ clc
 clear
 close all
 
-file_directory = 'R:\aa938\NanoPhotonics\Laboratory\2016.09.16 - TiSa power calibration\';
-file_name = '2016.09.16 - TiSa power calibration.txt';
+file_directory = 'R:\aa938\NanoPhotonics\Laboratory\2016.09.19 - TiSa power calibration 800 nm\';
+file_name = '2016.09.19 - TiSa power calibration 800 nm.txt';
 
 header_rows = 1;
 
