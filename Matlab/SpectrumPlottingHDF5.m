@@ -3,15 +3,15 @@ clear
 close all
 
 % default directory
-% DirectoryRead = 'C:\Users\Ana Andres\Documents\NanoPhotonics\Laboratory\';
-% FolderRead = '';
-% FolderPathRead = [DirectoryRead FolderRead];
-% FileNameRead = '';
+DirectoryRead = 'C:\Users\Ana Andres\Documents\NanoPhotonics\Laboratory\';
+FolderRead = '';
+FolderPathRead = [DirectoryRead FolderRead];
+FileNameRead = '';
 
 % prompt to choose file
 [FileNameRead, FolderPathRead, ~] = uigetfile('.h5',...
-    'H5 file to read:','MultiSelect','off');
-%     'H5 file to read:',[FolderPathRead FileNameRead],'MultiSelect','off');
+    'H5 file to read:',[FolderPathRead FileNameRead],'MultiSelect','off');
+%     'H5 file to read:','MultiSelect','off');
 slash_index = strfind(FolderPathRead, '\');
 FolderRead = FolderPathRead(slash_index(end-1)+1:end-1);
 FilePathRead = [FolderPathRead FileNameRead];

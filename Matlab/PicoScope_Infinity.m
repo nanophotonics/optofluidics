@@ -3,7 +3,7 @@ clear
 close all
 
 % specify default path
-file_path = 'C:\Users\Ana Andres\Documents\NanoPhotonics\Laboratory\2016.06.21 - 60 nm Au PicoScope\';
+file_path = 'R:\aa938\NanoPhotonics\Laboratory\';
 
 % pop up window to choose the file(s) to read
 [file_name, file_path, ~] = uigetfile('.txt',...

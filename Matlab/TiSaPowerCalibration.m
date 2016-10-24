@@ -2,8 +2,8 @@ clc
 clear
 close all
 
-file_directory = 'R:\aa938\NanoPhotonics\Laboratory\2016.09.19 - TiSa power calibration 800 nm\';
-file_name = '2016.09.19 - TiSa power calibration 800 nm.txt';
+file_directory = 'R:\aa938\NanoPhotonics\Laboratory\2016.10.12 - TiSa power calibration 767 nm\';
+file_name = '2016.10.12 - TiSa power calibration 767 nm.txt';
 
 header_rows = 1;
 
@@ -20,11 +20,11 @@ set(gca, 'FontSize', 14)
 legend('measured')
 
 fitting_function = fittype('a*(sin(b*x*pi/180+c))^2');
-starting_coefficients = [4,2,0.09];
+starting_coefficients = [4,2,1];
 [fit_coefficients, goodness_of_fit] = fit(angle_degrees, power_watts, ...
     fitting_function, 'StartPoint', starting_coefficients)
 plot(fit_coefficients)
 
 xlabel('Angle (degrees)')
 ylabel('Ti:Sa power (W)') 
-title(file_name)
+title(file_name(1:end-4))

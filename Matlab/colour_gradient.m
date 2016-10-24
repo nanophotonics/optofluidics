@@ -27,9 +27,48 @@ elseif strcmp(type, 'blue') == 1
     colour_RGB = [1-x/x_max, 1-x/x_max, 1]; % blue
 elseif strcmp(type, 'purple') == 1
     colour_RGB = [1-x/x_max, 0, 1]; % purple
+elseif strcmp(type, 'parula') == 1
+    cmp = colormap(parula(round(x_max)));
+    colour_RGB = cmp(round(x),:);
+elseif strcmp(type, 'jet') == 1
+    cmp = colormap(jet(round(x_max)));
+    colour_RGB = cmp(round(x),:);
+elseif strcmp(type, 'hsv') == 1
+    cmp = colormap(hsv(round(x_max)));
+    colour_RGB = cmp(round(x),:);
+elseif strcmp(type, 'hot') == 1
+    cmp = colormap(hot(round(x_max)));
+    colour_RGB = cmp(round(x),:);
+elseif strcmp(type, 'cool') == 1
+    cmp = colormap(cool(round(x_max)));
+    colour_RGB = cmp(round(x),:);
+elseif strcmp(type, 'spring') == 1
+    cmp = colormap(spring(round(x_max)));
+    colour_RGB = cmp(round(x),:);
+elseif strcmp(type, 'summer') == 1
+    cmp = colormap(summer(round(x_max)));
+    colour_RGB = cmp(round(x),:);
+elseif strcmp(type, 'autumn') == 1
+    cmp = colormap(autumn(round(x_max)));
+    colour_RGB = cmp(round(x),:);
+elseif strcmp(type, 'winter') == 1
+    cmp = colormap(winter(round(x_max)));
+    colour_RGB = cmp(round(x),:);
 elseif strcmp(type, 'gray') == 1
-    colour_RGB = [1-x/x_max, 1-x/x_max, 1-x/x_max]; % grayscale
-end
+    cmp = colormap(gray(round(x_max)));
+    colour_RGB = cmp(round(x),:);
+elseif strcmp(type, 'bone') == 1
+    cmp = colormap(bone(round(x_max)));
+    colour_RGB = cmp(round(x),:);
+elseif strcmp(type, 'copper') == 1
+    cmp = colormap(copper(round(x_max)));
+    colour_RGB = cmp(round(x),:);
+elseif strcmp(type, 'pink') == 1
+    cmp = colormap(pink(round(x_max)));
+    colour_RGB = cmp(round(x),:);
+else
+    cmp = colormap(parula(round(x_max)));
+    colour_RGB = cmp(round(x),:);
 
 end
 
