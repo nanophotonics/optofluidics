@@ -11,8 +11,8 @@ close all
 % *************************************************************************
 
 % specify default path
-% file_path = 'R:\aa938\NanoPhotonics\Laboratory\';
-file_path = 'R:\3-Temporary\aa938\';
+file_path = 'R:\aa938\NanoPhotonics\Laboratory\';
+% file_path = 'R:\3-Temporary\aa938\';
 
 % pop up window to choose the file(s) to read
 [file_name, file_path, ~] = uigetfile('.txt',...
@@ -61,8 +61,8 @@ for i = 1:1:number_of_files
     
     % change all channel units to Volts
     for j = 2:1:size(raw_data{i},2) % channels
-        if strfind(channel_unit{i,j}, '(V)')
-        elseif strfind(channel_unit{i,j}, '(mV)')
+        if strcmp(channel_unit{i,j}, '(V)')
+        elseif strcmp(channel_unit{i,j}, '(mV)')
             channel_unit{i,j} = '(V)';
             raw_data{i}(:,j) = raw_data{i}(:,j)/1000;
         else
@@ -72,15 +72,27 @@ for i = 1:1:number_of_files
 end
 disp('Finished reading all files!')
 
+%% OPTIONS
+% *************************************************************************
+options = {'Savitzky-Golay Filtering', ...
+           'Normalisation', ...
+           'Average & Standard Dev.',...
+           'Period Selection',...
+           'Channel B / Channel A'};
+selected_options = 5;
+[selected_options, ~] = listdlg('PromptString', 'Select options:',...
+                                'SelectionMode', 'multiple', ...
+                                'ListString', options, ...
+                                'InitialValue', selected_options, ...
+                                'OKString', 'OK', ...
+                                'CancelString', 'NONE');
+
 %% SMOOTHING
 % *************************************************************************
 
-menu_smoothing = 1;
-% menu_smoothing = menu('Smooth Data?', 'NO', 'YES: Savitzky-Golay filtering');
-
 smoothed_data = raw_data;   
 % title_cell_channels{2} = 'Raw unfiltered data';
-if menu_smoothing == 2 % Savitzky-Golay filtering
+if find(strcmp(options(selected_options), 'Savitzky-Golay Filtering'))
     % if polynomial_order = 1 then this becomes a moving average
     polynomial_order = 1; % must be less than the frame size
     frame_size = 21; % must be odd
@@ -89,8 +101,8 @@ if menu_smoothing == 2 % Savitzky-Golay filtering
     input_data = {'Polynomial Order (odd) (1 = moving average):',...
         'Frame Size (odd):'};
     resize = 'on'; dimensions = [1 80];
-    devault_values = {num2str(polynomial_order),num2str(frame_size)};
-    answer = inputdlg(input_data, input_title, dimensions, devault_values, resize);
+    default_values = {num2str(polynomial_order),num2str(frame_size)};
+    answer = inputdlg(input_data, input_title, dimensions, default_values, resize);
     polynomial_order = str2double(answer{1});
     frame_size = str2double(answer{2});    
     
@@ -110,10 +122,8 @@ end
 
 %% NORMALISATION
 % *************************************************************************
-menu_normalise = 1;
-% menu_normalise = menu('Normalise?','NO','YES');
 normalised_data = smoothed_data;
-if menu_normalise == 2
+if find(strcmp(options(selected_options), 'Normalisation'))
 %     t = 200; % ms
     t = -20; % ms
 %     t = -100; % ms
@@ -124,15 +134,12 @@ if menu_normalise == 2
         end
     end
 end
-% plot_data = normalised_data;
 
 %% STANDARD DEVIATION
 % *************************************************************************
-menu_stdev = 1;
-% menu_stdev = menu('Calculate the average and standard deviation?','NO','YES');
 average = zeros(size(channel_name));
 stdev = zeros(size(channel_name));
-if menu_stdev == 2
+if find(strcmp(options(selected_options), 'Average & Standard Dev.'))
     for i = 1:1:number_of_files
         threshold_ref = max(period_data{i}(:,2))/2; % V
         [t_ref,~] = find(period_data{i}(:,2) > threshold_ref);
@@ -147,15 +154,10 @@ end
 
 %% PERIOD SELECTION
 % *************************************************************************
-menu_period = 2;
-% menu_period = menu('Select 1 period?','NO','YES');
 period_data = normalised_data;
-
-% fix the triggering offset from the 1st measurement
-% period_data{1}(:,1) = period_data{1}(:,1) - 7.3;
-
 threshold_time = 5; % ms
-if menu_period == 2
+
+if find(strcmp(options(selected_options), 'Period Selection'))
 %     T = [18,40,18,40];
     T = ones(size(file_name));
     T = T * 10;
@@ -171,7 +173,6 @@ if menu_period == 2
 %         T(i) = round(period_data{i}(end,1),-1);
     end
 end
-plot_data = period_data;
 
 %% CALCULATING THE POWER
 % *************************************************************************
@@ -186,6 +187,51 @@ c = 0.9775; % rad
 laser_power = a*(sin(b*waveplate_angle*pi/180+c)).^2*1000; % mW
 
 
+%% CHANNEL FACTORS
+% *************************************************************************
+channel_factor = ones(size(file_name));
+measurement_factor = ones(size(file_name));
+% measurement_factor = [1,1,1,1,1,1,1,1,1,1,1];
+% measurement_factor = [1/1, 1/1, 1/0.9, 1/0.8, 1/0.7, 1/0.6, 1/0.5, 1/0.4, 1/0.3, 1/0.1,1,1];
+% measurement_factor = [1.86,1,1,1,1,1,1,1,1,1,1];
+% measurement_factor = [26,1,26,28,22,1,1,1,1,1,1];
+
+ND_A = zeros(size(file_name));
+ND_B = zeros(size(file_name));
+% ND_A = [0.4, 0.4, 0.4, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6];
+% ND_B = [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2];
+% ND_A = [4, 4, 4, 4, 4, 4, 4, 4, 4];
+% ND_B = [2, 2, 2, 4, 4, 4, 4, 4, 4];
+
+ND_A = ND_A + 0.01;
+ND_B = ND_B + 0.01;
+
+if find(strcmp(channel_name(1,:), 'Channel A'))
+    input_title = 'ND Channel A'; 
+    input_data = file_name;
+    resize = 'on'; dimensions = [1 60];
+    default_values = cellstr(num2str((ND_A')));
+    answer = inputdlg(input_data, input_title, dimensions, default_values, resize);
+    ND_A = cell2mat(answer);
+end
+if find(strcmp(channel_name(1,:), 'Channel B'))
+    input_title = 'ND Channel B'; 
+    input_data = file_name;
+    resize = 'on'; dimensions = [1 60];
+    default_values = cellstr(num2str((ND_B')));
+    answer = inputdlg(input_data, input_title, dimensions, default_values, resize);
+    ND_B = cell2mat(answer);
+end
+ND = [ND_A, ND_B];
+
+channel_data = period_data;
+for i = 1:1:number_of_files % files
+    for j = 2:1:size(channel_name,2)-1 % channels
+        channel_data{i}(:,j) = channel_data{i}(:,j)*channel_factor(j)*measurement_factor(i)*10^ND(i,j-1);
+    end
+end
+plot_data = channel_data;
+
 %% PLOTTING FIGURES
 % *************************************************************************
 close all
@@ -196,41 +242,22 @@ colour_type = {'DEFAULT', ...
     'red', 'green', 'aqua', 'blue', 'purple',...
     };
 
-figure_picoscope = figure('Units','normalized','Position',[0.01 0.07 0.95 0.8],'tag','figure_picoscope');
-channel_factor = [1,1,1,1];
-measurement_factor = ones(size(file_name));
-% measurement_factor = [1,1,1,1,1,1,1,1,1,1,1];
-% measurement_factor = [1/1, 1/1, 1/0.9, 1/0.8, 1/0.7, 1/0.6, 1/0.5, 1/0.4, 1/0.3, 1/0.1,1,1];
-% measurement_factor = [1.86,1,1,1,1,1,1,1,1,1,1];
-% measurement_factor = [26,1,26,28,22,1,1,1,1,1,1];
 centre_wavelength = zeros(size(file_name));
 % centre_wavelength = [459, 500, 550, 600, 650, 700, 750, 790];
 % centre_wavelength = [592, 592, 676.2, 744.5, 831.0];
 % centre_wavelength = [698.5, 698.5, 698.5, 698.5, 698.5];
-
-ND_A = zeros(size(file_name));
-ND_B = zeros(size(file_name));
-% ND_A = [0.4, 0.4, 0.4, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6];
-% ND_B = [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2];
-% ND_A = [4, 4, 4, 6, 6, 6, 6, 6, 6];
-% ND_B = [2, 2, 2, 4, 4, 4, 4, 4, 4];
-ND = [ND_A; ND_B];
-
 
 files_to_plot = 1:1:number_of_files;
 % files_to_plot = 1:1:6;
 % files_to_plot = 2:1:number_of_files;
 % files_to_plot = 3:4;
 
-menu_channels = 1;
-% menu_channels = menu('Channels to plot', 'A & B', 'Just A (ref)', 'Just B (signal)');
-if menu_channels == 1
-    channels_to_plot = 2:3; % A and B
-elseif menu_channels == 2
-    channels_to_plot = 2; % A
-elseif menu_channels == 3
-    channels_to_plot = 3; % B
-end
+channels_to_plot = [2,3];
+% [channels_to_plot, ~] = listdlg('PromptString', 'Channels to plot',...
+%                                 'SelectionMode', 'multiple', ...
+%                                 'ListString', channel_name(1,2:end),...
+%                                 'InitialValue', channels_to_plot - 1);
+% channels_to_plot = channels_to_plot + 1;
 
 menu_subplots = 2;
 if size(channels_to_plot,2) > 1
@@ -242,6 +269,7 @@ elseif menu_subplots == 3 % vertical
     layout = [2,1];
 end
 
+figure_picoscope = figure('Units','normalized','Position',[0.01 0.07 0.95 0.8],'tag','figure_picoscope');
 % plotting raw or smoothed channels
 legend_A = {}; % initialising the legend cell
 legend_B = {}; % initialising the legend cell
@@ -250,7 +278,7 @@ for i = files_to_plot(end:-1:1) % files
 %     for j = 2:1:size(plot_data{i},2) % channels
 %     for j = 2:1:3 % channels
     for j = channels_to_plot % channels
-        if strfind(channel_name{i,j}, 'Channel A')
+        if strcmp(channel_name{i,j}, 'Channel A')
             if menu_subplots == 1
                 if size(channels_to_plot,2)>1
                     yyaxis left
@@ -259,9 +287,9 @@ for i = files_to_plot(end:-1:1) % files
                 subplot(layout(1),layout(2),1)
             end
             
-            if menu_normalise == 1
-                ylabel('Channel A (V)')
-            elseif menu_normalise == 2
+            
+            ylabel('Channel A (V)')
+            if strcmp(options(selected_options), 'Normalisation')
                 ylabel('Channel A normalised')
             end
             grid on
@@ -274,7 +302,7 @@ for i = files_to_plot(end:-1:1) % files
                 ];
 %             ylim([-1,4])
 %             pause(0.1)
-        elseif strfind(channel_name{i,j}, 'Channel B')
+        elseif strcmp(channel_name{i,j}, 'Channel B')
             if menu_subplots == 1
                 if size(channels_to_plot,2)>1
                     yyaxis right
@@ -283,9 +311,8 @@ for i = files_to_plot(end:-1:1) % files
                 subplot(layout(1),layout(2),2)
             end
             
-            if menu_normalise == 1
-                ylabel('Channel B (V)')
-            elseif menu_normalise == 2
+            ylabel('Channel B (V)')
+            if strcmp(options(selected_options), 'Normalisation')
                 ylabel('Channel B normalised')
             end
             grid on
@@ -301,8 +328,8 @@ for i = files_to_plot(end:-1:1) % files
         end
         
         h(i,j) = plot(plot_data{i}(:,1), ...
-            plot_data{i}(:,j)*channel_factor(j)*measurement_factor(i)*10^ND(j-1,i),...
-            'LineWidth', 1); hold all
+            plot_data{i}(:,j),...
+            'LineWidth', 2); hold all
         
 %         pause(0.5)
     end
@@ -310,9 +337,13 @@ end
 
 %% colour scheme
 figure(figure_picoscope)
+menu_colour = 2;
+% menu_colour = menu([channel_name{1,j} ' colour scheme'], colour_type);
+[menu_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
+                           'SelectionMode', 'single', ...
+                           'ListString', colour_type,...
+                           'InitialValue', menu_colour);
 for j = channels_to_plot
-    menu_colour = 2;
-    menu_colour = menu([channel_name{1,j} ' colour scheme'], colour_type);
     for i = files_to_plot    
         if menu_colour > 1 
             colour_RGB = colour_gradient(i, number_of_files, colour_type(menu_colour));
@@ -336,8 +367,8 @@ end
 
 %% axis limits
 figure(figure_picoscope)
-legend_location = 'SE';
-x_limits = xlim;
+legend_location = 'NE';
+% x_limits = xlim;
 x_limits = [-5,25];
 
 input_title = 'Plot formatting';
@@ -379,9 +410,7 @@ end
 
 %% DIVIDING B/A
 % *************************************************************************
-menu_divide = 2;
-% menu_divide = menu('Divide Data?', 'NO', 'YES: B/A');
-if menu_divide == 2
+if find(strcmp(options(selected_options), 'Channel B / Channel A'))
     divided_data = cell(size(plot_data));
     for i = 1:1:number_of_files % files
         divided_data{i} = plot_data{i}(:,3) ./ plot_data{i}(:,2);
@@ -390,7 +419,7 @@ if menu_divide == 2
 end
 
 %% plotting ratio B/A
-if menu_divide == 2
+if find(strcmp(options(selected_options), 'Channel B / Channel A'))
 %     subplot(subplot_division)
     figure_division = figure('Units','normalized','Position',[0.01 0.07 0.95 0.8],'tag','figure_division');
     legend_division = {}; % initialising the legend cell
@@ -403,11 +432,11 @@ if menu_divide == 2
 %             ' // centre = ' num2str(centre_wavelength(i), '%03.1f') ' nm'...
             ];
     end
-    legend(legend_division, 'Location', legend_location, 'interpreter', 'none')
+    legend(legend_division, 'Location', 'best', 'interpreter', 'none')
     title(title_cell_divided, 'interpreter', 'none')
     ylabel('B/A')
     xlabel('Time (ms)')
-    xlim([0,7])
+    xlim([0,8.5])
 %     xlim([-50,250])
 %     xlim([-310,-90])
 %     ylim([1,5])
@@ -416,8 +445,12 @@ end
 
 %% colour scheme
 figure(figure_division)
-menu_colour = 2;
-menu_colour = menu([channel_name{1,j} ' colour scheme'], colour_type);
+% menu_colour = 2;
+% menu_colour = menu([channel_name{1,j} ' colour scheme'], colour_type);
+[menu_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
+                           'SelectionMode', 'single', ...
+                           'ListString', colour_type,...
+                           'InitialValue', menu_colour);
 for i = files_to_plot    
     if menu_colour > 1 
         colour_RGB = colour_gradient(i, number_of_files, colour_type(menu_colour));

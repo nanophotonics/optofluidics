@@ -214,39 +214,13 @@ end
 
 menu_ok = menu('Ready to select bad files?', 'OK');
 
-number_of_bad_files = 0;
-input_title = 'Selecting bad files';
-input_data = {'Number of bad files'};
-resize = 'on'; dim = [1 80];
-valdef = {num2str(number_of_bad_files)};
-answer = inputdlg(input_data,input_title,dim,valdef,resize);
-number_of_bad_files = str2double(answer{1});
-
-files_to_average = files_to_plot;
-if number_of_bad_files > 0
-    
-    bad_files = cell(number_of_bad_files,1);
-    input_data = cell(number_of_bad_files,1);
-    for i = 1:1:number_of_bad_files
-        input_data{i} = [num2str(i) '/' num2str(number_of_bad_files) ' file to discard'];
-        bad_files{i} = '0';
-    end
-    input_title = 'Selecting bad files';
-    resize = 'on'; dim = [1 80];
-    valdef = bad_files;
-    bad_files = inputdlg(input_data,input_title,dim,valdef,resize);
-
-    for i = 1:1:number_of_bad_files
-        [~,index_bad] = find(files_to_average == str2double(bad_files{i}));
-        files_to_average(index_bad) = [];
-    end
-end
-
 files_to_average = files_to_plot;
 [index_bad, ~] = listdlg('PromptString', 'Select bad files(s)',...
-    'SelectionMode', 'multiple', ...
-    'ListString', file_name,...
-    'InitialValue', []);
+                         'SelectionMode', 'multiple', ...
+                         'ListString', file_name,...
+                         'InitialValue', [],...
+                         'OKString', 'OK', ...
+                         'CancelString', 'NONE');
 files_to_average(index_bad) = [];
 
 
@@ -261,22 +235,20 @@ data_average = data_average / size(files_to_average,2);
 
 %% PLOTTING FIGURES
 % *************************************************************************
+channels_to_plot = [2,3];
+[channels_to_plot, ~] = listdlg('PromptString', 'Channels to plot',...
+                                'SelectionMode', 'multiple', ...
+                                'ListString', channel_name(1,2:end),...
+                                'InitialValue', channels_to_plot - 1);
+channels_to_plot = channels_to_plot + 1;
+
 close all
 figure_picoscope = figure('Units','normalized','Position',[0.01 0.07 0.75 0.8],'tag','figure_picoscope');
 subplot_channels = subplot(1,1,1);
 
-menu_channels = 1;
-% menu_channels = menu('Channels to plot', 'A & B', 'Just A (ref)', 'Just B (signal)');
-if menu_channels == 1
-    channels_to_plot = 2:3; % A and B
-elseif menu_channels == 2
-    channels_to_plot = 2; % A
-elseif menu_channels == 3
-    channels_to_plot = 3; % B
-end
-
-menu_subplots = 2;
+menu_subplots = 1;
 if size(channels_to_plot,2) > 1
+    menu_subplots = 2;
 %     menu_subplots = menu('Plot each channel in a different subplot?', 'NO', 'YES (horizontal)', 'YES (vertical)');
 end
 if menu_subplots == 2 % horizontal
@@ -407,7 +379,7 @@ if menu_subplots == 1
     title(title_cell_channels, 'interpreter', 'none')
     xlabel('Time (ms)')
     legend_channels = [legend_A, legend_B];
-    legend(legend_channels, 'Location', legend_location)
+    legend(legend_channels, 'Location', legend_location, 'interpreter', 'none')
     axis auto
     xlim(x_limits)
     if size(channels_to_plot,2)>1
