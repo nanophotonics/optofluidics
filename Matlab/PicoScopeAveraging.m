@@ -408,12 +408,13 @@ end
 %% SAVING DATA
 % *************************************************************************
 menu_save_average = 2;
-% menu_save_average = menu('Save Averaged Data?', 'NO', 'YES');
-
+menu_save_average = menu('Save Averaged Data?', 'NO', 'YES');
+file_name_save = file_name{1};
+file_name_save = strrep(file_name_save, '_01.txt', '_average.txt');
+file_name_save = strrep(file_name_save, '_1.txt', '_average.txt');
+    
 if menu_save_average == 2
-    file_name_save = file_name{1};
-    file_name_save = strrep(file_name_save, '_01.txt', '_average.txt');
-    file_name_save = strrep(file_name_save, '_1.txt', '_average.txt');
+    
     [file_name_save,file_path_save,~] = uiputfile(['.' 'txt'],...
                 'New File to Save the Averaged Data',[file_path file_name_save]); % choosing the file name
     file_identifier = fopen([file_path_save file_name_save], 'w');

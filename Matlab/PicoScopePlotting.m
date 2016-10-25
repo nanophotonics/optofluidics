@@ -2,6 +2,7 @@
 % Reads txt files created with the PicoScope software
 % Savitzky-Golay filtering
 % Plots the channels
+%#ok<*ST2NM>
 
 clc
 clear
@@ -87,7 +88,7 @@ selected_options = 5;
                                 'OKString', 'OK', ...
                                 'CancelString', 'NONE');
 
-%% SMOOTHING
+%% smoothing
 % *************************************************************************
 
 smoothed_data = raw_data;   
@@ -120,7 +121,7 @@ if find(strcmp(options(selected_options), 'Savitzky-Golay Filtering'))
     disp('Finished smoothing all files!')
 end
 
-%% NORMALISATION
+%% normalisation
 % *************************************************************************
 normalised_data = smoothed_data;
 if find(strcmp(options(selected_options), 'Normalisation'))
@@ -135,7 +136,7 @@ if find(strcmp(options(selected_options), 'Normalisation'))
     end
 end
 
-%% STANDARD DEVIATION
+%% standard deviation
 % *************************************************************************
 average = zeros(size(channel_name));
 stdev = zeros(size(channel_name));
@@ -152,7 +153,7 @@ if find(strcmp(options(selected_options), 'Average & Standard Dev.'))
     end
 end
 
-%% PERIOD SELECTION
+%% period selection
 % *************************************************************************
 period_data = normalised_data;
 threshold_time = 5; % ms
@@ -174,7 +175,7 @@ if find(strcmp(options(selected_options), 'Period Selection'))
     end
 end
 
-%% CALCULATING THE POWER
+%% calculating the power
 % *************************************************************************
 waveplate_angle = zeros(size(file_name));
 % waveplate_angle = [60, 55, 50, 50, 50, 45, 45, 40];
@@ -187,7 +188,7 @@ c = 0.9775; % rad
 laser_power = a*(sin(b*waveplate_angle*pi/180+c)).^2*1000; % mW
 
 
-%% CHANNEL FACTORS
+%% channel factors
 % *************************************************************************
 channel_factor = ones(size(file_name));
 measurement_factor = ones(size(file_name));
@@ -203,8 +204,8 @@ ND_B = zeros(size(file_name));
 % ND_A = [4, 4, 4, 4, 4, 4, 4, 4, 4];
 % ND_B = [2, 2, 2, 4, 4, 4, 4, 4, 4];
 
-ND_A = ND_A + 0.01;
-ND_B = ND_B + 0.01;
+% ND_A = ND_A + 4;
+% ND_B = ND_B + 4;
 
 if find(strcmp(channel_name(1,:), 'Channel A'))
     input_title = 'ND Channel A'; 
@@ -212,7 +213,7 @@ if find(strcmp(channel_name(1,:), 'Channel A'))
     resize = 'on'; dimensions = [1 60];
     default_values = cellstr(num2str((ND_A')));
     answer = inputdlg(input_data, input_title, dimensions, default_values, resize);
-    ND_A = cell2mat(answer);
+    ND_A = str2num(cell2mat(answer));
 end
 if find(strcmp(channel_name(1,:), 'Channel B'))
     input_title = 'ND Channel B'; 
@@ -220,7 +221,7 @@ if find(strcmp(channel_name(1,:), 'Channel B'))
     resize = 'on'; dimensions = [1 60];
     default_values = cellstr(num2str((ND_B')));
     answer = inputdlg(input_data, input_title, dimensions, default_values, resize);
-    ND_B = cell2mat(answer);
+    ND_B = str2num(cell2mat(answer)); 
 end
 ND = [ND_A, ND_B];
 
@@ -337,7 +338,7 @@ end
 
 %% colour scheme
 figure(figure_picoscope)
-menu_colour = 2;
+menu_colour = 3;
 % menu_colour = menu([channel_name{1,j} ' colour scheme'], colour_type);
 [menu_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
                            'SelectionMode', 'single', ...
@@ -354,7 +355,7 @@ for j = channels_to_plot
         end
         h(i,j).MarkerSize = 1;
         h(i,j).LineStyle = '-';
-        h(i,j).LineWidth = 1;
+        h(i,j).LineWidth = 2;
     end
 end
 
@@ -432,11 +433,11 @@ if find(strcmp(options(selected_options), 'Channel B / Channel A'))
 %             ' // centre = ' num2str(centre_wavelength(i), '%03.1f') ' nm'...
             ];
     end
-    legend(legend_division, 'Location', 'best', 'interpreter', 'none')
+    legend(legend_division, 'Location', 'NEO', 'interpreter', 'none')
     title(title_cell_divided, 'interpreter', 'none')
     ylabel('B/A')
     xlabel('Time (ms)')
-    xlim([0,8.5])
+    xlim([0,8.2])
 %     xlim([-50,250])
 %     xlim([-310,-90])
 %     ylim([1,5])
@@ -461,7 +462,7 @@ for i = files_to_plot
     end
     h_div(i).MarkerSize = 1;
     h_div(i).LineStyle = '-';
-    h_div(i).LineWidth = 1;
+    h_div(i).LineWidth = 2;
 end
 
 %% SAVING FIGURES
