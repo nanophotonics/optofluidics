@@ -94,26 +94,7 @@ class HDF5SpectrumAnalyser(QtGui.QMainWindow, UiTools):
     def selection_changed(self, selected, deselected):
         """Callback function to update the displayed item when the tree selection changes."""
         self.viewer.data = self.treeWidget.selected_h5item()
-        
-#    def on_click(self, item, column):
-#        """Handle clicks on items in the tree."""
-##        item.setExpanded(True) # auto expand the item upon click
-#        if len(self.treeWidget.selectedItems())>1: 
-#            self.viewer.data = DummyHDF5Group({treeitem.data(column, QtCore.Qt.UserRole).name : treeitem.data(column, QtCore.Qt.UserRole) \
-#                                                for treeitem in self.tree.treeWidget.selectedItems() })
-#        else:
-#            self.viewer.data = item.data(column, QtCore.Qt.UserRole)
-        
-#    def on_click(self, item, column):        
-#        """Handle clicks on items in the tree."""
-#        item.setExpanded(True)
-#        if len(self.tree.treeWidget.selectedItems())>1: 
-##            self.viewer.data = [treeitem.data(column, QtCore.Qt.UserRole) for treeitem in self.tree.treeWidget.selectedItems() ]
-#            self.viewer.data = DummyHDF5Group({treeitem.data(column, QtCore.Qt.UserRole).name : treeitem.data(column, QtCore.Qt.UserRole) \
-#                                                for treeitem in self.tree.treeWidget.selectedItems() })
-#        else:
-#            self.viewer.data = item.data(column, QtCore.Qt.UserRole)
-            
+                   
         self.item_names = self.viewer.data.name
         print self.viewer.data.name
 
@@ -142,8 +123,7 @@ class HDF5SpectrumAnalyser(QtGui.QMainWindow, UiTools):
                 self.BackgroundComboBox.addItem('From Metadata', 3)
             if attribute[0] == 'reference':
                 self.ReferenceComboBox.addItem('From Metadata', 3)                
-                    
-                        
+                                            
         
         
     def new_file(self):
