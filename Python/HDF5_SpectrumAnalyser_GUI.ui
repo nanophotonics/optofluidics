@@ -34,7 +34,7 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_3">
           <item>
-           <layout class="QVBoxLayout" name="verticalLayout_11">
+           <layout class="QVBoxLayout" name="TreeWidgetContainer">
             <item>
              <layout class="QHBoxLayout" name="horizontalLayout_2">
               <item>
@@ -82,7 +82,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QTreeWidget" name="FileContentsTreeWidget">
+             <widget class="QTreeView" name="FileContentsTreeView">
               <property name="sizePolicy">
                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
                 <horstretch>0</horstretch>
@@ -101,23 +101,15 @@
               <property name="headerHidden">
                <bool>true</bool>
               </property>
-              <attribute name="headerVisible">
-               <bool>false</bool>
+              <attribute name="headerDefaultSectionSize">
+               <number>0</number>
               </attribute>
-              <attribute name="headerCascadingSectionResizes">
+              <attribute name="headerHighlightSections">
                <bool>false</bool>
-              </attribute>
-              <attribute name="headerMinimumSectionSize">
-               <number>100</number>
               </attribute>
               <attribute name="headerStretchLastSection">
                <bool>true</bool>
               </attribute>
-              <column>
-               <property name="text">
-                <string notr="true">1</string>
-               </property>
-              </column>
              </widget>
             </item>
            </layout>
@@ -666,7 +658,7 @@
         </font>
        </property>
        <property name="currentIndex">
-        <number>2</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="RendererTab">
         <attribute name="title">
