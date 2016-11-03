@@ -1,6 +1,6 @@
 % Created by Ana Andres-Arroyo (aa938)
-% Calculates the in-coupled laser power based on 
-% the Ti:S calibration and fibre loss.
+% Calculates the transmission of the fibre based on the aqueous medium, 
+% wavelength, and length of the fibre.
 
 function transmission = fibre_transmission(medium, wavelength, fibre_length)
 % medium = 'H2O' or 'D2O: must be a string

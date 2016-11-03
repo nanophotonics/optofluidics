@@ -10,7 +10,7 @@ file_name = '2016.10.12 - TiSa power calibration 767 nm.txt';
                                            'MultiSelect','off');
 file_directory_save = file_directory;
                                        
-                                       header_rows = 1;
+header_rows = 1;
 data = dlmread([file_directory, file_name], '\t', header_rows, 0);
 % data(:,1) = angle of the waveplate (deg)
 % data(:,2) = power of the Ti:Sa laser after the polariser (W)
