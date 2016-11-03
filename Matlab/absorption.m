@@ -3,7 +3,7 @@ function abs = absorption(medium, wavelength)
 % clear
 % close all
 
-file_directory = 'R:\aa938\NanoPhotonics\Matlab\';
+file_directory = '';
 
 % figure
 % legend_absorption = {};

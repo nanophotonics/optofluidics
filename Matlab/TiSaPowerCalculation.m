@@ -1,3 +1,7 @@
+% Created by Ana Andres-Arroyo (aa938)
+% Calculates the in-coupled laser power based on 
+% the Ti:S calibration and fibre loss.
+
 clc
 clear
 close all
@@ -6,7 +10,7 @@ close all
 
 reference_angle = 25; % degrees
 reference_input_power = 11.5; % mW. Before the objective
-reference_output_power = 4.3; % mW
+reference_output_power = 4.3; % mW. Just after the fibre
 fibre_length = 20; % cm. PBG HCF
 wavelength = 810; % nm. Ti:Sa laser
 medium = 'H2O';
