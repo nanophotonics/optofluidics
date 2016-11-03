@@ -17,7 +17,9 @@ file_path = 'R:\aa938\NanoPhotonics\Laboratory\';
 
 % pop up window to choose the file(s) to read
 [file_name, file_path, ~] = uigetfile('.txt',...
-    'PicoScope Files to Read (use CTRL to select multiple files)',file_path,'MultiSelect','on');
+                                      'PicoScope Files to Read (use CTRL to select multiple files)',...
+                                      file_path,...
+                                      'MultiSelect','on');
 file_path_save = file_path;
 if strfind(file_path, 'Laboratory')
     title_cell_channels{1} = file_path(strfind(file_path, 'Laboratory')+11:end-1);
@@ -27,7 +29,6 @@ else
     title_cell_channels{1} = file_path;
 end
     
-
 % if just a single file is selected, change the variable file_names
 % from a string to a cell so the loops indexing will work
 if isa(file_name,'char')
@@ -41,9 +42,11 @@ number_of_files = size(file_name,2);
 
 % reading the data from the txt files
 % it takes a while because the files are large
+measurement_numbers = zeros(size(file_name));
 raw_data = cell(size(file_name));
 for i = 1:1:number_of_files
     disp(['Reading File ' num2str(i) '/' num2str(number_of_files)])
+    measurement_numbers(i) = str2double(file_name{i}(10:13));
     raw_data{i} = dlmread([file_path file_name{i}], '\t', 2, 0);
     
     % raw_data{i}(:,1) = time
@@ -79,14 +82,25 @@ options = {'Savitzky-Golay Filtering', ...
            'Normalisation', ...
            'Average & Standard Dev.',...
            'Period Selection',...
-           'Channel B / Channel A'};
-selected_options = 5;
+           'Channel B / Channel A',...
+           'Read Info File',...
+           'Calculate Power',...
+           };
+selected_options = [5,6,7];
 [selected_options, ~] = listdlg('PromptString', 'Select options:',...
                                 'SelectionMode', 'multiple', ...
                                 'ListString', options, ...
                                 'InitialValue', selected_options, ...
                                 'OKString', 'OK', ...
                                 'CancelString', 'NONE');
+                            
+colour_type = {'DEFAULT', ...
+               'parula', 'jet', 'hsv', 'cool', ...
+               'spring', 'summer', 'autumn', 'autumn reversed', 'winter', ...
+               'gray', 'copper',...
+               'red', 'green', 'aqua', 'blue', 'purple',...
+               };
+selected_colour = 2;
 
 %% smoothing
 % *************************************************************************
@@ -101,12 +115,12 @@ if find(strcmp(options(selected_options), 'Savitzky-Golay Filtering'))
     input_title = 'Savitzky-Golay Filtering Parameters'; 
     input_data = {'Polynomial Order (odd) (1 = moving average):',...
         'Frame Size (odd):'};
-    resize = 'on'; dimensions = [1 80];
+    dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
     default_values = {num2str(polynomial_order),num2str(frame_size)};
-    answer = inputdlg(input_data, input_title, dimensions, default_values, resize);
+    answer = inputdlg(input_data, input_title, dim, default_values, dlg_options);
     polynomial_order = str2double(answer{1});
     frame_size = str2double(answer{2});    
-    
+      
     
     title_cell_channels{2} = ['Savitzky-Golay filtering. '...
         'Polynomial order = ' num2str(polynomial_order) '. '...
@@ -175,74 +189,80 @@ if find(strcmp(options(selected_options), 'Period Selection'))
     end
 end
 
-%% calculating the power
+%% READING INFO FILE
 % *************************************************************************
-waveplate_angle = zeros(size(file_name));
-% waveplate_angle = [60, 55, 50, 50, 50, 45, 45, 40];
-% waveplate_angle = [60, 55, 50, 50, 50, 45, 45, 40, 40];
-waveplate_angle_unique = unique(waveplate_angle);
-% Calibration parameters from 22/09/2016 @ 800 nm
-a = 5.353; % W
-b = 1.994; % 1/rad
-c = 0.9775; % rad
-laser_power = a*(sin(b*waveplate_angle*pi/180+c)).^2*1000; % mW
+if find(strcmp(options(selected_options), 'Read Info File'))
+    [file_name_info, file_path, ~] = uigetfile('.xlsx',...
+                                          'Select one info file to read', ...
+                                          file_path, ...
+                                          'MultiSelect','off');
+    file_path_save = file_path;
+    info_data = readtable([file_path file_name_info]);
+    info_numbers = info_data{:,'Number'};
+    [~,measurement_indices,~] = intersect(info_numbers, measurement_numbers);
+    ND_A = info_data{measurement_indices,'ND_A'};
+    ND_B = info_data{measurement_indices,'ND_B'};
+    waveplate_angle = info_data{measurement_indices,'Angle_deg'}; % degrees
+else
+    if find(strcmp(channel_name(1,:), 'Channel A'))
+        ND_A = zeros(number_of_files,1);
+    end
+    if find(strcmp(channel_name(1,:), 'Channel B'))
+        ND_B = zeros(number_of_files,1);
+    end
+    waveplate_angle = zeros(number_of_files,1);
+end
 
-
-%% channel factors
+%% ND filters
 % *************************************************************************
-channel_factor = ones(size(file_name));
-measurement_factor = ones(size(file_name));
-% measurement_factor = [1,1,1,1,1,1,1,1,1,1,1];
-% measurement_factor = [1/1, 1/1, 1/0.9, 1/0.8, 1/0.7, 1/0.6, 1/0.5, 1/0.4, 1/0.3, 1/0.1,1,1];
-% measurement_factor = [1.86,1,1,1,1,1,1,1,1,1,1];
-% measurement_factor = [26,1,26,28,22,1,1,1,1,1,1];
 
-ND_A = zeros(size(file_name));
-ND_B = zeros(size(file_name));
-% ND_A = [0.4, 0.4, 0.4, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6];
-% ND_B = [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2];
-% ND_A = [4, 4, 4, 4, 4, 4, 4, 4, 4];
-% ND_B = [2, 2, 2, 4, 4, 4, 4, 4, 4];
-
-% ND_A = ND_A + 4;
-% ND_B = ND_B + 4;
-
+ND = [];
+ND_title = {};
 if find(strcmp(channel_name(1,:), 'Channel A'))
-    input_title = 'ND Channel A'; 
-    input_data = file_name;
-    resize = 'on'; dimensions = [1 60];
-    default_values = cellstr(num2str((ND_A')));
-    answer = inputdlg(input_data, input_title, dimensions, default_values, resize);
-    ND_A = str2num(cell2mat(answer));
+    ND = [ND, ND_A];
+    ND_title{end+1} = 'ND A';
 end
 if find(strcmp(channel_name(1,:), 'Channel B'))
-    input_title = 'ND Channel B'; 
-    input_data = file_name;
-    resize = 'on'; dimensions = [1 60];
-    default_values = cellstr(num2str((ND_B')));
-    answer = inputdlg(input_data, input_title, dimensions, default_values, resize);
-    ND_B = str2num(cell2mat(answer)); 
+    ND = [ND, ND_B];
+    ND_title{end+1} = 'ND B';
 end
-ND = [ND_A, ND_B];
+ND = dialog_table(file_name, ND_title, ND);
 
 channel_data = period_data;
 for i = 1:1:number_of_files % files
     for j = 2:1:size(channel_name,2)-1 % channels
-        channel_data{i}(:,j) = channel_data{i}(:,j)*channel_factor(j)*measurement_factor(i)*10^ND(i,j-1);
+        channel_data{i}(:,j) = channel_data{i}(:,j)*10^ND(i,j-1);
     end
 end
 plot_data = channel_data;
 
+%% calculating the power
+% *************************************************************************
+if find(strcmp(options(selected_options), 'Calculate Power'))
+    reference_angle = 30; % degrees
+    reference_power = 16; % mW
+    input_title = 'Reference'; 
+    input_data = {'Reference Angle','Reference Power (mW)'};
+    dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
+    default_values = {num2str(reference_angle),num2str(reference_power)};
+    answer = inputdlg(input_data, input_title, dim, default_values, dlg_options);
+    reference_angle = str2double(answer{1});
+    reference_power = str2double(answer{2}); 
+    
+    reference_index = find(waveplate_angle == reference_angle);
+    reference_voltage = max(plot_data{reference_index}(:,2));
+    laser_power = zeros(number_of_files,1);
+    for i = 1:1:number_of_files % files
+        laser_power(i) = reference_power * max(plot_data{i}(:,2))/reference_voltage;
+        % Use power_fitted and compare the results.
+    end
+    
+end
+
+
 %% PLOTTING FIGURES
 % *************************************************************************
 close all
-colour_type = {'DEFAULT', ...
-    'parula', 'jet', 'hsv', 'cool', ...
-    'spring', 'summer', 'autumn', 'winter', ...
-    'gray', 'copper',...
-    'red', 'green', 'aqua', 'blue', 'purple',...
-    };
-
 centre_wavelength = zeros(size(file_name));
 % centre_wavelength = [459, 500, 550, 600, 650, 700, 750, 790];
 % centre_wavelength = [592, 592, 676.2, 744.5, 831.0];
@@ -294,13 +314,16 @@ for i = files_to_plot(end:-1:1) % files
                 ylabel('Channel A normalised')
             end
             grid on
-            legend_A{end+1} = [file_name{i}(1:end-4) ...
+            legend_A{end+1} = [num2str(measurement_numbers(i), '%02.f')...
+                               ' // ' num2str(laser_power(i), '%03.0f') ' mW'...
+                               ];
+%                 file_name{i}(1:end-4) ...
 %                 ' // ' channel_name{i,j} ...
-%                 ' // ' num2str(laser_power(i), '%.0f') ' mW'...
+
 %                 ' // ND = ' num2str(ND_A(i), '%.0f') ...
 %                 ' x ' num2str(channel_factor(j)*measurement_factor(i), '%01.2f')...
 %                 ' // centre = ' num2str(centre_wavelength(i), '%03.1f') ' nm'...
-                ];
+
 %             ylim([-1,4])
 %             pause(0.1)
         elseif strcmp(channel_name{i,j}, 'Channel B')
@@ -317,14 +340,17 @@ for i = files_to_plot(end:-1:1) % files
                 ylabel('Channel B normalised')
             end
             grid on
-            legend_B{end+1} = [file_name{i}(1:end-4) ...
+            legend_B{end+1} = [num2str(measurement_numbers(i), '%02.0f')...
+                               ' // ' num2str(laser_power(i), '%03.0f') ' mW'...
+                               ];
+%             legend_B{end+1} = [file_name{i}(1:end-4) ...
 %                 ' // ' channel_name{i,j} ...
 %                 ' // ' num2str(laser_power(i), '%.0f') ' mW'...
 %                 ' // ND = ' num2str(ND_B(i), '%.0f') ...     
 %                 ' // \lambda = ' num2str(centre_wavelength(i), '%03.0f') ' nm'...
 %                 ' x ' num2str(channel_factor(j)*measurement_factor(i), '%01.2f')...
 %                 ' // centre = ' num2str(centre_wavelength(i), '%03.1f') ' nm'...   
-                ];
+%                 ];
 %             ylim([-2,8])
         end
         
@@ -338,19 +364,19 @@ end
 
 %% colour scheme
 figure(figure_picoscope)
-menu_colour = 3;
-% menu_colour = menu([channel_name{1,j} ' colour scheme'], colour_type);
-[menu_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
+% selected_colour = 2;
+% selected_colour = menu([channel_name{1,j} ' colour scheme'], colour_type);
+[selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
                            'SelectionMode', 'single', ...
                            'ListString', colour_type,...
-                           'InitialValue', menu_colour);
+                           'InitialValue', selected_colour);
 for j = channels_to_plot
     for i = files_to_plot    
-        if menu_colour > 1 
-            colour_RGB = colour_gradient(i, number_of_files, colour_type(menu_colour));
+        if selected_colour > 1 
+            colour_RGB = colour_gradient(i, number_of_files, colour_type(selected_colour));
 %             colour_RGB = colour_gradient(find(waveplate_angle_unique == waveplate_angle(i)), ...
 %                 size(waveplate_angle_unique,2), ...
-%                 colour_type(menu_colour));
+%                 colour_type(selected_colour));
             h(i,j).Color = colour_RGB;  
         end
         h(i,j).MarkerSize = 1;
@@ -374,9 +400,8 @@ x_limits = [-5,25];
 
 input_title = 'Plot formatting';
 input_data = {'Legend Location', 'X Axis Min', 'X Axis Max'};
-resize = 'on'; dim = [1 80];
-valdef = {legend_location, num2str(x_limits(1)), num2str(x_limits(2))};
-answer = inputdlg(input_data,input_title,dim,valdef,resize);
+default_values = {legend_location, num2str(x_limits(1)), num2str(x_limits(2))};
+answer = inputdlg(input_data, input_title, dim, default_values, dlg_options);
 legend_location = answer{1};
 x_limits = [str2double(answer{2}),str2double(answer{3})];
 
@@ -446,18 +471,18 @@ end
 
 %% colour scheme
 figure(figure_division)
-% menu_colour = 2;
-% menu_colour = menu([channel_name{1,j} ' colour scheme'], colour_type);
-[menu_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
+% selected_colour = 2;
+% selected_colour = menu([channel_name{1,j} ' colour scheme'], colour_type);
+[selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
                            'SelectionMode', 'single', ...
                            'ListString', colour_type,...
-                           'InitialValue', menu_colour);
+                           'InitialValue', selected_colour);
 for i = files_to_plot    
-    if menu_colour > 1 
-        colour_RGB = colour_gradient(i, number_of_files, colour_type(menu_colour));
+    if selected_colour > 1 
+        colour_RGB = colour_gradient(i, number_of_files, colour_type(selected_colour));
 %             colour_RGB = colour_gradient(find(waveplate_angle_unique == waveplate_angle(i)), ...
 %                 size(waveplate_angle_unique,2), ...
-%                 colour_type(menu_colour));
+%                 colour_type(selected_colour));
         h_div(i).Color = colour_RGB;  
     end
     h_div(i).MarkerSize = 1;
