@@ -40,7 +40,7 @@ power = power_limits(1) : power_limits(2) : power_limits(3); % mW of total laser
 
 %% Read Gold refractive index file and interpolate
 % *************************************************************************
-foldername = 'R:\aa938\NanoPhotonics\Matlab\';
+foldername = '';
 filename = 'Gold Refractive-Rakic.txt';
 n_data = dlmread([foldername filename], '\t', 1, 0);
 % n_data(:,1) = wave (nm)
