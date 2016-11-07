@@ -19,6 +19,8 @@ import h5py
 
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+import matplotlib.cm as cmx
 #matplotlib.use('Qt4Agg')
 #from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 #from matplotlib.figure import Figure
@@ -69,6 +71,7 @@ class HDF5SpectrumAnalyser(QtGui.QMainWindow, UiTools):
         self.RefreshTreePushButton.clicked.connect(self.refresh_tree)
         self.AnalysePlotPushButton.clicked.connect(self.analyse_and_plot_data)
         
+        
         """Populate Default Combobox Options"""
         
 #        self.BackgroundComboBox.addItem('None', 0)
@@ -84,6 +87,8 @@ class HDF5SpectrumAnalyser(QtGui.QMainWindow, UiTools):
         self.TraceFigureComboBox.addItem('New Figure', 0)
         
         self.auto_connect_by_name()
+
+        
     
     """"Connecting the checkboxes to the properties"""
     TwoDPlot = DumbNotifiedProperty()
@@ -122,8 +127,7 @@ class HDF5SpectrumAnalyser(QtGui.QMainWindow, UiTools):
             if attribute[0] == 'background':
                 self.BackgroundComboBox.addItem('From Metadata', 3)
             if attribute[0] == 'reference':
-                self.ReferenceComboBox.addItem('From Metadata', 3)                
-                                            
+                self.ReferenceComboBox.addItem('From Metadata', 3)                                            
         
         
     def new_file(self):
@@ -151,7 +155,7 @@ class HDF5SpectrumAnalyser(QtGui.QMainWindow, UiTools):
         This is reading the attributes of the last spectra only.
         We assume that all spectra have the same attributes
         """
-        
+        #print self.WavelengthSpectraStartDoubleSpinBox.value()
         for attribute in self.attributes:
         #    print attribute[0]
             if attribute[0] == 'wavelengths':
@@ -168,25 +172,52 @@ class HDF5SpectrumAnalyser(QtGui.QMainWindow, UiTools):
                 Information = attribute[1]     
         
         plt.rcParams.update({'font.size': 32})
+        plt.rcParams.update({'font.family':'sans-serif'})
+        plt.rcParams.update({'axes.linewidth' : 5})
+        plt.rcParams.update({'legend.frameon' : False})
+        plt.rcParams.update({'figure.facecolor' : 'white'})
+        plt.rcParams.update({'figure.edgecolor' : 'white'})
         
-        plt.figure(figsize=[25,15])
+        plt.rcParams.update({'xtick.major.width' : 3})
+        plt.rcParams.update({'ytick.major.width' : 3})
+        plt.rcParams.update({'xtick.major.size' : 10})
+        plt.rcParams.update({'ytick.major.size' : 10})
+        plt.rcParams.update({'figure.edgecolor' : 'white'})
+        #plt.rcParams.update({'font.sans-serif':'Helvetica'})
+        plt.rcParams.update({'axes.xmargin':1})
+        plt.rcParams.update({'axes.ymargin':1})
+        plt.rcParams.update({'image.cmap':'prism'})
+        #cmap = cmx.get_cmap('prism')
+        #plt.rcParams.update
+        
+        
+        plt.figure(figsize=[20,12.4])
         
         
         AxisSpectra = plt.subplot(111)
         PlotsSpectra = []
+        
+        jet = plt.get_cmap('jet') 
+        values = range(len(self.intensity))
+        cNorm  = colors.Normalize(vmin=0, vmax=values[-1])
+        scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=jet)
+        
+        
+        
         for s in range(0,len(self.intensity),1):
-            PlotsSpectra.append(
-                               AxisSpectra.plot(
-                                               Wavelengths,self.intensity[s], 
-                                               '-', 
-                                               label=self.spectra_name[s], 
-                                               linewidth=4.0,
-                                               )
-                               )
-                               
-        plt.xlabel('Wavelength (nm)')
-        plt.ylabel('Intensity (a.u.)')
-        plt.title(self.timelapse.name + ' // ' + Information)
+            
+            if len(self.intensity)<=8:
+                PlotsSpectra.append(AxisSpectra.plot(Wavelengths,self.intensity[s],'-', linewidth=5,color=scalarMap.to_rgba(values[s]),label=self.spectra_name[s]))
+            else:
+                PlotsSpectra.append(AxisSpectra.plot(Wavelengths,self.intensity[s],'-', linewidth=5,color=scalarMap.to_rgba(values[s])))
+                  
+        plt.xlabel('Wavelength (nm)',labelpad=15)
+        plt.ylabel('Intensity (a.u.)',labelpad=15)
+        #plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        
+        plt.xlim(self.WavelengthSpectraStartDoubleSpinBox.value(),self.WavelengthSpectraEndDoubleSpinBox.value())
+        plt.ylim(ymin=0)#,max(self.intensity[0])*1.2)
+        plt.title(self.timelapse.name + ' // ' + Information, y=1.04)
         AxisSpectra.legend(numpoints = 1, loc='upper right')
 
 
