@@ -216,17 +216,21 @@ end
 %% ND filters
 % *************************************************************************
 
-ND = [];
-ND_title = {};
+default_values = [];
+dialog_title = {};
+dialog_title{end+1} = 'Waveplate angle (deg)';
+default_values = [default_values, waveplate_angle];
 if find(strcmp(channel_name(1,:), 'Channel A'))
-    ND = [ND, ND_A];
-    ND_title{end+1} = 'ND A';
+    default_values = [default_values, ND_A];
+    dialog_title{end+1} = 'ND A';
 end
 if find(strcmp(channel_name(1,:), 'Channel B'))
-    ND = [ND, ND_B];
-    ND_title{end+1} = 'ND B';
+    default_values = [default_values, ND_B];
+    dialog_title{end+1} = 'ND B';
 end
-ND = dialog_table(file_name, ND_title, ND);
+answer_values = dialog_table(file_name, dialog_title, default_values);
+waveplate_angle = answer_values(:,1);
+ND = answer_values(:,2:3);
 
 channel_data = period_data;
 for i = 1:1:number_of_files % files
@@ -256,13 +260,60 @@ if find(strcmp(options(selected_options), 'Calculate Power'))
         laser_power(i) = reference_power * max(plot_data{i}(:,2))/reference_voltage;
         % Use power_fitted and compare the results.
     end
+    laser_power_fitted = power_fitted(reference_angle, reference_power, waveplate_angle);
+    laser_power_spline = power_spline(reference_angle, reference_power, waveplate_angle);
+    
+% %     close all
+%     figure('Units','normalized','Position',[0.01 0.07 0.95 0.8],'tag','figure_picoscope');
+%     
+%     subplot(1,2,1)
+% %     yyaxis left
+%     plot(measurement_numbers, laser_power, '.', 'MarkerSize', 16), hold all
+%     plot(measurement_numbers, laser_power_fitted, 'o', 'MarkerSize', 4, 'LineWidth', 1), hold all
+%     plot(measurement_numbers, laser_power_spline, 'x', 'MarkerSize', 8, 'LineWidth', 1.5), hold all
+%     title(['Reference angle = ' num2str(reference_angle) ...
+%         '\circ, Reference power = ' num2str(reference_power) ' mW'])
+%     xlabel('Measurement Number')
+%     ylabel('Power (mW)')
+%     legend('Picoscope reference power', ...
+%            'Ti:Sa calibration coefficients', ...
+%            'Ti:Sa calibration interpolation', ...
+%            'Location', 'NW')
+%     grid on
+% %     yyaxis right
+% %     plot(measurement_numbers, waveplate_angle, '<', 'MarkerSize', 6, 'LineWidth', 1.5), hold all
+% %     ylabel('Waveplate Angle (degrees)')
+%     
+%     subplot(1,2,2)
+%     plot(waveplate_angle, laser_power, '.', 'MarkerSize', 16), hold all
+% %     plot(waveplate_angle, laser_power_fitted, 'o', 'MarkerSize', 4, 'LineWidth', 1), hold all
+%     plot(min(waveplate_angle):max(waveplate_angle), ...
+%          power_fitted(reference_angle, reference_power, min(waveplate_angle):max(waveplate_angle)), ...
+%          '-', 'MarkerSize', 4, 'LineWidth', 1), hold all
+%     plot(waveplate_angle, laser_power_spline, 'x', 'MarkerSize', 8, 'LineWidth', 1.5), hold all
+%     title(['Reference angle = ' num2str(reference_angle) ...
+%         '\circ, Reference power = ' num2str(reference_power) ' mW'])
+%     xlabel('Waveplate Angle (degrees)')
+%     ylabel('Power (mW)')
+%     legend('Picoscope reference power', ...
+%            'Ti:Sa calibration coefficients', ...
+%            'Ti:Sa calibration interpolation', ...
+%            'Location', 'NW')
+%     grid on
+%     
+%     text(waveplate_angle + 1, ...
+%          laser_power, ...
+%          strread(num2str(measurement_numbers),'%s'), ...
+%          'HorizontalAlignment', 'center',...
+%          'Color', 'k')
+    
     
 end
 
 
 %% PLOTTING FIGURES
 % *************************************************************************
-close all
+% close all
 centre_wavelength = zeros(size(file_name));
 % centre_wavelength = [459, 500, 550, 600, 650, 700, 750, 790];
 % centre_wavelength = [592, 592, 676.2, 744.5, 831.0];
@@ -364,12 +415,10 @@ end
 
 %% colour scheme
 figure(figure_picoscope)
-% selected_colour = 2;
-% selected_colour = menu([channel_name{1,j} ' colour scheme'], colour_type);
-[selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
-                           'SelectionMode', 'single', ...
-                           'ListString', colour_type,...
-                           'InitialValue', selected_colour);
+% [selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
+%                            'SelectionMode', 'single', ...
+%                            'ListString', colour_type,...
+%                            'InitialValue', selected_colour);
 for j = channels_to_plot
     for i = files_to_plot    
         if selected_colour > 1 
@@ -458,7 +507,8 @@ if find(strcmp(options(selected_options), 'Channel B / Channel A'))
 %             ' // centre = ' num2str(centre_wavelength(i), '%03.1f') ' nm'...
             ];
     end
-    legend(legend_division, 'Location', 'NEO', 'interpreter', 'none')
+%     legend(legend_division, 'Location', 'NEO', 'interpreter', 'none')
+    legend(legend_A, 'Location', 'NEO', 'interpreter', 'none')
     title(title_cell_divided, 'interpreter', 'none')
     ylabel('B/A')
     xlabel('Time (ms)')
@@ -471,12 +521,10 @@ end
 
 %% colour scheme
 figure(figure_division)
-% selected_colour = 2;
-% selected_colour = menu([channel_name{1,j} ' colour scheme'], colour_type);
-[selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
-                           'SelectionMode', 'single', ...
-                           'ListString', colour_type,...
-                           'InitialValue', selected_colour);
+% [selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
+%                            'SelectionMode', 'single', ...
+%                            'ListString', colour_type,...
+%                            'InitialValue', selected_colour);
 for i = files_to_plot    
     if selected_colour > 1 
         colour_RGB = colour_gradient(i, number_of_files, colour_type(selected_colour));

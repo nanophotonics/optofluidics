@@ -91,7 +91,8 @@ if menu_profile == 1 % Bessel
 elseif menu_profile == 2 % Gaussian
     r = linspace(0, 15, 100); % um. Radial coordinate
     z = 0:20:200; % um. Distance from the end of the fibre
-    w0 = 5; % um. Beam diameter at the end of the fibre
+    w0 = 5; % um. Beam radius at the end of the fibre
+    % MAKE POP UP WINDOW
     wz = zeros(size(lambda,2),size(z,2));
 end
 
@@ -99,7 +100,7 @@ intensity = zeros(size(lambda,2),size(power,2),size(r,2),size(z,2),size(d,2));
 potential = zeros(size(lambda,2),size(power,2),size(r,2),size(z,2),size(d,2));
 
 for i = 1:1:size(lambda,2)
-    disp([num2str(i/size(lambda,2)*100, '%.0f') '%'])
+    clc, disp([num2str(i/size(lambda,2)*100, '%.0f') '%'])
     for j = 1:1:size(power,2)
         for k = 1:1:size(r,2)
             for l = 1:1:size(z,2)
@@ -160,6 +161,9 @@ fixed_parameters = {num2str(min(lambda)), ...
 %% Plotting
 % *************************************************************************
 
+menu_plot = 1;
+menu_plot = menu('Which variable to plot?', 'Potential', 'Intensity');
+
 x_index = 1;
 y_index = 1;
 while x_index == y_index
@@ -178,7 +182,11 @@ answer = inputdlg(input_data,input_title,dim,limits,dlg_options);
 fixed_parameters(fixed_parameter_indices) = answer;
 
 indices = cell(size(options));
-title_text = 'Au NP';
+if menu_profile == 1 % bessel
+    title_text = 'Au NP';
+elseif menu_profile == 2 % gaussian
+    title_text = ['Au NP, w0 = ' num2str(w0) ' \mum'];
+end
 for i = 1:1:size(options,2)
     if i == x_index || i == y_index
         indices{i} = 1:1:size(potential,i);
@@ -191,21 +199,34 @@ end
 
 figure_line = figure('Units','normalized','Position',[0.1 0.1 0.8 0.7], 'tag', 'figure_line');
 
-h = plot(parameters{x_index}, ...
-         squeeze(potential(indices{1}, indices{2}, indices{3}, indices{4}, indices{5})), ...
-         'LineWidth', 2); hold all
+if menu_plot == 1 % potential
+    h = plot(parameters{x_index}, ...
+             squeeze(potential(indices{1}, indices{2}, indices{3}, indices{4}, indices{5})), ...
+             'LineWidth', 2); hold all
+elseif menu_plot == 2 % intensity
+    h = plot(parameters{x_index}, ...
+             squeeze(intensity(indices{1}, indices{2}, indices{3}, indices{4})), ...
+             'LineWidth', 2); hold all
+    % TO DO: figure out the intensity units!
+end
 plot_legend = cell(size(h,1),1);
 for i = indices{y_index}
     plot_legend{i} = [parameter_names{y_index} ' = ' num2str(parameters{y_index}(i)) ' ' parameter_units{y_index}];
 end
 xlabel([parameter_names{x_index} ' (' parameter_units{x_index} ')'])
-ylabel('Energy (kT@294K)')
+if menu_plot == 1 % potential
+    ylabel('Energy (kT@294K)')
+elseif menu_plot == 2 % intensity
+    ylabel('Intensity (a.u.)')
+    % TO DO: figure out the intensity units!
+end
+
 set(gca,'FontSize', 14)
 legend(plot_legend, 'Location', 'EO')
 title(title_text)
 grid on
 
-%% colour scheme
+% colour scheme
 figure(figure_line)
 
 colour_type = {'DEFAULT', ...
@@ -216,10 +237,10 @@ colour_type = {'DEFAULT', ...
                };
 
 selected_colour = 3;
-[selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
-                           'SelectionMode', 'single', ...
-                           'ListString', colour_type,...
-                           'InitialValue', selected_colour);
+% [selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
+%                            'SelectionMode', 'single', ...
+%                            'ListString', colour_type,...
+%                            'InitialValue', selected_colour);
 for i = 1:1:size(h,1)
     if selected_colour > 1 
         colour_RGB = colour_gradient(i, size(h,1), colour_type(selected_colour));
@@ -233,6 +254,9 @@ end
 
 %% Contour Plot
 % *************************************************************************
+
+menu_plot = 1;
+menu_plot = menu('Which variable to plot?', 'Potential', 'Intensity');
 
 x_index = 1;
 y_index = 1;
@@ -252,7 +276,11 @@ answer = inputdlg(input_data,input_title,dim,limits,dlg_options);
 fixed_parameters(fixed_parameter_indices) = answer;
 
 indices = cell(size(options));
-title_text = 'Au NP';
+if menu_profile == 1 % bessel
+    title_text = 'Au NP';
+elseif menu_profile == 2 % gaussian
+    title_text = ['Au NP, w0 = ' num2str(w0) ' \mum'];
+end
 for i = 1:1:size(options,2)
     if i == x_index || i == y_index
         indices{i} = 1:1:size(potential,i);
@@ -263,7 +291,12 @@ for i = 1:1:size(options,2)
     end
 end
 
-contour_values = squeeze(potential(indices{1}, indices{2}, indices{3}, indices{4}, indices{5}));
+if menu_plot == 1 % potential
+    contour_values = squeeze(potential(indices{1}, indices{2}, indices{3}, indices{4}, indices{5}));
+elseif menu_plot == 2 % intensity
+    contour_values = squeeze(intensity(indices{1}, indices{2}, indices{3}, indices{4}));
+end
+
 if size(contour_values,1) == size(parameters{x_index},2)
     contour_values = contour_values';
 end
@@ -280,5 +313,10 @@ colormap(flipud(jet))
 colorbar
 xlabel([parameter_names{x_index} ' (' parameter_units{x_index} ')'])
 ylabel([parameter_names{y_index} ' (' parameter_units{y_index} ')'])
-title({'Energy (kT@294K)', title_text})
+if menu_plot == 1 % potential
+    title({'Energy (kT@294K)', title_text})
+elseif menu_plot == 2 % intensity
+    title({'Intensity (a.u.)', title_text}) 
+    % TO DO: figure out the intensity units!
+end
 set(gca, 'FontSize', 16);

@@ -2,19 +2,19 @@ clc
 clear 
 close all
 
-L = 0.22; %Length of the fibre in m
-sigma = 2.68*10^(-16); %extinction coefficient in m^2
+L = 0.22; % Length of the fibre in m
+sigma = 2.68*10^(-16); % extinction coefficient in m^2
 rho_zero = (2.6*10^10)/(3*10^-6); %concentration in m^3 from bbi: 2.6*10^10 part/ml and since we are using 2:1 D20 :Au solution
 % rho_array = linspace(0.01, 10, 10) * rho_zero;
 rho_array = logspace(-1, 1, 15) * rho_zero;
 
-R = 8*10^(-6); %Radius of the fibre in m
+R = 8*10^(-6); % Radius of the fibre in m
 % wvalues = linspace(0.001*R,100*R,10000); %in m
 % wvalues = linspace(0.100, 100, 1000) ./ 1e6; % in m
 wvalues = logspace(-1, 2, 1000) ./ 1e6; % in m
 
-I = @(r) besselj(0, 2.405*r./R).^2 ; %intensity
-I0 = 1/(integral(@(r) I(r).*2*pi.*r,0,R)); %normalisation constant so that the input power (=Integral(I(r))dA over the area of the core=1
+I = @(r) besselj(0, 2.405*r./R).^2 ; % intensity
+I0 = 1/(integral(@(r) I(r).*2*pi.*r,0,R)); % normalisation constant so that the input power (=Integral(I(r))dA over the area of the core=1
 
 T = zeros(size(wvalues,2),size(rho_array,2));
 k = 0;
@@ -22,13 +22,13 @@ for i = 1:1:size(wvalues,2)
     w = wvalues(i);
     for j = 1:1:size(rho_array,2)
         k = k + 1;
-        clc, disp([num2str(k) ' / ' num2str(size(wvalues,2)*size(rho_array,2))])
+        clc, disp([num2str(k/(size(wvalues,2)*size(rho_array,2))*100) '%'])
         rho = rho_array(j);
         
-        h = @(r) -L*sigma*((rho*R^2)/(w^2*(1-exp(-R^2/w^2)))*exp(-r.^2/w^2)); %intermediate function
-        f = @(r) 2*pi*(I0)*I(r).*r.*exp(h(r)); %Function we integrate
+        h = @(r) -L*sigma*((rho*R^2)/(w^2*(1-exp(-R^2/w^2)))*exp(-r.^2/w^2)); % intermediate function
+        f = @(r) 2*pi*(I0)*I(r).*r.*exp(h(r)); % Function we integrate
 
-        T(i,j) = integral(f, 0, R); %Power out
+        T(i,j) = integral(f, 0, R); % Power out
     end
 end
 
