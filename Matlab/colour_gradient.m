@@ -49,6 +49,9 @@ elseif strcmp(type, 'summer') == 1
     cmp = colormap(summer(round(x_max)));
     colour_RGB = cmp(round(x),:);
 elseif strcmp(type, 'autumn') == 1
+    cmp = colormap(autumn(round(x_max)));
+    colour_RGB = cmp(round(x),:);
+elseif strcmp(type, 'autumn reversed') == 1
     cmp = colormap(flipud(autumn(round(x_max))));
     colour_RGB = cmp(round(x),:);
 elseif strcmp(type, 'winter') == 1
