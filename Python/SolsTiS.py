@@ -7,7 +7,7 @@ This module wraps the SolsTiS 3 TCP/IP Protocol from MSquared
 
 
 Not implemented:
-    - Wavemeter commands
+    - Wavemeter commands: Ana (aa938) is working on it
     - Report replies for commands that take a while to finish:
         Need to change how the read_message works, since it currently only reads the last full message
 '''
@@ -44,7 +44,8 @@ class SolsTiS(QtCore.QObject): #instrument.instrument):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(TIMEOUT)
         self.socket.connect(address)
-        self.computerIP = socket.gethostbyname(socket.gethostname())
+        #self.computerIP = socket.gethostbyname(socket.gethostname()) # if connected to one network
+        self.computerIP = '192.168.1.100' # if connected to several networks
         print self.computerIP
         self.verbosity = True
         self.laser_status = {}
@@ -102,6 +103,7 @@ class SolsTiS(QtCore.QObject): #instrument.instrument):
             if isinstance(status, basestring):
                 print operation + ': ' + status
             else:
+#                print self.current_message
                 print operation + ': ' + id_dictionary.get(operation, {})['status'][status[0]]
 
     def read_message(self):
@@ -173,6 +175,21 @@ class SolsTiS(QtCore.QObject): #instrument.instrument):
 
         if self.message_in_history[-1]['message']['parameters']['status'][0] == 0:
             self.laser_status['etalon_lock'] = self.message_in_history[-1]['message']['parameters']['condition']
+            
+    def wave_lock(self, val):
+        if val not in ['off', 'on']:
+            raise ValueError('Wavemeter lock can only be set to "off" or "on"')
+        else:
+            self.send_command("lock_wave_m", {"operation": val})
+
+            if self.message_in_history[-1]['message']['parameters']['status'][0] == 0:
+                self.laser_status['wave_lock'] = val
+                
+    def wave_lock_status(self):
+        self.send_command("poll_wave_m")
+
+        if self.message_in_history[-1]['message']['parameters']['status'][0] == 0:
+            self.laser_status['wave_lock_status'] = self.message_in_history[-1]['message']['parameters']['lock_status']
 
     def cavity_lock(self, val):
         if val not in ['off', 'on']:
@@ -232,6 +249,7 @@ class SolsTiSUI(QtGui.QWidget):
         self.checkBoxSolsTiSLockMonitor.stateChanged.connect(self.SolsTiSLockMonitor)
         self.checkBoxSolsTiSEtalonLock.stateChanged.connect(self.SolsTiSLockEtalon)
         self.checkBoxSolsTiSCavityLock.stateChanged.connect(self.SolsTiSLockCavity)
+        self.checkBoxSolsTiSWaveLock.stateChanged.connect(self.SolsTiSLockWave)
         self.lineEditSolsTiSWL.returnPressed.connect(self.SolsTiSWL)
         self.pushButtonSolsTiSstatusMonitor.clicked.connect(self.SolsTiSMonitor)
         self.pushButtonSolsTiSstopMonitor.clicked.connect(self.SolsTiSMonitorStop)
@@ -272,6 +290,16 @@ class SolsTiSUI(QtGui.QWidget):
             self.SolsTiS.etalon_lock("on")
         else:
             self.SolsTiS.etalon_lock("off")
+            
+    def SolsTiSLockWave(self):
+        self.SolsTiS.wave_lock_status()
+        print self.SolsTiS.message_in_history[-1]['message']['parameters']['status']
+#        if self.SolsTiS.message_in_history[-1]['message']['parameters']['status']
+#            if self.checkBoxSolsTiSWaveLock.isChecked():
+#                self.SolsTiS.wave_lock("on")
+#            else:
+#                self.SolsTiS.wave_lock("off")
+#                self.SolsTiS.wave_lock_status()
 
     def SolsTiSLockCavity(self):
         if self.checkBoxSolsTiSCavityLock.isChecked():
@@ -495,6 +523,8 @@ id_dictionary = {'move_wave_t': {'status': {0: 'Successful', 1: 'Failed', 2: 'Ou
                  'fine_tune_cavity': {'status': {0: 'Completed', 1: 'Out of range', 2: 'Failed'}},
                  'tune_resonator': {'status': {0: 'Completed', 1: 'Out of range', 2: 'Failed'}},
                  'fine_tune_resonator': {'status': {0: 'Completed', 1: 'Out of range', 2: 'Failed'}},
+                 'lock_wave_m': {'status': {0: 'Completed', 1: 'Failed'}},
+                 'poll_wave_m': {'status': {0: 'Tuning software not active', 1: 'No link to wavemeter', 2: 'Tuning in progress', 3: 'Wavelength lock is on'}},                 
                  'etalon_lock': {'status': {0: 'Completed', 1: 'Failed'}},
                  'etalon_lock_status': {'status': {0: 'Completed', 1: 'Failed'}},
                  'cavity_lock': {'status': {0: 'Completed', 1: 'Failed'}},
