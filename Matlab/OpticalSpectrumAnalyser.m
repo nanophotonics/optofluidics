@@ -100,7 +100,8 @@ legend(legend_cell, 'Location', 'SE')
 %% CALCULATE optical density
 % *************************************************************************
 
-sample_OD = 10 * sample_attenuation / 100; % 1/cm
+dilution = 40;
+sample_OD = sample_attenuation / 100 / 10 * dilution; % 1/cm
 
 figure_handles{end+1} = figure('Units','normalized','Position',[0.1 0.2 0.7 0.7]);
 legend_cell = {};
@@ -118,7 +119,7 @@ OD_file_name = 'nanocomposix-spectra.csv';
 %                                       'MultiSelect','off');
                                   
 manufacturer_OD = dlmread([directory OD_file_name], ',', 0, 0);
-plot(manufacturer_OD(:,1), manufacturer_OD(:,2))
+plot(manufacturer_OD(:,1), manufacturer_OD(:,2), 'LineWidth', 1)
 legend_cell{end+1} = OD_file_name(1:end-4);
 
 grid on
@@ -126,6 +127,8 @@ xlabel('Wavelength (nm)')
 ylabel('Optical Density (cm^{-1})')
 title(folder_name, 'interpreter', 'none')
 legend(legend_cell, 'Location', 'SE')
+xlim([500,950])
+ylim([-0.5,1.5])
 
 
 %% SAVING FIGURES
