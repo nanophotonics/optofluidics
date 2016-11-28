@@ -38,7 +38,9 @@ class SolsTiS(QtCore.QObject): #instrument.instrument):
         """
 
         :param address: tuple of the SolsTiS (TCP_IP,TCP_PORT)
-        """
+        """        
+        print("\nAttempting to connect to the SolsTiS laser...\n")
+        
         super(SolsTiS,self).__init__(**kwargs)
         #self.id = idn
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
