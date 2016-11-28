@@ -61,8 +61,9 @@ if __name__ == "__main__":
         current_wavelength = wlm.wavelength        
         measured_wavelengths.append(current_wavelength)       
         
+        laser.system_status()
         print 'set wavelength (nm): ' + str(wavelength)
-#        print 'TiS wavelength (nm): ' + str(laser.laser_status['wavelength'])
+        print 'TiS wavelength (nm): ' + str(laser.laser_status['wavelength'])
         print 'wlm wavelength (nm): ' + str(current_wavelength) + '\n'
 #        print str(set_wavelength) + '\t\t' + str(current_wavelength) + '\n'
         
