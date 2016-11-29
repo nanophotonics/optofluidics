@@ -34,7 +34,7 @@ class SolsTiS(QtCore.QObject): #instrument.instrument):
 
     metadata = {'laser_status'}
 
-    def __init__(self, address, **kwargs): # verbosity=True, idn=None):
+    def __init__(self, address, verbosity=True, **kwargs): # verbosity=True, idn=None):
         """
 
         :param address: tuple of the SolsTiS (TCP_IP,TCP_PORT)
@@ -49,7 +49,7 @@ class SolsTiS(QtCore.QObject): #instrument.instrument):
         #self.computerIP = socket.gethostbyname(socket.gethostname()) # if connected to one network
         self.computerIP = '192.168.1.100' # if connected to several networks
         print self.computerIP
-        self.verbosity = True
+        self.verbosity = verbosity
         self.laser_status = {}
 
         self._transmission_id = 1
@@ -134,7 +134,7 @@ class SolsTiS(QtCore.QObject): #instrument.instrument):
     def change_wavelength(self, l):
         self.send_command("move_wave_t", {"wavelength": [l]})
 
-        time.sleep(1)
+#        time.sleep(1)
         if self.message_in_history[-1]['message']['parameters']['status'][0] == 0:
             self.system_status()
 
