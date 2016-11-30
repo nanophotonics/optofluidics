@@ -12,25 +12,23 @@ Not implemented:
 """
 
 #import sys
+#import os
 import time
 from wlm import wavemeter
 import SolsTiS
 import numpy
 import datetime
-#from picoscope import PicoScope5000a
+from picoscope import PicoScope5000a
 
-error_log = [[],[],[]]
-error_log[0] = ['Timestamp']
-error_log[1] = ['Error']
-error_log[2] = ['Info']
+
 
 if __name__ == "__main__":
     print(__doc__)
     verbosity = True
-    error_log = [[]]
-    error_log.append('Timestamp')
-    error_log.append('Error')
-    error_log.append('Info')
+    error_log = [[],[],[]]
+    error_log[0] = ['Timestamp']
+    error_log[1] = ['Error']
+    error_log[2] = ['Info']
     
     """Create the laser class"""
     laser = SolsTiS.SolsTiS(('192.168.1.222', 39933))
@@ -58,24 +56,65 @@ if __name__ == "__main__":
             # wait for the wavemeter to finish initialising
             time.sleep(1) # seconds
             j = j + 1
+
+    """Create the picoscope class"""
+    ps = PicoScope5000a.PicoScope5000a()    
+    
+    """Set up the picoscope channels"""
+    ps_channels = ['A', 'B']
+    ps_channels_range = []
+    ps_data = []
+    for item in ps_channels:
+        channelRange = ps.setChannel(channel=item,                                  
+                                     coupling="DC", 
+                                     VRange=10.0, 
+                                     VOffset=0.0,
+                                     enabled=True,                                  
+                                     BWLimited=False,
+                                     probeAttenuation=1.0,
+                                     )        
+        ps_channels_range.append(channelRange)    
+        ps_data.append([])                           
+    
+    """ Set picoscope sampling interval and timebase"""
+    waveform_duration = 1 # seconds
+    number_of_samples = 4096
+    sampling_interval = waveform_duration / number_of_samples
+    (actualSamplingInterval, nSamples, maxSamples) = \
+        ps.setSamplingInterval(sampling_interval, waveform_duration)
+
+    """ Set picoscope trigger"""
+    ps.setSimpleTrigger(trigSrc=ps_channels[0], 
+                        threshold_V=0.5, 
+                        direction='Rising', 
+                        delay=0,
+                        timeout_ms=100, 
+                        enabled=True
+                        )
+        
+    if verbosity:
+#        for i in range(len(ps_channels)
+#            print ps_channels[i] + ' channel range = ' + str(ps_channels_range[i]) + ' V'
+        print("Sampling interval = %f ns" % (actualSamplingInterval * 1E9))
+        print("Taking  samples = %d" % nSamples)
+        print("Maximum samples = %d" % maxSamples)
+        print '\n'
+                        
     
     """Start the wavelength meter"""
     wlm.active = 1
     
     """Specify the wavelength parameters in nm"""
-    wavelength_start =   725.0
-    wavelength_end =     975.0
-    wavelength_step =       1.0    
+    wavelength_start = 725.0
+    wavelength_end = 975.0
+    wavelength_step = 10.0    
     wavelength_precision = 0.001 
-    wavelength_accuracy  = 2.0
+    wavelength_accuracy = 2.0
     
     wavelength_precision_changed = False    
     wavelength_accuracy_changed = False
    
-#    """Specify the time to wait after setting the wavelength"""
-#    speed = 40 # nm/s
-#    wait_time = 4 * wavelength_step / speed # seconds
-    
+   
     if verbosity:
         print '\n'
         print 'Wavelength start (nm):     ' + str(wavelength_start)
@@ -83,18 +122,13 @@ if __name__ == "__main__":
         print 'Wavelength step (nm):      ' + str(wavelength_step)
         print 'Wavelength precision (nm): ' + str(wavelength_precision)
         print 'Wavelength accuracy (nm):  ' + str(wavelength_accuracy)
-    #    print 'Speed  (nm/s): ' + str(speed)
-    #    print 'Wait time (s): ' + str(wait_time)
         print '\n'
     
     wlm.verbosity = False
     laser.verbosity = False
     verbosity = False
     
-#    """ Bring the laser to the intial wavelength of the scan"""
-#    laser.change_wavelength(wavelength_start)
-#    while abs(wavelength_start - wlm.wavelength) > wavelength_accuracy:
-#        time.sleep(0.5) # seconds
+
     current_wavelength = laser.laser_status['wavelength']
     wavelength = wavelength_start
     set_wavelengths = []
@@ -103,7 +137,6 @@ if __name__ == "__main__":
         verbosity = False
         
         set_wavelengths.append(wavelength)    
-#        current_wavelength = wlm.wavelength 
         maximum_iterations = max(int(abs(current_wavelength - wavelength)/2), 20)
         if verbosity:
             print 'maximum iterations allowed: ' + str(maximum_iterations)
@@ -113,12 +146,10 @@ if __name__ == "__main__":
         """Set the laser wavelength"""
         laser.change_wavelength(wavelength)
         
-        """Wait for the laser to change its wavelength"""
-#        time.sleep(wait_time) # seconds            
+        """Wait for the laser to change its wavelength"""           
         previous_wavelength = []
         while len(previous_wavelength) <= 3:
-            previous_wavelength.append(0.0)
-#        current_wavelength = wlm.wavelength    
+            previous_wavelength.append(0.0) 
         i = 0
         while (abs(current_wavelength - wavelength) \
               >= wavelength_accuracy or \
@@ -142,7 +173,6 @@ if __name__ == "__main__":
                     error_log[2].append('wavelength = ' + str(wavelength) + 'nm')
                     if e.message == "ErrBigSignal":
                         print "ERROR! " + e.message + ': try again\n'
-                        print datetime.datetime.now()
                     else:
                         raise e
                     time.sleep(0.1) # seconds
@@ -190,18 +220,30 @@ if __name__ == "__main__":
             print 'set wavelength (nm): ' + str(wavelength)
             print 'wlm wavelength (nm): ' + str(current_wavelength) + '\n'
         
-        # for some reason the laser.system_status() takes ver long to update
+        # for some reason the laser.system_status() takes very long to update
 #        laser.system_status()
 #        print 'TiS wavelength (nm): ' + str(laser.laser_status['wavelength'])
         
         measured_wavelengths.append(current_wavelength)   
         wavelength = wavelength + wavelength_step 
         
-   
-#    print wlm.wavelength
-#    print laser.laser_status['wavelength']
-#    laser.system_status()
-#    print laser.laser_status['wavelength']
+        """Collect data from picoscope"""
+        ps.runBlock()
+        ps.waitReady()
+        
+        for i in range(len(ps_channels)):
+            (data, numSamplesReturnedA, overflowA) = \
+                ps.getDataRaw(channel=ps_channels[i], 
+                              numSamples=0, 
+                              startIndex=0, 
+                              downSampleRatio=1,
+                              downSampleMode=0, 
+                              segmentIndex=0, 
+                              data=None,
+                              )
+            ps_data[i].append(data)
+                                                            
+    # end of wavelength for loop
 
     
     """Stop the wavelength meter"""
@@ -216,4 +258,40 @@ if __name__ == "__main__":
             print 'Wavelength precision (nm): ' + str(wavelength_precision)
         if wavelength_accuracy_changed:        
             print 'Wavelength accuracy (nm):  ' + str(wavelength_accuracy)
-        print error_log
+        if len(error_log[0]) > 1:            
+            for i in range(len(error_log[0])):
+                for j in range(len(error_log)):
+                    print error_log[j][i]
+                print '\t'
+
+    """Write data to files"""
+    
+#    directory = 'R:\\aa938\\'
+    directory = 'C:\\Users\\Ana Andres\\Documents\\Python Scripts\\'
+
+    for i in range(len(ps_data)): # each channel
+        file_name = 'test' + ps_channels[i] + '.txt'
+        file = open(directory + file_name,'w')
+        
+        file.write('SolsTiS IP = ' + laser.computerIP + '\n')    
+        
+        file.write('Wavelength meter units = nm\n')    
+        
+        file.write('PicoScope model  = ' + ps.get_model_name() + '\n')
+        file.write('Channel = ' + ps_channels[i] + '\n')
+        file.write('Units = V\n')
+        file.write('Waveform duration = ' + str(waveform_duration) + ' s\n')
+        file.write('Number of samples = ' + str(nSamples) + '\n')
+        file.write('Sampling interval = ' + str(actualSamplingInterval * 1E9) + ' ns\n')
+        
+        for item in measured_wavelengths: # each wavelength
+            file.write(str(item))
+            file.write('\t')
+        file.write('\n')    
+            
+        for j in range(len(ps_data[i][0])): # each time
+            for k in range(len(ps_data[i])): # each wavelength
+                file.write(str(ps_data[i][k][j]))
+                file.write('\t')
+            file.write('\n')    
+        file.close()
