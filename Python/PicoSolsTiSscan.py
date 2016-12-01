@@ -30,7 +30,7 @@ if __name__ == "__main__":
     error_log[1] = ['Error']
     error_log[2] = ['Info']
     
-    """Create the laser class"""
+    """Instantiate the laser object"""
     laser = SolsTiS.SolsTiS(('192.168.1.222', 39933))
     
     """Make sure all the wavelength locking mechanisms are off"""
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     laser.etalon_lock('off')
     laser.wave_lock('off')
     
-    """Create the wavelength meter class"""
+    """Instantiate the wavelength meter object"""
     wlm = wavemeter.Wavemeter()
     j = 0
     while j <= 5:
@@ -57,11 +57,12 @@ if __name__ == "__main__":
             time.sleep(1) # seconds
             j = j + 1
 
-    """Create the picoscope class"""
+    """Instantiate the picoscope object"""
     ps = PicoScope5000a.PicoScope5000a()    
     
     """Set up the picoscope channels"""
     ps_channels = ['A', 'B']
+#    ps_channels = ['B']
     ps_channels_range = []
     ps_data = []
     for item in ps_channels:
@@ -77,8 +78,8 @@ if __name__ == "__main__":
         ps_data.append([])                           
     
     """ Set picoscope sampling interval and timebase"""
-    waveform_duration = 1 # seconds
-    number_of_samples = 4096
+    waveform_duration = 1.5 # seconds
+    number_of_samples = 2**10
     sampling_interval = waveform_duration / number_of_samples
     (actualSamplingInterval, nSamples, maxSamples) = \
         ps.setSamplingInterval(sampling_interval, waveform_duration)
@@ -93,8 +94,9 @@ if __name__ == "__main__":
                         )
         
     if verbosity:
-#        for i in range(len(ps_channels)
-#            print ps_channels[i] + ' channel range = ' + str(ps_channels_range[i]) + ' V'
+        for i in range(len(ps_channels)):
+            print ps_channels[i] + ' channel range = ' + str(ps_channels_range[i]) + ' V'
+        print("Waveform duration = %f s" % (nSamples * actualSamplingInterval))
         print("Sampling interval = %f ns" % (actualSamplingInterval * 1E9))
         print("Taking  samples = %d" % nSamples)
         print("Maximum samples = %d" % maxSamples)
@@ -106,8 +108,8 @@ if __name__ == "__main__":
     
     """Specify the wavelength parameters in nm"""
     wavelength_start = 725.0
-    wavelength_end = 975.0
-    wavelength_step = 10.0    
+    wavelength_end = 775.0
+    wavelength_step = 5.0    
     wavelength_precision = 0.001 
     wavelength_accuracy = 2.0
     
@@ -171,7 +173,10 @@ if __name__ == "__main__":
                     error_log[0].append(datetime.datetime.now())
                     error_log[1].append(e.message)
                     error_log[2].append('wavelength = ' + str(wavelength) + 'nm')
-                    if e.message == "ErrBigSignal":
+                    if e.message == "ErrBigSignal" or \
+                       e.message == "ErrSmallSignal" or \
+                       e.message == "ErrNoValue":
+                           
                         print "ERROR! " + e.message + ': try again\n'
                     else:
                         raise e
@@ -266,12 +271,20 @@ if __name__ == "__main__":
 
     """Write data to files"""
     
-#    directory = 'R:\\aa938\\'
-    directory = 'C:\\Users\\Ana Andres\\Documents\\Python Scripts\\'
+    directory = 'R:\\3-Temporary\\aa938\\'
+    now = datetime.datetime.now()
+    file_name_core = "%04i" % now.year + '.' + \
+                     "%02i" % now.month + '.' + \
+                     "%02i" % now.day + '_' + \
+                     "%02i" % now.hour + '.' + \
+                     "%02i" % now.minute + '.' + \
+                     "%02i" % now.second
 
     for i in range(len(ps_data)): # each channel
-        file_name = 'test' + ps_channels[i] + '.txt'
+        file_name = file_name_core + '_' + ps_channels[i] + '.txt'        
         file = open(directory + file_name,'w')
+        
+        print 'Writing channel ' + ps_channels[i] + ' data to file...'
         
         file.write('SolsTiS IP = ' + laser.computerIP + '\n')    
         
@@ -280,9 +293,11 @@ if __name__ == "__main__":
         file.write('PicoScope model  = ' + ps.get_model_name() + '\n')
         file.write('Channel = ' + ps_channels[i] + '\n')
         file.write('Units = V\n')
-        file.write('Waveform duration = ' + str(waveform_duration) + ' s\n')
+        file.write('Waveform duration = ' + str(nSamples*actualSamplingInterval) + ' s\n')
         file.write('Number of samples = ' + str(nSamples) + '\n')
         file.write('Sampling interval = ' + str(actualSamplingInterval * 1E9) + ' ns\n')
+        
+        file.write('\n')    
         
         for item in measured_wavelengths: # each wavelength
             file.write(str(item))
