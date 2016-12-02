@@ -51,7 +51,7 @@ for i = 1:1:number_of_files
     % raw_data{i}(1,:) = wavelength (nm)
     % raw_data{i}(2:end,:) = intensity (V)
     wavelengths{i} = raw_data{i}(1,:);
-    raw_data{i}(i,:) = [];
+    raw_data{i}(1,:) = [];
     % raw_data{i}(:,:) = intensity (V)
     
 end
