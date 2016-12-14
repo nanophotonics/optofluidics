@@ -8,9 +8,10 @@ clear
 close all
 figure_handles = {};
 
-% directory = 'R:\3-Temporary\aa938\';
-directory = 'R:\aa938\NanoPhotonics\Laboratory\';
-folder_name = '2016.11.28 - TiSa wavemeter Python\';
+directory = 'R:\3-Temporary\aa938\';
+% directory = 'R:\aa938\NanoPhotonics\Laboratory\';
+% folder_name = '2016.11.28 - TiSa wavemeter Python\';
+folder_name = '';
 directory = [directory folder_name];
 file_names = '.lta';
 
@@ -34,7 +35,7 @@ end
 % from a string to a cell so the loops indexing will work
 if isa(file_names,'char')
     temporary = file_names;
-    clear file_name
+    clear file_names
     file_names{1} = temporary;
     clear temporary;
 end
@@ -64,57 +65,57 @@ grid on
 xlabel('Time (s)')
 ylabel('Wavelength (nm)')
 title('Wavelength meter data')
-legend(file_names, 'Location', 'SE')
+legend(file_names, 'Location', 'SE', 'interpreter', 'none')
 ylim([700,1000])
 
 %% Linear fit
 % *************************************************************************
 
-t_min = 500; % ms
-t_max = 5500; % ms
-files_to_fit = 1:4;
-
-input_title = 'Time selection for linear fit'; 
-input_data = {'Start t (s):','End t (s):', 'Files to fit (0 = all):'};
-default_values = {num2str(t_min/1000), num2str(t_max/1000), '0'};
-dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
-answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
-t_min = str2double(answer{1})*1000; %ms
-t_max = str2double(answer{2})*1000; % ms
-if str2double(answer{3}) > 0
-    files_to_fit = round(str2double(answer{3}));
-end
-
-linear_data = cell(size(raw_data));
-fit_coefficients = cell(size(raw_data));
-fit_structre = cell(size(raw_data));
-for i = files_to_fit
-    [i_min, ~] = find(raw_data{i}(:,1) >= t_min);
-    [i_max, ~] = find(raw_data{i}(:,1) <= t_max);
-    i_intersect = intersect(i_min, i_max);
-    linear_data{i} = raw_data{i}(i_intersect,:);
-    
-    [fit_coefficients{i}, fit_structure{i}] = polyfit(linear_data{i}(:,1), linear_data{i}(:,2), 1);
-    
-end
-    
-% figure_handles{end+1} = figure('Units','normalized','Position',[0.05 0.1 0.7 0.7]);
-% legend_fit = {};
-figure(figure_handles{end});
-for i = files_to_fit
-    plot(linear_data{i}(:,1)/1000, linear_data{i}(:,2), ...
-        'LineWidth', 1), hold all
-    legend_fit{end+1} = file_names{i}(1:end-4);
-    
-    plot(linear_data{i}(:,1)/1000, polyval(fit_coefficients{i}, linear_data{i}(:,1)), ...
-        'k--', 'LineWidth', 1), hold all
-    legend_fit{end+1} = ['Slope = ' num2str(fit_coefficients{i}(1)*1000, '%.2f') ' nm/s'];
-end
-grid on
-xlabel('Time (s)')
-ylabel('Wavelength (nm)')
-title('Wavelength meter data')
-legend(legend_fit, 'Location', 'SE')
+% t_min = 500; % ms
+% t_max = 5500; % ms
+% files_to_fit = 1:4;
+% 
+% input_title = 'Time selection for linear fit'; 
+% input_data = {'Start t (s):','End t (s):', 'Files to fit (0 = all):'};
+% default_values = {num2str(t_min/1000), num2str(t_max/1000), '0'};
+% dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
+% answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
+% t_min = str2double(answer{1})*1000; %ms
+% t_max = str2double(answer{2})*1000; % ms
+% if str2double(answer{3}) > 0
+%     files_to_fit = round(str2double(answer{3}));
+% end
+% 
+% linear_data = cell(size(raw_data));
+% fit_coefficients = cell(size(raw_data));
+% fit_structre = cell(size(raw_data));
+% for i = files_to_fit
+%     [i_min, ~] = find(raw_data{i}(:,1) >= t_min);
+%     [i_max, ~] = find(raw_data{i}(:,1) <= t_max);
+%     i_intersect = intersect(i_min, i_max);
+%     linear_data{i} = raw_data{i}(i_intersect,:);
+%     
+%     [fit_coefficients{i}, fit_structure{i}] = polyfit(linear_data{i}(:,1), linear_data{i}(:,2), 1);
+%     
+% end
+%     
+% % figure_handles{end+1} = figure('Units','normalized','Position',[0.05 0.1 0.7 0.7]);
+% % legend_fit = {};
+% figure(figure_handles{end});
+% for i = files_to_fit
+%     plot(linear_data{i}(:,1)/1000, linear_data{i}(:,2), ...
+%         'LineWidth', 1), hold all
+%     legend_fit{end+1} = file_names{i}(1:end-4);
+%     
+%     plot(linear_data{i}(:,1)/1000, polyval(fit_coefficients{i}, linear_data{i}(:,1)), ...
+%         'k--', 'LineWidth', 1), hold all
+%     legend_fit{end+1} = ['Slope = ' num2str(fit_coefficients{i}(1)*1000, '%.2f') ' nm/s'];
+% end
+% grid on
+% xlabel('Time (s)')
+% ylabel('Wavelength (nm)')
+% title('Wavelength meter data')
+% legend(legend_fit, 'Location', 'SE')
 
 
 %% SAVING FIGURES

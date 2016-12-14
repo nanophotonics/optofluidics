@@ -1,7 +1,4 @@
 % Author: Ana Andres-Arroyo (aa938)
-% Reads long term array (.lta) files from the HighFinesse wavemeter
-% Plots them and fits a region to a linear fit
-% Calculates the speed with which the SolsTiS laser can change wavelength
 
 clc
 clear
@@ -61,22 +58,22 @@ end
 close all
 figure_handles = {};
 
-figure_handles{end+1} = figure('Units','normalized','Position',[0.05 0.1 0.7 0.7]);
-for i = 1:1:number_of_files
-    subplot(number_of_files, 1, i)
-    for j = 1:1:size(raw_data{i},2)
-        plot(1:1:size(raw_data{i}(:,j)), raw_data{i}(:,j), ...
-            'LineWidth', 1), hold all
-    end
-    grid on
-%     xlabel('PicoScope measurement number')
-    ylabel('Intensity (V)')
-    title('PicoScope data')
-    if size(raw_data{i},2) < 10
-        legend(cellstr(num2str(wavelengths{i}')), 'Location', 'SE')
-    end
-    
-end
+% figure_handles{end+1} = figure('Units','normalized','Position',[0.05 0.1 0.7 0.7]);
+% for i = 1:1:number_of_files
+%     subplot(number_of_files, 1, i)
+%     for j = 1:1:size(raw_data{i},2)
+%         plot(1:1:size(raw_data{i}(:,j)), raw_data{i}(:,j), ...
+%             'LineWidth', 1), hold all
+%     end
+%     grid on
+% %     xlabel('PicoScope measurement number')
+%     ylabel('Intensity (V)')
+%     title('PicoScope data')
+%     if size(raw_data{i},2) < 10
+%         legend(cellstr(num2str(wavelengths{i}')), 'Location', 'SE')
+%     end
+%     
+% end
 
 
 %% Average
@@ -99,6 +96,27 @@ title('Wavemeter and PicoScope data')
 if number_of_files < 15
     legend(file_names, 'Location', 'SE', 'interpreter', 'none')
 end
+
+%% Ratio
+% *************************************************************************
+% averaged_data = cell(size(raw_data));
+% for i = 1:1:number_of_files
+%     averaged_data{i} = mean(raw_data{i},1);
+% end
+% 
+% figure_handles{end+1} = figure('Units','normalized','Position',[0.25 0.15 0.7 0.7]);
+% if number_of_files == 2
+%     plot(wavelengths{i}, averaged_data{2} ./ averaged_data{1}, ...
+%         'LineWidth', 1), hold all
+% end
+% 
+% grid on
+% xlabel('Wavelength (nm)')
+% ylabel('Mean Intensity (V)')
+% title('Wavemeter and PicoScope data')
+% if number_of_files < 15
+%     legend(file_names, 'Location', 'SE', 'interpreter', 'none')
+% end
 
 
 

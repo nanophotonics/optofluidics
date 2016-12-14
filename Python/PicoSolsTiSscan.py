@@ -17,6 +17,7 @@ import time
 from wlm import wavemeter
 import SolsTiS
 import numpy
+import matplotlib.pyplot as plt
 import datetime
 from picoscope import PicoScope5000a
 
@@ -67,15 +68,17 @@ if __name__ == "__main__":
 #    ps_channels = ['B'] 
     ps_channels_range = []
     ps_data = []    
+    ps_average = []    
     ps_autorange = []
     for i in range(len(ps_channels)):
-        ps_channels_range.append(2.0)
+        ps_channels_range.append(0.2)
         ps_data.append([])
+        ps_average.append([])
         ps_autorange.append(True)
                             
     
     """ Set picoscope sampling interval and timebase"""
-    waveform_duration = 1.5 # seconds
+    waveform_duration = 1.0 # seconds
     number_of_samples = 2**10
     sampling_interval = waveform_duration / number_of_samples
     (actualSamplingInterval, nSamples, maxSamples) = \
@@ -104,7 +107,7 @@ if __name__ == "__main__":
     """Specify the wavelength parameters in nm"""
     wavelength_start = 725.0
     wavelength_end = 975.0
-    wavelength_step = 100.0    
+    wavelength_step = 5.0    
     wavelength_precision = 0.001 
     wavelength_accuracy = 2.0
     
@@ -234,6 +237,7 @@ if __name__ == "__main__":
         """Collect data from picoscope"""   
         for i in range(len(ps_channels)):                                                                     
             ps_data[i].append([])
+            ps_average[i].append([])
             ps_autorange[i] = True
         while any(ps_autorange):
             for i in range(len(ps_channels)):    
@@ -280,9 +284,12 @@ if __name__ == "__main__":
             
                 """Append data to list."""
                 ps_data[i][len(ps_data[i])-1] = data # units = volts
+                ps_average[i][len(ps_average[i])-1] = numpy.mean(data)
                 
             if verbosity:
                 print ''
+                
+
                                                             
     # end of wavelength for loop
     
@@ -303,13 +310,36 @@ if __name__ == "__main__":
                 for j in range(len(error_log)):
                     print error_log[j][i]
                 print '\t'
-
+        
+    """Plot data."""        
+    plt.hold(False)
+    for i in range(len(ps_channels)):     
+        plt.plot(measured_wavelengths, ps_average[i], 
+                 linewidth = 2.0, 
+                 label = 'Channel ' + ps_channels[i],
+                 )
+        plt.hold(True)
+        
+    plt.grid()    
+    plot_font_size = 32
+    plt.legend(fontsize = plot_font_size, loc = 1)
+    now = datetime.datetime.now()
+    plt.title(now, fontsize = plot_font_size)
+#    plt.title('Picoscope average vs. wavelength', fontsize = plot_font_size)
+    plt.xlabel('Wavemeter wavelength (nm)', fontsize = plot_font_size)
+    plt.ylabel('Picoscope average (V)', fontsize = plot_font_size)
+    plt.tick_params(axis='both', which='major', 
+                    length = 20, width = 2, labelsize = plot_font_size)    
+    plt.show()
+    figManager = plt.get_current_fig_manager()
+    figManager.window.showMaximized()
+        
     """Write data to files"""
     save_data = True
     
     if save_data:
         directory = 'R:\\3-Temporary\\aa938\\'
-        now = datetime.datetime.now()
+#        now = datetime.datetime.now()
         file_name_core = "%04i" % now.year + '.' + \
                          "%02i" % now.month + '.' + \
                          "%02i" % now.day + '_' + \
