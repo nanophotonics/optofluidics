@@ -12,8 +12,8 @@ close all
 % *************************************************************************
 
 % specify default path
-file_path = 'R:\aa938\NanoPhotonics\Laboratory\';
-% file_path = 'R:\3-Temporary\aa938\';
+% file_path = 'R:\aa938\NanoPhotonics\Laboratory\';
+file_path = 'R:\3-Temporary\aa938\';
 
 % pop up window to choose the file(s) to read
 [file_name, file_path, ~] = uigetfile('.txt',...
@@ -65,11 +65,12 @@ for i = 1:1:number_of_files
     
     % change all channel units to Volts
     for j = 2:1:size(raw_data{i},2) % channels
-        if strcmp(channel_unit{i,j}, '(V)')
-        elseif strcmp(channel_unit{i,j}, '(mV)')
+        if strfind(channel_unit{i,j}, '(V)')
+        elseif strfind(channel_unit{i,j}, '(mV)')
             channel_unit{i,j} = '(V)';
             raw_data{i}(:,j) = raw_data{i}(:,j)/1000;
         else
+            disp(channel_unit{i,j})
             disp(['Check Channel (' num2str(i) ',' num2str(j) ') Units!'])
         end
     end
@@ -86,7 +87,8 @@ options = {'Savitzky-Golay Filtering', ...
            'Read Info File',...
            'Calculate Power',...
            };
-selected_options = [5,6,7];
+% selected_options = [5,6,7];
+selected_options = 2;
 [selected_options, ~] = listdlg('PromptString', 'Select options:',...
                                 'SelectionMode', 'multiple', ...
                                 'ListString', options, ...
@@ -100,7 +102,7 @@ colour_type = {'DEFAULT', ...
                'gray', 'copper',...
                'red', 'green', 'aqua', 'blue', 'purple',...
                };
-selected_colour = 2;
+selected_colour = 1;
 
 %% smoothing
 % *************************************************************************
@@ -145,7 +147,8 @@ if find(strcmp(options(selected_options), 'Normalisation'))
     for i = 1:1:number_of_files
         [~, t_index] = min(abs(smoothed_data{i}(:,1)-t));
         for j = 2:1:size(smoothed_data{i},2)
-            normalised_data{i}(:,j) = smoothed_data{i}(:,j) / smoothed_data{i}(t_index,j);
+%             normalised_data{i}(:,j) = smoothed_data{i}(:,j) / smoothed_data{i}(t_index,j);
+            normalised_data{i}(:,j) = smoothed_data{i}(:,j) / max(smoothed_data{i}(:,j));
         end
     end
 end
@@ -230,7 +233,7 @@ if find(strcmp(channel_name(1,:), 'Channel B'))
 end
 answer_values = dialog_table(file_name, dialog_title, default_values);
 waveplate_angle = answer_values(:,1);
-ND = answer_values(:,2:3);
+ND = answer_values(:,2:end);
 
 channel_data = period_data;
 for i = 1:1:number_of_files % files
@@ -242,6 +245,7 @@ plot_data = channel_data;
 
 %% calculating the power
 % *************************************************************************
+laser_power = zeros(number_of_files,1);
 if find(strcmp(options(selected_options), 'Calculate Power'))
     reference_angle = 30; % degrees
     reference_power = 16; % mW
@@ -255,7 +259,6 @@ if find(strcmp(options(selected_options), 'Calculate Power'))
     
     reference_index = find(waveplate_angle == reference_angle);
     reference_voltage = max(plot_data{reference_index}(:,2));
-    laser_power = zeros(number_of_files,1);
     for i = 1:1:number_of_files % files
         laser_power(i) = reference_power * max(plot_data{i}(:,2))/reference_voltage;
         % Use power_fitted and compare the results.
@@ -325,15 +328,16 @@ files_to_plot = 1:1:number_of_files;
 % files_to_plot = 3:4;
 
 channels_to_plot = [2,3];
-% [channels_to_plot, ~] = listdlg('PromptString', 'Channels to plot',...
-%                                 'SelectionMode', 'multiple', ...
-%                                 'ListString', channel_name(1,2:end),...
-%                                 'InitialValue', channels_to_plot - 1);
-% channels_to_plot = channels_to_plot + 1;
+[channels_to_plot, ~] = listdlg('PromptString', 'Channels to plot',...
+                                'SelectionMode', 'multiple', ...
+                                'ListString', channel_name(1,2:end),...
+                                'InitialValue', channels_to_plot - 1);
+channels_to_plot = channels_to_plot + 1;
 
-menu_subplots = 2;
+menu_subplots = 1;
 if size(channels_to_plot,2) > 1
-%     menu_subplots = menu('Plot each channel in a different subplot?', 'NO', 'YES (horizontal)', 'YES (vertical)');
+    menu_subplots = 2;
+    menu_subplots = menu('Plot each channel in a different subplot?', 'NO', 'YES (horizontal)', 'YES (vertical)');
 end
 if menu_subplots == 2 % horizontal
     layout = [1,2];
@@ -365,9 +369,10 @@ for i = files_to_plot(end:-1:1) % files
                 ylabel('Channel A normalised')
             end
             grid on
-            legend_A{end+1} = [num2str(measurement_numbers(i), '%02.f')...
-                               ' // ' num2str(laser_power(i), '%03.0f') ' mW'...
-                               ];
+            legend_A{end+1} = file_name{i};
+%             legend_A{end+1} = [num2str(measurement_numbers(i), '%02.f')...
+%                                ' // ' num2str(laser_power(i), '%03.0f') ' mW'...
+%                                ];
 %                 file_name{i}(1:end-4) ...
 %                 ' // ' channel_name{i,j} ...
 
@@ -391,9 +396,10 @@ for i = files_to_plot(end:-1:1) % files
                 ylabel('Channel B normalised')
             end
             grid on
-            legend_B{end+1} = [num2str(measurement_numbers(i), '%02.0f')...
-                               ' // ' num2str(laser_power(i), '%03.0f') ' mW'...
-                               ];
+            legend_B{end+1} = file_name{i};
+%             legend_B{end+1} = [num2str(measurement_numbers(i), '%02.0f')...
+%                                ' // ' num2str(laser_power(i), '%03.0f') ' mW'...
+%                                ];
 %             legend_B{end+1} = [file_name{i}(1:end-4) ...
 %                 ' // ' channel_name{i,j} ...
 %                 ' // ' num2str(laser_power(i), '%.0f') ' mW'...
@@ -445,11 +451,13 @@ end
 figure(figure_picoscope)
 legend_location = 'NE';
 % x_limits = xlim;
-x_limits = [-5,25];
+% x_limits = [-5,25];
+x_limits = [-1,2];
 
 input_title = 'Plot formatting';
 input_data = {'Legend Location', 'X Axis Min', 'X Axis Max'};
 default_values = {legend_location, num2str(x_limits(1)), num2str(x_limits(2))};
+dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
 answer = inputdlg(input_data, input_title, dim, default_values, dlg_options);
 legend_location = answer{1};
 x_limits = [str2double(answer{2}),str2double(answer{3})];
@@ -458,7 +466,7 @@ if menu_subplots == 1
     title(title_cell_channels, 'interpreter', 'none')
     xlabel('Time (ms)')
     legend_channels = [legend_A, legend_B];
-    legend(legend_channels, 'Location', legend_location)
+    legend(legend_channels, 'Location', legend_location, 'interpreter', 'none')
     axis auto
     xlim(x_limits)
 
@@ -517,25 +525,26 @@ if find(strcmp(options(selected_options), 'Channel B / Channel A'))
 %     xlim([-310,-90])
 %     ylim([1,5])
     grid on
-end
 
-%% colour scheme
-figure(figure_division)
-% [selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
-%                            'SelectionMode', 'single', ...
-%                            'ListString', colour_type,...
-%                            'InitialValue', selected_colour);
-for i = files_to_plot    
-    if selected_colour > 1 
-        colour_RGB = colour_gradient(i, number_of_files, colour_type(selected_colour));
-%             colour_RGB = colour_gradient(find(waveplate_angle_unique == waveplate_angle(i)), ...
-%                 size(waveplate_angle_unique,2), ...
-%                 colour_type(selected_colour));
-        h_div(i).Color = colour_RGB;  
+
+    %% colour scheme
+    figure(figure_division)
+    % [selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
+    %                            'SelectionMode', 'single', ...
+    %                            'ListString', colour_type,...
+    %                            'InitialValue', selected_colour);
+    for i = files_to_plot    
+        if selected_colour > 1 
+            colour_RGB = colour_gradient(i, number_of_files, colour_type(selected_colour));
+    %             colour_RGB = colour_gradient(find(waveplate_angle_unique == waveplate_angle(i)), ...
+    %                 size(waveplate_angle_unique,2), ...
+    %                 colour_type(selected_colour));
+            h_div(i).Color = colour_RGB;  
+        end
+        h_div(i).MarkerSize = 1;
+        h_div(i).LineStyle = '-';
+        h_div(i).LineWidth = 2;
     end
-    h_div(i).MarkerSize = 1;
-    h_div(i).LineStyle = '-';
-    h_div(i).LineWidth = 2;
 end
 
 %% SAVING FIGURES
