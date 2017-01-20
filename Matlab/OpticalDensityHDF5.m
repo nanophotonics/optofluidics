@@ -50,7 +50,10 @@ for i = 1:1:number_of_spectra
     DatasetPaths{i} = [GroupInfo.Name '/' GroupInfo.Datasets(i).Name];
     slash_index = strfind(DatasetPaths{i}, '/');
     DatasetNames{i} = DatasetPaths{i}(slash_index(end)+1:end);
-    description(i) = h5readatt(GroupInfo.Filename, DatasetPaths{i}, 'description');
+    try
+        description(i) = h5readatt(GroupInfo.Filename, DatasetPaths{i}, 'description');
+    catch
+    end
     counts(i,:) = h5read(GroupInfo.Filename, DatasetPaths{i});
     wavelengths(i,:) = h5readatt(GroupInfo.Filename, DatasetPaths{i}, 'wavelengths');
     try
@@ -85,7 +88,7 @@ for i = 1:1:number_of_spectra
 end
 grid on
 set(gca, 'FontSize', 18)
-legend(description, 'Location', 'NEO', 'interpreter', 'none')
+% legend(description, 'Location', 'NEO', 'interpreter', 'none')
 legend(DatasetNames, 'Location', 'NEO', 'interpreter', 'none')
 title({FolderRead, 'Raw Data'}, 'interpreter', 'none')
 xlabel('Wavelength (nm)')
@@ -196,7 +199,7 @@ if or(...
     xlabel('Wavelength (nm)')
     ylabel(ytext)
     xlim([300,1050])
-    ylim([-0.3,1])
+%     ylim([-0.3,1])
 
     %% plot styling
     [selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
@@ -213,6 +216,20 @@ if or(...
         h(i).LineStyle = '-';
         h(i).LineWidth = 2;
     end
+    
+    %% read manufacturer optical density
+    directory = 'R:\aa938\NanoPhotonics\Laboratory\2016.11.16 - PBG HCF prep for Au NR\';
+    OD_file_name = 'nanocomposix-spectra.csv';
+    % [OD_file_name, directory, ~] = uigetfile('.csv',...
+    %                                       'OPTICAL DENSITY data', ...
+    %                                       [directory OD_file_name], ...
+    %                                       'MultiSelect','off');
+
+    manufacturer_OD = dlmread([directory OD_file_name], ',', 0, 0);
+    plot(manufacturer_OD(:,1), manufacturer_OD(:,2), 'LineWidth', 1)
+    legend_cell = DatasetNames(selected_spectra);
+    legend_cell{end+1} = OD_file_name(1:end-4);
+    legend(legend_cell, 'Location', 'NEO', 'interpreter', 'none')
 end
 
 
