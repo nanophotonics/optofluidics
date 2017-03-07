@@ -88,7 +88,8 @@ options = {'Savitzky-Golay Filtering', ...
            'Calculate Power',...
            };
 % selected_options = [5,6,7];
-selected_options = 2;
+% selected_options = 2;
+selected_options = 5;
 [selected_options, ~] = listdlg('PromptString', 'Select options:',...
                                 'SelectionMode', 'multiple', ...
                                 'ListString', options, ...
@@ -207,10 +208,10 @@ if find(strcmp(options(selected_options), 'Read Info File'))
     ND_B = info_data{measurement_indices,'ND_B'};
     waveplate_angle = info_data{measurement_indices,'Angle_deg'}; % degrees
 else
-    if find(strcmp(channel_name(1,:), 'Channel A'))
+    if find(cell2mat(strfind(channel_name(1,:), 'Channel A')))
         ND_A = zeros(number_of_files,1);
     end
-    if find(strcmp(channel_name(1,:), 'Channel B'))
+    if find(cell2mat(strfind(channel_name(1,:), 'Channel B')))
         ND_B = zeros(number_of_files,1);
     end
     waveplate_angle = zeros(number_of_files,1);
@@ -219,21 +220,23 @@ end
 %% ND filters
 % *************************************************************************
 
+
 default_values = [];
 dialog_title = {};
 dialog_title{end+1} = 'Waveplate angle (deg)';
 default_values = [default_values, waveplate_angle];
-if find(strcmp(channel_name(1,:), 'Channel A'))
+if find(cell2mat(strfind(channel_name(1,:), 'Channel A')))
     default_values = [default_values, ND_A];
     dialog_title{end+1} = 'ND A';
 end
-if find(strcmp(channel_name(1,:), 'Channel B'))
+if find(cell2mat(strfind(channel_name(1,:), 'Channel B')))
     default_values = [default_values, ND_B];
     dialog_title{end+1} = 'ND B';
 end
-answer_values = dialog_table(file_name, dialog_title, default_values);
-waveplate_angle = answer_values(:,1);
-ND = answer_values(:,2:end);
+ND = default_values;
+% answer_values = dialog_table(file_name, dialog_title, default_values);
+% waveplate_angle = answer_values(:,1);
+% ND = answer_values(:,2:end);
 
 channel_data = period_data;
 for i = 1:1:number_of_files % files
@@ -328,16 +331,16 @@ files_to_plot = 1:1:number_of_files;
 % files_to_plot = 3:4;
 
 channels_to_plot = [2,3];
-[channels_to_plot, ~] = listdlg('PromptString', 'Channels to plot',...
-                                'SelectionMode', 'multiple', ...
-                                'ListString', channel_name(1,2:end),...
-                                'InitialValue', channels_to_plot - 1);
-channels_to_plot = channels_to_plot + 1;
+% [channels_to_plot, ~] = listdlg('PromptString', 'Channels to plot',...
+%                                 'SelectionMode', 'multiple', ...
+%                                 'ListString', channel_name(1,2:end),...
+%                                 'InitialValue', channels_to_plot - 1);
+% channels_to_plot = channels_to_plot + 1;
 
 menu_subplots = 1;
 if size(channels_to_plot,2) > 1
     menu_subplots = 2;
-    menu_subplots = menu('Plot each channel in a different subplot?', 'NO', 'YES (horizontal)', 'YES (vertical)');
+%     menu_subplots = menu('Plot each channel in a different subplot?', 'NO', 'YES (horizontal)', 'YES (vertical)');
 end
 if menu_subplots == 2 % horizontal
     layout = [1,2];
@@ -351,10 +354,13 @@ legend_A = {}; % initialising the legend cell
 legend_B = {}; % initialising the legend cell
 % for i = files_to_plot % files
 for i = files_to_plot(end:-1:1) % files
+%     disp([num2str(i) ' / ' num2str(max(size(files_to_plot))) ' files'])
 %     for j = 2:1:size(plot_data{i},2) % channels
 %     for j = 2:1:3 % channels
     for j = channels_to_plot % channels
-        if strcmp(channel_name{i,j}, 'Channel A')
+%         disp([num2str(j) ' / ' num2str(max(size(channels_to_plot))) ' channels'])
+        if strfind(channel_name{i,j}, 'Channel A')
+%             disp('Channel A')
             if menu_subplots == 1
                 if size(channels_to_plot,2)>1
                     yyaxis left
@@ -382,7 +388,8 @@ for i = files_to_plot(end:-1:1) % files
 
 %             ylim([-1,4])
 %             pause(0.1)
-        elseif strcmp(channel_name{i,j}, 'Channel B')
+        elseif strfind(channel_name{i,j}, 'Channel B')
+%             disp('Channel B')
             if menu_subplots == 1
                 if size(channels_to_plot,2)>1
                     yyaxis right
@@ -421,10 +428,10 @@ end
 
 %% colour scheme
 figure(figure_picoscope)
-% [selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
-%                            'SelectionMode', 'single', ...
-%                            'ListString', colour_type,...
-%                            'InitialValue', selected_colour);
+[selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
+                           'SelectionMode', 'single', ...
+                           'ListString', colour_type,...
+                           'InitialValue', selected_colour);
 for j = channels_to_plot
     for i = files_to_plot    
         if selected_colour > 1 
@@ -436,7 +443,7 @@ for j = channels_to_plot
         end
         h(i,j).MarkerSize = 1;
         h(i,j).LineStyle = '-';
-        h(i,j).LineWidth = 2;
+        h(i,j).LineWidth = 1;
     end
 end
 
@@ -449,10 +456,12 @@ end
 
 %% axis limits
 figure(figure_picoscope)
-legend_location = 'NE';
+legend_location = 'best';
 % x_limits = xlim;
 % x_limits = [-5,25];
-x_limits = [-1,2];
+% x_limits = [-1,2];
+% x_limits = [0,1.5];
+x_limits = [-10,10];
 
 input_title = 'Plot formatting';
 input_data = {'Legend Location', 'X Axis Min', 'X Axis Max'};
@@ -510,29 +519,30 @@ if find(strcmp(options(selected_options), 'Channel B / Channel A'))
     for i = files_to_plot(end:-1:1) % files
         h_div(i) = plot(plot_data{i}(:,1), ...
             divided_data{i},...
-            'LineWidth', 2); hold all
+            'LineWidth', 1); hold all
         legend_division{end+1} = [file_name{i}(1:end-4) ' // B/A'...
 %             ' // centre = ' num2str(centre_wavelength(i), '%03.1f') ' nm'...
             ];
     end
-%     legend(legend_division, 'Location', 'NEO', 'interpreter', 'none')
-    legend(legend_A, 'Location', 'NEO', 'interpreter', 'none')
+    legend(legend_division, 'Location', 'NEO', 'interpreter', 'none')
+%     legend(legend_A, 'Location', 'NEO', 'interpreter', 'none')
     title(title_cell_divided, 'interpreter', 'none')
     ylabel('B/A')
     xlabel('Time (ms)')
-    xlim([0,8.2])
+%     xlim([0,8.2])
 %     xlim([-50,250])
 %     xlim([-310,-90])
 %     ylim([1,5])
+%     ylim([4,5])
     grid on
 
 
     %% colour scheme
     figure(figure_division)
-    % [selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
-    %                            'SelectionMode', 'single', ...
-    %                            'ListString', colour_type,...
-    %                            'InitialValue', selected_colour);
+    [selected_colour, ~] = listdlg('PromptString', 'Colour scheme:',...
+                               'SelectionMode', 'single', ...
+                               'ListString', colour_type,...
+                               'InitialValue', selected_colour);
     for i = files_to_plot    
         if selected_colour > 1 
             colour_RGB = colour_gradient(i, number_of_files, colour_type(selected_colour));
@@ -543,8 +553,33 @@ if find(strcmp(options(selected_options), 'Channel B / Channel A'))
         end
         h_div(i).MarkerSize = 1;
         h_div(i).LineStyle = '-';
-        h_div(i).LineWidth = 2;
+        h_div(i).LineWidth = 1;
     end
+    
+    %% axis limits
+    figure(figure_division)
+    legend_location = 'NEO';
+%     x_limits = xlim;
+    x_limits = [0,8];
+%     y_limits = ylim;
+    y_limits = [1,3];
+
+    input_title = 'Plot formatting';
+    input_data = {'Legend Location', ...
+        'X Axis Min', 'X Axis Max', ...
+        'Y Axis Min', 'Y Axis Max'};
+    default_values = {legend_location, ...
+        num2str(x_limits(1)), num2str(x_limits(2)), ...
+        num2str(y_limits(1)), num2str(y_limits(2))};
+    dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
+    answer = inputdlg(input_data, input_title, dim, default_values, dlg_options);
+    legend_location = answer{1};
+    x_limits = [str2double(answer{2}),str2double(answer{3})];
+    y_limits = [str2double(answer{4}),str2double(answer{5})];
+    
+    xlim(x_limits)
+    ylim(y_limits)
+
 end
 
 %% SAVING FIGURES
