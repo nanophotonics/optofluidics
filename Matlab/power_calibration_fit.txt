@@ -1,8 +1,9 @@
-2016.10.12 - TiSa power calibration 767 nm - fit
+2017.02.13 - TiSa power calibration 780 nm - fit
 power(x) = a*(sin(b*x*pi/180+c))^2
 x ---> angle of the waveplate (degrees)
 power ---> power of the Ti:Sa laser (W)
 
-a =  5.296  (5.283, 5.308)  W
-b =  2.002  (1.998, 2.005)  1/rad
-c =  2.211  (2.208, 2.215)  rad
+a =  5.633  (5.620, 5.646)  W
+b =  1.998  (1.996, 2.000)  1/rad
+c =  2.216  (2.212, 2.219)  rad
+

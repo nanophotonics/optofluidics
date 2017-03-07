@@ -6,49 +6,97 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>190</width>
-    <height>190</height>
+    <width>666</width>
+    <height>661</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
-   <item row="8" column="2">
-    <widget class="QPushButton" name="pushButtonSolsTiSstopMonitor">
-     <property name="text">
-      <string>Stop Monitor</string>
-     </property>
-    </widget>
+  <layout class="QVBoxLayout" name="verticalLayout_3">
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="labelSolsTiSWL">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Wavelength (nm):</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="lineEditSolsTiSWL">
+       <property name="inputMask">
+        <string/>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="placeholderText">
+        <string/>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
-   <item row="0" column="2" rowspan="2">
-    <widget class="QLineEdit" name="lineEditSolsTiSWL">
-     <property name="inputMask">
-      <string/>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="placeholderText">
-      <string/>
-     </property>
-    </widget>
+   <item>
+    <layout class="QGridLayout" name="gridLayout_4">
+     <item row="0" column="0">
+      <widget class="QCheckBox" name="checkBoxSolsTiSCavityLock">
+       <property name="text">
+        <string>Cavity Lock</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QCheckBox" name="checkBoxSolsTiSWaveLock">
+       <property name="text">
+        <string>Wave Lock</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QCheckBox" name="checkBoxSolsTiSEtalonLock">
+       <property name="text">
+        <string>Etalon Lock</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QCheckBox" name="checkBoxSolsTiSLockMonitor">
+       <property name="text">
+        <string>Lock Monitor</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QPushButton" name="pushButtonSolsTiSstopMonitor">
+       <property name="text">
+        <string>Stop Monitor</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QPushButton" name="pushButtonSolsTiSstatusMonitor">
+       <property name="text">
+        <string>Start Monitor</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
-   <item row="0" column="0" rowspan="2" colspan="2">
-    <widget class="QLabel" name="labelSolsTiSWL">
-     <property name="text">
-      <string>Wavelength</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="0" rowspan="2" colspan="2">
-    <widget class="QCheckBox" name="checkBoxSolsTiSCavityLock">
-     <property name="text">
-      <string>Cavity Lock</string>
-     </property>
-    </widget>
-   </item>
-   <item row="9" column="0" colspan="3">
+   <item>
     <widget class="QTableWidget" name="tableWidget">
      <property name="font">
       <font>
@@ -85,27 +133,6 @@
      </attribute>
      <column/>
      <column/>
-    </widget>
-   </item>
-   <item row="8" column="1">
-    <widget class="QPushButton" name="pushButtonSolsTiSstatusMonitor">
-     <property name="text">
-      <string>Start Monitor</string>
-     </property>
-    </widget>
-   </item>
-   <item row="8" column="0">
-    <widget class="QCheckBox" name="checkBoxSolsTiSLockMonitor">
-     <property name="text">
-      <string>Lock Monitor</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="2" rowspan="2">
-    <widget class="QCheckBox" name="checkBoxSolsTiSEtalonLock">
-     <property name="text">
-      <string>Etalon Lock</string>
-     </property>
     </widget>
    </item>
   </layout>
