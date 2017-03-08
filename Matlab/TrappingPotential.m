@@ -41,25 +41,25 @@ parameters = [d,lambda,power];
 column_titles = {'Min:', 'Max:', 'Step:'};
 variable_limits = zeros(size(parameters,2),size(column_titles,2));
 row_titles = cell(size(parameters,2),1);
-count = 0;
+i_counter = 0;
 for i = parameters
-    count = count + 1;
-    row_titles{count} = [i.name ' (' i.units ')'];
-    variable_limits(count,:) = [i.min, i.max, i.step];
+    i_counter = i_counter + 1;
+    row_titles{i_counter} = [i.name ' (' i.units ')'];
+    variable_limits(i_counter,:) = [i.min, i.max, i.step];
 end
           
-% variable_limits = dialog_table(row_titles,column_titles,variable_limits);
+variable_limits = dialog_table(row_titles,column_titles,variable_limits);
 
-count = 0;
+i_counter = 0;
 for i = parameters
-    count = count + 1;
-    i.min = variable_limits(count,1);
-    i.max = variable_limits(count,2);
-    i.step = variable_limits(count,3);
+    i_counter = i_counter + 1;
+    i.min = variable_limits(i_counter,1);
+    i.max = variable_limits(i_counter,2);
+    i.step = variable_limits(i_counter,3);
     i.values = i.min : i.step : i.max;
     i.size = size(i.values,2);
-    parameters(count) = i;
-    disp(i)
+    parameters(i_counter) = i;
+%     disp(i)
 end
 
 d = parameters(1);
@@ -147,19 +147,43 @@ end
 intensity = zeros(lambda.size,power.size,r.size,z.size,d.size);
 potential = zeros(lambda.size,power.size,r.size,z.size,d.size);
 
-for i = 1:1:lambda.size
-    clc, disp([num2str(i/lambda.size*100, '%.0f') '%'])
-    for j = 1:1:power.size
-        for k = 1:1:r.size
-            for l = 1:1:z.size
+i_values = lambda.values;
+j_values = power.values;
+k_values = r.values;
+l_values = z.values;
+m_values = d.values;
+
+i_counter = 0;
+for i = i_values;
+    i_counter = i_counter + 1;
+    clc, disp([num2str(i_counter/size(i_values,2)*100, '%.0f') '%'])
+    
+    j_counter = 0;
+    for j = j_values
+        j_counter = j_counter + 1;
+        
+        k_counter = 0;
+        for k = k_values
+            k_counter = k_counter + 1;
+            
+            l_counter = 0;
+            for l = l_values
+                l_counter = l_counter + 1;
+                
                 if menu_profile == 1 % Bessel
-                    intensity(i,j,k,l) = (power.values(j)*1e-3 / (pi * (R*1e-6)^2)) / j12 * J02(k); % mW / nm^2
-                elseif menu_profile == 2 % Gaussian
-                    wz(i,l) = w0 * sqrt(1+ (lambda.values(i)/1e3*z.values(l)/pi/w0^2)^2); % um. Beam diameter at distance z from the end of the fibre
-                    intensity(i,j,k,l) = 2*power.values(j)*1e-3 / (pi*(wz(i,l)*1e-6)^2) * exp(-2*r.values(k)^2/wz(i,l)^2);
+                    intensity(i_counter, j_counter, k_counter, l_counter) = ...
+                        (j*1e-3 / (pi * (R*1e-6)^2)) / j12 * J02(k_counter); % mW / nm^2
+%                 elseif menu_profile == 2 % Gaussian
+%                     wz(i,l) = w0 * sqrt(1+ (lambda.values(i)/1e3*z.values(l)/pi/w0^2)^2); % um. Beam diameter at distance z from the end of the fibre
+%                     intensity(i,j,k,l) = 2*power.values(j)*1e-3 / (pi*(wz(i,l)*1e-6)^2) * exp(-2*r.values(k)^2/wz(i,l)^2);
                 end
-                for m = 1:1:d.size
-                    potential(i,j,k,l,m) = - 1/2 * eps0 * eta * nmed * real(alpha(m,i)) * intensity(i,j,k,l) / KE;
+                
+                m_counter = 0;
+                for m = m_values
+                    m_counter = m_counter + 1;
+                    potential(i_counter, j_counter, k_counter, l_counter, m_counter) = ...
+                        - 1/2 * eps0 * eta * nmed * real(alpha(m_counter,i_counter)) * ...
+                        intensity(i_counter, j_counter, k_counter, l_counter) / KE;
                 end
             end
         end
