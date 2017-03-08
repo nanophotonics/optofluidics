@@ -12,30 +12,59 @@ R = 9; % um. Radius of the HCPCF core
 nmed = 1.33; % Refractive index of water
 T = 273 + 70; % K. Ambient temperature
 
-d_limits = [40, 20, 100]; % nm
-lambda_limits = [500, 10, 1000]; % nm
-power_limits = [100, 100, 1200]; % mW
+d.name = 'Diameter';
+d.units = 'nm';
+d.min = 8; 
+d.max = 10; 
+d.step = 2; 
+d.values = d.min : d.step : d.max;
+d.size = size(d.values,2);
 
-limits = [d_limits; ...
-          lambda_limits; ...
-          power_limits;...
-          ];
+lambda.name = 'Wavelength';
+lambda.units = 'nm';
+lambda.min = 725;
+lambda.max = 795;
+lambda.step = 5;
+lambda.values = lambda.min : lambda.step : lambda.max;
+lambda.size = size(lambda.values,2);
 
-column_titles = {'Start:', 'Step:', 'End:'};
-row_titles = {'Diameter (nm):',...
-              'Wavelength (nm):',...
-              'Power (mW):',...
-              };
+power.name = 'Power';
+power.units = 'mW';
+power.min = 100;
+power.max = 500;
+power.step = 100;
+power.values = power.min : power.step : power.max;
+power.size = size(power.values,2);
+
+parameters = [d,lambda,power];
+
+column_titles = {'Min:', 'Max:', 'Step:'};
+variable_limits = zeros(size(parameters,2),size(column_titles,2));
+row_titles = cell(size(parameters,2),1);
+count = 0;
+for i = parameters
+    count = count + 1;
+    row_titles{count} = [i.name ' (' i.units ')'];
+    variable_limits(count,:) = [i.min, i.max, i.step];
+end
           
-limits = dialog_table(row_titles,column_titles,limits);
+% variable_limits = dialog_table(row_titles,column_titles,variable_limits);
 
-d_limits = limits(1,:);
-lambda_limits = limits(2,:);
-power_limits = limits(3,:);
+count = 0;
+for i = parameters
+    count = count + 1;
+    i.min = variable_limits(count,1);
+    i.max = variable_limits(count,2);
+    i.step = variable_limits(count,3);
+    i.values = i.min : i.step : i.max;
+    i.size = size(i.values,2);
+    parameters(count) = i;
+    disp(i)
+end
 
-d = d_limits(1): d_limits(2) : d_limits(3); % nm. Diameter of the Au NP
-lambda = lambda_limits(1) : lambda_limits(2) : lambda_limits(3); % nm. Wavelength of the laser in vacuum
-power = power_limits(1) : power_limits(2) : power_limits(3); % mW of total laser power
+d = parameters(1);
+lambda = parameters(2);
+power = parameters(3);
 
 
 %% Read Gold refractive index file and interpolate
@@ -46,8 +75,8 @@ n_data = dlmread([foldername filename], '\t', 1, 0);
 % n_data(:,1) = wave (nm)
 % n_data(:,2) = n
 % n_data(:,3) = k
-n_real = spline(n_data(:,1), n_data(:,2), lambda);
-n_imaginary = spline(n_data(:,1), n_data(:,3), lambda);
+n_real = spline(n_data(:,1), n_data(:,2), lambda.values);
+n_imaginary = spline(n_data(:,1), n_data(:,3), lambda.values);
 n_particle = n_real + 1i*n_imaginary;
 
 % figure
@@ -64,60 +93,109 @@ n_particle = n_real + 1i*n_imaginary;
 % *************************************************************************
 
 % standard polarisability (SI units)
-alpha_0 = zeros(size(d,2),size(lambda,2));
-for i = 1:1:size(d,2)
-    alpha_0(i,:) = 4*pi*(d(i)*1e-9/2)^3 .* ...
+alpha_0 = zeros(d.size,lambda.size);
+for i = 1:1:d.size
+    alpha_0(i,:) = 4*pi*(d.values(i)*1e-9/2)^3 .* ...
         (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2); 
 end
 
 % polarisability (SI units)
 alpha = alpha_0;
 
-%% Calculate the potential
+%% Calculate the intensity and potential
 % *************************************************************************
 
 KE = kb*T;  % J, kinetic energy
 
-% menu_profile = 2;
-menu_profile = menu('Beam Profile?', 'Bessel', 'Gaussian');
-
+menu_profile = 1;
+% menu_profile = menu('Beam Profile?', 'Bessel', 'Gaussian');
+    
 if menu_profile == 1 % Bessel
-    r = linspace(0, R, 100); % um. Radial coordinate inside fibre 
+    r.name = 'Radial coordinate';
+    r.units = 'um';
+    r.min = -R; 
+    r.max = R; 
+    r.size = 200;
+    r.values = linspace(r.min,r.max,r.size);
+    r.step = r.values(2)-r.values(1);     
+
+%     r = linspace(-R, R, 200); % um. Radial coordinate inside fibre 
 %     r = 0; % um. Radial coordinate inside fibre
+
     j12 = 0.269514; % Square of the Bessel function 1st kind 1st order at the first zero of the 0th order
     j01 = 2.40483; % First zero of the Bessel function 1st kind 0th order
-    J02 = besselj(0,j01*r/R).^2; % Square of the Bessel function 1st kind 0th order
-    z = 0;
+    J02 = besselj(0,j01*r.values/R).^2; % Square of the Bessel function 1st kind 0th order
+
+%     z = 0;
+%     z = 0:1:5;
+    z.name = 'Axial coordinate';
+    z.units = 'um';
+    z.min = 0; 
+    z.max = 0; 
+    z.size = 200;
+    z.values = linspace(z.min,z.max,z.size);
+    z.step = z.values(2)-z.values(1);
+    
 elseif menu_profile == 2 % Gaussian
     r = linspace(0, 15, 100); % um. Radial coordinate
     z = 0:20:200; % um. Distance from the end of the fibre
     w0 = 5; % um. Beam radius at the end of the fibre
     % MAKE POP UP WINDOW
-    wz = zeros(size(lambda,2),size(z,2));
+    wz = zeros(lambda.size,z.size);
 end
 
-intensity = zeros(size(lambda,2),size(power,2),size(r,2),size(z,2),size(d,2));
-potential = zeros(size(lambda,2),size(power,2),size(r,2),size(z,2),size(d,2));
+intensity = zeros(lambda.size,power.size,r.size,z.size,d.size);
+potential = zeros(lambda.size,power.size,r.size,z.size,d.size);
 
-for i = 1:1:size(lambda,2)
-    clc, disp([num2str(i/size(lambda,2)*100, '%.0f') '%'])
-    for j = 1:1:size(power,2)
-        for k = 1:1:size(r,2)
-            for l = 1:1:size(z,2)
+for i = 1:1:lambda.size
+    clc, disp([num2str(i/lambda.size*100, '%.0f') '%'])
+    for j = 1:1:power.size
+        for k = 1:1:r.size
+            for l = 1:1:z.size
                 if menu_profile == 1 % Bessel
-                    intensity(i,j,k,l) = (power(j)*1e-3 / (pi * (R*1e-6)^2)) / j12 * J02(k);
+                    intensity(i,j,k,l) = (power.values(j)*1e-3 / (pi * (R*1e-6)^2)) / j12 * J02(k); % mW / nm^2
                 elseif menu_profile == 2 % Gaussian
-                    wz(i,l) = w0 * sqrt(1+ (lambda(i)/1e3*z(l)/pi/w0^2)^2); % um. Beam diameter at distance z from the end of the fibre
-                    intensity(i,j,k,l) = 2*power(j)*1e-3 / (pi*(wz(i,l)*1e-6)^2) * exp(-2*r(k)^2/wz(i,l)^2);
+                    wz(i,l) = w0 * sqrt(1+ (lambda.values(i)/1e3*z.values(l)/pi/w0^2)^2); % um. Beam diameter at distance z from the end of the fibre
+                    intensity(i,j,k,l) = 2*power.values(j)*1e-3 / (pi*(wz(i,l)*1e-6)^2) * exp(-2*r.values(k)^2/wz(i,l)^2);
                 end
-                for m = 1:1:size(d,2)
+                for m = 1:1:d.size
                     potential(i,j,k,l,m) = - 1/2 * eps0 * eta * nmed * real(alpha(m,i)) * intensity(i,j,k,l) / KE;
                 end
             end
         end
     end
 end
+% intensity(lambda,power,r,z,d)
 % potential(lambda,power,r,z,d)
+
+%% Calculate the gradient force, velocity, and time
+% *************************************************************************
+F_grad = zeros(size(intensity));
+for i = 1:1:lambda.size
+    for j = 1:1:power.size
+        for l = 1:1:z.size
+            for m = 1:1:d.size
+                F_grad(i,j,:,l,m) = 1/2 * eps0 * eta * nmed * real(alpha(m,i)) * ...
+                    gradient(squeeze(intensity(i,j,:,l,m)),r.values);
+            end
+        end
+    end
+end
+
+velocity = zeros(size(F_grad));
+for m = 1:1:d.size
+    velocity(:,:,:,:,m) = F_grad(:,:,:,:,m) ./ (6*pi*eta*d(m)/2);
+end
+
+% time = zeros(size(velocity));
+% for i = 1:1:lambda.size
+%     for j = 1:1:power.size
+%         for k = 1:1:r.size
+%             time(i,j,:) = trapz(r(1:1:k),velocity(i,j,1:1:k));
+%         end
+%     end
+% end
+
 
 %% Options
 % *************************************************************************
@@ -158,11 +236,15 @@ fixed_parameters = {num2str(min(lambda)), ...
                     };
                
 
-%% Plotting
+%% Line Plot
 % *************************************************************************
 
 menu_plot = 1;
-menu_plot = menu('Which variable to plot?', 'Potential', 'Intensity');
+menu_plot = menu('Which variable to plot?', ...
+    'Potential', ...
+    'Intensity', ...
+    'Gradient Force',...
+    'Velocity');
 
 x_index = 1;
 y_index = 1;
@@ -176,9 +258,9 @@ fixed_parameter_indices([x_index, y_index]) = [];
 
 input_title = 'Select fixed parameter values';
 input_data = options(fixed_parameter_indices);
-limits = fixed_parameters(fixed_parameter_indices);
+variable_limits = fixed_parameters(fixed_parameter_indices);
 dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
-answer = inputdlg(input_data,input_title,dim,limits,dlg_options);
+answer = inputdlg(input_data,input_title,dim,variable_limits,dlg_options);
 fixed_parameters(fixed_parameter_indices) = answer;
 
 indices = cell(size(options));
@@ -207,7 +289,14 @@ elseif menu_plot == 2 % intensity
     h = plot(parameters{x_index}, ...
              squeeze(intensity(indices{1}, indices{2}, indices{3}, indices{4})), ...
              'LineWidth', 2); hold all
-    % TO DO: figure out the intensity units!
+elseif menu_plot == 3 % gradient force
+    h = plot(parameters{x_index}, ...
+             squeeze(F_grad(indices{1}, indices{2}, indices{3}, indices{4}, indices{5})), ...
+             'LineWidth', 2); hold all
+elseif menu_plot == 4 % velocity
+    h = plot(parameters{x_index}, ...
+             squeeze(velocity(indices{1}, indices{2}, indices{3}, indices{4}, indices{5})), ...
+             'LineWidth', 2); hold all
 end
 plot_legend = cell(size(h,1),1);
 for i = indices{y_index}
@@ -215,10 +304,13 @@ for i = indices{y_index}
 end
 xlabel([parameter_names{x_index} ' (' parameter_units{x_index} ')'])
 if menu_plot == 1 % potential
-    ylabel('Energy (kT@294K)')
+    ylabel(['Energy (kT@' num2str(T) 'K)'])
 elseif menu_plot == 2 % intensity
-    ylabel('Intensity (a.u.)')
-    % TO DO: figure out the intensity units!
+    ylabel('Intensity (mW/nm^2)')
+elseif menu_plot == 3 % gradient force
+    ylabel('F_{grad} (???)')
+elseif menu_plot == 4 % velocity
+    ylabel('Velocity (???)')
 end
 
 set(gca,'FontSize', 14)
@@ -256,7 +348,11 @@ end
 % *************************************************************************
 
 menu_plot = 1;
-menu_plot = menu('Which variable to plot?', 'Potential', 'Intensity');
+menu_plot = menu('Which variable to plot?', ...
+    'Potential', ...
+    'Intensity', ...
+    'Gradient Force',...
+    'Velocity');
 
 x_index = 1;
 y_index = 1;
@@ -270,9 +366,9 @@ fixed_parameter_indices([x_index, y_index]) = [];
 
 input_title = 'Select fixed parameter values';
 input_data = options(fixed_parameter_indices);
-limits = fixed_parameters(fixed_parameter_indices);
+variable_limits = fixed_parameters(fixed_parameter_indices);
 dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
-answer = inputdlg(input_data,input_title,dim,limits,dlg_options);
+answer = inputdlg(input_data,input_title,dim,variable_limits,dlg_options);
 fixed_parameters(fixed_parameter_indices) = answer;
 
 indices = cell(size(options));
@@ -295,6 +391,8 @@ if menu_plot == 1 % potential
     contour_values = squeeze(potential(indices{1}, indices{2}, indices{3}, indices{4}, indices{5}));
 elseif menu_plot == 2 % intensity
     contour_values = squeeze(intensity(indices{1}, indices{2}, indices{3}, indices{4}));
+elseif menu_plot == 3 % gradient force
+    contour_values = squeeze(F_grad(indices{1}, indices{2}, indices{3}, indices{4}));
 end
 
 if size(contour_values,1) == size(parameters{x_index},2)
@@ -314,9 +412,10 @@ colorbar
 xlabel([parameter_names{x_index} ' (' parameter_units{x_index} ')'])
 ylabel([parameter_names{y_index} ' (' parameter_units{y_index} ')'])
 if menu_plot == 1 % potential
-    title({'Energy (kT@294K)', title_text})
+    title({['Energy (kT@' num2str(T) 'K)'], title_text})
 elseif menu_plot == 2 % intensity
-    title({'Intensity (a.u.)', title_text}) 
-    % TO DO: figure out the intensity units!
+    title({'Intensity (mW/nm^2)', title_text}) 
+elseif menu_plot == 3 % gradient force
+    title({'F_{grad} (???)', title_text}) 
 end
 set(gca, 'FontSize', 16);
