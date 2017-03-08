@@ -13,49 +13,53 @@ nmed = 1.33; % Refractive index of water
 T = 273 + 70; % K. Ambient temperature
 
 d.name = 'Diameter';
+d.symbol = 'd';
 d.units = 'nm';
 d.min = 8; 
 d.max = 10; 
 d.step = 2; 
 d.values = d.min : d.step : d.max;
 d.size = size(d.values,2);
+d.selected = d.min;
 
 lambda.name = 'Wavelength';
 lambda.units = 'nm';
+lambda.symbol = '\lambda';
 lambda.min = 725;
-lambda.max = 795;
-lambda.step = 5;
+lambda.max = 975;
+lambda.step = 50;
 lambda.values = lambda.min : lambda.step : lambda.max;
 lambda.size = size(lambda.values,2);
+lambda.selected = lambda.min;
 
 power.name = 'Power';
+power.symbol = 'P';
 power.units = 'mW';
 power.min = 100;
 power.max = 500;
 power.step = 100;
 power.values = power.min : power.step : power.max;
 power.size = size(power.values,2);
+power.selected = power.min;
 
 parameters = [d,lambda,power];
 
 column_titles = {'Min:', 'Max:', 'Step:'};
-variable_limits = zeros(size(parameters,2),size(column_titles,2));
+default_values = zeros(size(parameters,2),size(column_titles,2));
 row_titles = cell(size(parameters,2),1);
-i_counter = 0;
-for i = parameters
-    i_counter = i_counter + 1;
-    row_titles{i_counter} = [i.name ' (' i.units ')'];
-    variable_limits(i_counter,:) = [i.min, i.max, i.step];
+for i = 1:1:size(parameters,2)
+    row_titles{i} = [parameters(i).name ' (' parameters(i).units ')'];
+    default_values(i,:) = [parameters(i).min, parameters(i).max, parameters(i).step];
 end
           
-variable_limits = dialog_table(row_titles,column_titles,variable_limits);
+% variable_limits = dialog_table(row_titles,column_titles,variable_limits);
 
 i_counter = 0;
 for i = parameters
     i_counter = i_counter + 1;
-    i.min = variable_limits(i_counter,1);
-    i.max = variable_limits(i_counter,2);
-    i.step = variable_limits(i_counter,3);
+    i.min = default_values(i_counter,1);
+    i.max = default_values(i_counter,2);
+    i.step = default_values(i_counter,3);
     i.values = i.min : i.step : i.max;
     i.size = size(i.values,2);
     parameters(i_counter) = i;
@@ -112,31 +116,35 @@ menu_profile = 1;
     
 if menu_profile == 1 % Bessel
     r.name = 'Radial coordinate';
-    r.units = 'um';
+    r.symbol = 'r';
+    r.units = '\mum';
     r.min = -R; 
     r.max = R; 
     r.size = 200;
     r.values = linspace(r.min,r.max,r.size);
     r.step = r.values(2)-r.values(1);     
-
-%     r = linspace(-R, R, 200); % um. Radial coordinate inside fibre 
-%     r = 0; % um. Radial coordinate inside fibre
-
+    r.selected = r.min;
+    
     j12 = 0.269514; % Square of the Bessel function 1st kind 1st order at the first zero of the 0th order
     j01 = 2.40483; % First zero of the Bessel function 1st kind 0th order
     J02 = besselj(0,j01*r.values/R).^2; % Square of the Bessel function 1st kind 0th order
 
-%     z = 0;
-%     z = 0:1:5;
     z.name = 'Axial coordinate';
+    z.symbol = 'z';
     z.units = 'um';
     z.min = 0; 
     z.max = 0; 
-    z.size = 200;
+    z.size = 1;
     z.values = linspace(z.min,z.max,z.size);
-    z.step = z.values(2)-z.values(1);
+    z.selected = z.min;
+    if z.size > 1
+        z.step = z.values(2)-z.values(1);
+    else
+        z.step = 0;
+    end
     
 elseif menu_profile == 2 % Gaussian
+    % NEEDS UPDATING TO THE NEW STRUCTURE FORMAT!!!
     r = linspace(0, 15, 100); % um. Radial coordinate
     z = 0:20:200; % um. Distance from the end of the fibre
     w0 = 5; % um. Beam radius at the end of the fibre
@@ -144,71 +152,71 @@ elseif menu_profile == 2 % Gaussian
     wz = zeros(lambda.size,z.size);
 end
 
-intensity = zeros(lambda.size,power.size,r.size,z.size,d.size);
-potential = zeros(lambda.size,power.size,r.size,z.size,d.size);
-
-i_values = lambda.values;
-j_values = power.values;
-k_values = r.values;
-l_values = z.values;
-m_values = d.values;
-
-i_counter = 0;
-for i = i_values;
-    i_counter = i_counter + 1;
-    clc, disp([num2str(i_counter/size(i_values,2)*100, '%.0f') '%'])
+intensity.name = 'Intensity';
+intensity.symbol = 'I';
+intensity.units = 'mW/nm^2';
+intensity.values = zeros(lambda.size,power.size,r.size,z.size,d.size);
     
-    j_counter = 0;
-    for j = j_values
-        j_counter = j_counter + 1;
-        
-        k_counter = 0;
-        for k = k_values
-            k_counter = k_counter + 1;
-            
-            l_counter = 0;
-            for l = l_values
-                l_counter = l_counter + 1;
-                
+potential.name = 'Potential Energy';
+potential.symbol = 'U';
+potential.units = ['kT@' num2str(T) 'K'];
+potential.values = zeros(lambda.size,power.size,r.size,z.size,d.size);
+
+% intensity = zeros(lambda.size,power.size,r.size,z.size,d.size);
+% potential = zeros(lambda.size,power.size,r.size,z.size,d.size);
+
+
+for i = 1:1:lambda.size;
+    clc, disp([num2str(i/lambda.size*100, '%.0f') '%'])    
+    for j = 1:1:power.size        
+        for k = 1:1:r.size            
+            for l = 1:1:z.size                
                 if menu_profile == 1 % Bessel
-                    intensity(i_counter, j_counter, k_counter, l_counter) = ...
-                        (j*1e-3 / (pi * (R*1e-6)^2)) / j12 * J02(k_counter); % mW / nm^2
-%                 elseif menu_profile == 2 % Gaussian
-%                     wz(i,l) = w0 * sqrt(1+ (lambda.values(i)/1e3*z.values(l)/pi/w0^2)^2); % um. Beam diameter at distance z from the end of the fibre
-%                     intensity(i,j,k,l) = 2*power.values(j)*1e-3 / (pi*(wz(i,l)*1e-6)^2) * exp(-2*r.values(k)^2/wz(i,l)^2);
+                    intensity.values(i,j,k,l) = ...
+                        (power.values(j)*1e-3 / (pi * (R*1e-6)^2)) / j12 * J02(k); % mW / nm^2
+                elseif menu_profile == 2 % Gaussian
+                    % NEEDS UPDATING TO THE NEW STRUCTURE FORMAT!!!
+                    wz(i,l) = w0 * sqrt(1+ (lambda.values(i)/1e3*z.values(l)/pi/w0^2)^2); % um. Beam diameter at distance z from the end of the fibre
+                    intensity.values(i,j,k,l) = 2*power.values(j)*1e-3 / (pi*(wz(i,l)*1e-6)^2) * exp(-2*r.values(k)^2/wz(i,l)^2);
                 end
-                
-                m_counter = 0;
-                for m = m_values
-                    m_counter = m_counter + 1;
-                    potential(i_counter, j_counter, k_counter, l_counter, m_counter) = ...
-                        - 1/2 * eps0 * eta * nmed * real(alpha(m_counter,i_counter)) * ...
-                        intensity(i_counter, j_counter, k_counter, l_counter) / KE;
+                for m = 1:1:d.size
+                    potential.values(i,j,k,l,m) = ...
+                        - 1/2 * eps0 * eta * nmed * real(alpha(m,i)) * ...
+                        intensity.values(i,j,k,l) / KE;
                 end
             end
         end
     end
 end
+disp([i,j,k,l,m])
 % intensity(lambda,power,r,z,d)
 % potential(lambda,power,r,z,d)
 
 %% Calculate the gradient force, velocity, and time
 % *************************************************************************
-F_grad = zeros(size(intensity));
+F_grad.name = 'Gradient Force';
+F_grad.symbol = 'F_{grad}';
+F_grad.units = '???';
+F_grad.values = zeros(size(intensity.values));
+
 for i = 1:1:lambda.size
     for j = 1:1:power.size
         for l = 1:1:z.size
             for m = 1:1:d.size
-                F_grad(i,j,:,l,m) = 1/2 * eps0 * eta * nmed * real(alpha(m,i)) * ...
-                    gradient(squeeze(intensity(i,j,:,l,m)),r.values);
+                F_grad.values(i,j,:,l,m) = 1/2 * eps0 * eta * nmed * real(alpha(m,i)) * ...
+                    gradient(squeeze(intensity.values(i,j,:,l,m)),r.values);
             end
         end
     end
 end
 
-velocity = zeros(size(F_grad));
+velocity.name = 'Particle velocity';
+velocity.symbol = 'v';
+velocity.units = '???';
+velocity.values = zeros(size(F_grad.values));
+
 for m = 1:1:d.size
-    velocity(:,:,:,:,m) = F_grad(:,:,:,:,m) ./ (6*pi*eta*d(m)/2);
+    velocity.values(:,:,:,:,m) = F_grad.values(:,:,:,:,m) ./ (6*pi*eta*d.values(m)/2);
 end
 
 % time = zeros(size(velocity));
@@ -224,104 +232,81 @@ end
 %% Options
 % *************************************************************************
 
-options = {['Wavelength: ' num2str(min(lambda)) ' to ' num2str(max(lambda)) ' nm'], ...
-           ['Power: ' num2str(min(power)) ' to ' num2str(max(power)) ' mW'], ...
-           ['Radial coordinate r : ' num2str(min(r)) ' to ' num2str(max(r)) ' um'], ...
-           ['Axial coordinate z: ' num2str(min(z)) ' to ' num2str(max(z)) ' um'], ...
-           ['Particle diameter d: ' num2str(min(d)) ' to ' num2str(max(d)) ' nm'], ...
-           };
-       
-parameters = {lambda, ...
-              power, ...
-              r, ...
-              z, ...
-              d, ...
-              };
-
-parameter_names = {'\lambda', ...
-                   'P', ...
-                   'r', ...
-                   'z', ...
-                   'd', ...
-                   };
-               
-parameter_units = {'nm', ...
-                   'mW', ...
-                   '\mum', ...
-                   '\mum', ...
-                   'nm', ...
-                   };
-
-fixed_parameters = {num2str(min(lambda)), ...
-                    num2str(min(power)), ...
-                    num2str(min(r)), ...
-                    num2str(min(z)), ...
-                    num2str(min(d)), ...
-                    };
-               
+parameters = [lambda,power,r,z,d];
+parameters_options = cell(size(parameters));
+i_counter = 0;
+for i = parameters
+    i_counter = i_counter + 1;
+    parameters_options{i_counter} = [i.name ': ' i.symbol ': ' ...
+        num2str(i.min) ' to ' num2str(i.max) ' ' i.units];
+end
+             
 
 %% Line Plot
 % *************************************************************************
 
-menu_plot = 1;
-menu_plot = menu('Which variable to plot?', ...
-    'Potential', ...
-    'Intensity', ...
-    'Gradient Force',...
-    'Velocity');
+variables = [potential, intensity, F_grad, velocity];
+variables_options = cell(size(variables));
+for i = 1:1:size(variables,2)
+    variables_options{i} = variables(i).name;
+end
+
+menu_plot = 3;
+% menu_plot = menu('Which variable to plot?', variables_options);
 
 x_index = 1;
 y_index = 1;
 while x_index == y_index
     [x_index, y_index] = dialog_two_lists('Select axis and legend for line plot:', ...
-                                          'X Axis:', options, ...
-                                          'Legend:', options);
+                                          'X Axis:', parameters_options, 3,...
+                                          'Legend:', parameters_options, 2);
 end
-fixed_parameter_indices = 1:1:size(options,2);
+
+fixed_parameter_indices = 1:1:size(parameters_options,2);
 fixed_parameter_indices([x_index, y_index]) = [];
 
-input_title = 'Select fixed parameter values';
-input_data = options(fixed_parameter_indices);
-variable_limits = fixed_parameters(fixed_parameter_indices);
-dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
-answer = inputdlg(input_data,input_title,dim,variable_limits,dlg_options);
-fixed_parameters(fixed_parameter_indices) = answer;
+default_values = cell(size(fixed_parameter_indices));
+i_counter = 0;
+for i = fixed_parameter_indices
+    i_counter = i_counter + 1;
+    default_values{i_counter} = num2str(parameters(i).selected);
+end
 
-indices = cell(size(options));
+input_title = 'Select fixed parameter values';
+input_data = parameters_options(fixed_parameter_indices);
+dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
+answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
+
+i_counter = 0;
+for i = fixed_parameter_indices
+    i_counter = i_counter + 1;
+    parameters(i).selected = str2double(answer{i_counter});
+end
+
+indices = cell(size(parameters_options));
 if menu_profile == 1 % bessel
     title_text = 'Au NP';
 elseif menu_profile == 2 % gaussian
     title_text = ['Au NP, w0 = ' num2str(w0) ' \mum'];
 end
-for i = 1:1:size(options,2)
+
+for i = 1:1:size(parameters,2)  
     if i == x_index || i == y_index
-        indices{i} = 1:1:size(potential,i);
+        indices{i} = 1:1:size(variables(1).values,i);
     else
-        [~,indices{i}] = min(abs(parameters{i}-str2double(fixed_parameters{i})));
-        title_text = strcat(title_text, ...
-            [', ' parameter_names{i} ' = ' num2str(parameters{i}(indices{i})) ' ' parameter_units{i}]);
+        [~,indices{i}] = min(abs(parameters(i).values - parameters(i).selected));
+        parameters(i).selected = parameters(i).values(indices{i});
+        title_text = strcat(title_text, [', ' parameters(i).symbol ' = ' ...
+            num2str(parameters(i).selected) ' ' parameters(i).units]);
     end
 end
 
 figure_line = figure('Units','normalized','Position',[0.1 0.1 0.8 0.7], 'tag', 'figure_line');
 
-if menu_plot == 1 % potential
-    h = plot(parameters{x_index}, ...
-             squeeze(potential(indices{1}, indices{2}, indices{3}, indices{4}, indices{5})), ...
-             'LineWidth', 2); hold all
-elseif menu_plot == 2 % intensity
-    h = plot(parameters{x_index}, ...
-             squeeze(intensity(indices{1}, indices{2}, indices{3}, indices{4})), ...
-             'LineWidth', 2); hold all
-elseif menu_plot == 3 % gradient force
-    h = plot(parameters{x_index}, ...
-             squeeze(F_grad(indices{1}, indices{2}, indices{3}, indices{4}, indices{5})), ...
-             'LineWidth', 2); hold all
-elseif menu_plot == 4 % velocity
-    h = plot(parameters{x_index}, ...
-             squeeze(velocity(indices{1}, indices{2}, indices{3}, indices{4}, indices{5})), ...
-             'LineWidth', 2); hold all
-end
+h = plot(parameters(x_index).values, ...
+         squeeze(variables(menu_plot).values(indices{1}, indices{2}, indices{3}, indices{4}, indices{5})), ...
+         'LineWidth', 2); hold all
+         
 plot_legend = cell(size(h,1),1);
 for i = indices{y_index}
     plot_legend{i} = [parameter_names{y_index} ' = ' num2str(parameters{y_index}(i)) ' ' parameter_units{y_index}];
@@ -382,26 +367,26 @@ x_index = 1;
 y_index = 1;
 while x_index == y_index
     [x_index, y_index] = dialog_two_lists('Select axis for 2D contour plot:', ...
-                                          'X Axis:', options, ...
-                                          'Y Axis:', options);
+                                          'X Axis:', parameters_options, ...
+                                          'Y Axis:', parameters_options);
 end
-fixed_parameter_indices = 1:1:size(options,2);
+fixed_parameter_indices = 1:1:size(parameters_options,2);
 fixed_parameter_indices([x_index, y_index]) = [];
 
 input_title = 'Select fixed parameter values';
-input_data = options(fixed_parameter_indices);
-variable_limits = fixed_parameters(fixed_parameter_indices);
+input_data = parameters_options(fixed_parameter_indices);
+default_values = fixed_parameters(fixed_parameter_indices);
 dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
-answer = inputdlg(input_data,input_title,dim,variable_limits,dlg_options);
+answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
 fixed_parameters(fixed_parameter_indices) = answer;
 
-indices = cell(size(options));
+indices = cell(size(parameters_options));
 if menu_profile == 1 % bessel
     title_text = 'Au NP';
 elseif menu_profile == 2 % gaussian
     title_text = ['Au NP, w0 = ' num2str(w0) ' \mum'];
 end
-for i = 1:1:size(options,2)
+for i = 1:1:size(parameters_options,2)
     if i == x_index || i == y_index
         indices{i} = 1:1:size(potential,i);
     else
