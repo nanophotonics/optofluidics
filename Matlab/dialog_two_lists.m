@@ -2,7 +2,7 @@ function [a_index, b_index] = dialog_two_lists(dlg_title, ...
     a_title, a_options, a_default, ...
     b_title, b_options, b_default)
 
-    disp(nargin)
+%     disp(nargin)
     if nargin == 5
         
     end
