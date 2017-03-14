@@ -1,3 +1,8 @@
+% Written by Ana Andres-Arroyo (aa938)
+% Calculates the optical potential of a Bessel/Gaussian beam
+% Calculates the gradient force and particle velocity
+% Fits the gradient force to Hooke's law for small displacements
+
 clc
 clear 
 close all
@@ -9,62 +14,62 @@ eta = 377; % Ohm. Characteristic impedance of free space
 eps0 = 8.85e-12; % F/m. Permittivity of free space
 kb = 1.38e-23; % m^2*kg*s^-2*K^-1. Boltzmann constant
 
-R = 9; % um. Radius of the HCPCF core
 nmed = 1.33; % Refractive index of water
-T = 273 + 70; % K. Ambient temperature
+T = 273.15 + 70; % K. Ambient temperature
+viscosity_log = (1.3272*(293.15-T)-0.001053*(T-293.15).^2) ./ (T-168.15) - 2.999; % for T > 293.15 K = 20 C
+viscosity = 10.^viscosity_log; % Pa*s
 
 d.name = 'Diameter';
 d.symbol = 'd';
 d.units = 'nm';
-d.min = 8; 
-d.max = 10; 
-d.step = 2; 
+d.min = 10; 
+d.max = 100; 
+d.step = 10; 
 d.values = d.min : d.step : d.max;
 d.size = size(d.values,2);
-d.selected = d.min;
+d.selected = 8;
 
 lambda.name = 'Wavelength';
 lambda.units = 'nm';
 lambda.symbol = '\lambda';
-lambda.min = 725;
-lambda.max = 975;
+lambda.min = 1064;
+lambda.max = 1064;
 lambda.step = 50;
 lambda.values = lambda.min : lambda.step : lambda.max;
 lambda.size = size(lambda.values,2);
-lambda.selected = lambda.min;
+lambda.selected = 800;
 
 power.name = 'Power';
 power.symbol = 'P';
 power.units = 'mW';
-power.min = 100;
-power.max = 500;
-power.step = 100;
+power.min = 20;
+power.max = 20;
+power.step = 50;
 power.values = power.min : power.step : power.max;
 power.size = size(power.values,2);
-power.selected = power.min;
+power.selected = power.max;
 
 parameters = [d,lambda,power];
 
 column_titles = {'Min:', 'Max:', 'Step:'};
-default_values = zeros(size(parameters,2),size(column_titles,2));
+limits = zeros(size(parameters,2),size(column_titles,2));
 row_titles = cell(size(parameters,2),1);
 for i = 1:1:size(parameters,2)
     row_titles{i} = [parameters(i).name ' (' parameters(i).units ')'];
-    default_values(i,:) = [parameters(i).min, parameters(i).max, parameters(i).step];
+    limits(i,:) = [parameters(i).min, parameters(i).max, parameters(i).step];
 end
           
-default_values = dialog_table(row_titles,column_titles,default_values);
+limits = dialog_table(row_titles,column_titles,limits);
 
 i_counter = 0;
 for i = parameters
     i_counter = i_counter + 1;
-    i.min = default_values(i_counter,1);
-    i.max = default_values(i_counter,2);
-    i.step = default_values(i_counter,3);
+    i.min = limits(i_counter,1);
+    i.max = limits(i_counter,2);
+    i.step = limits(i_counter,3);
     i.values = i.min : i.step : i.max;
     i.size = size(i.values,2);
     parameters(i_counter) = i;
-%     disp(i)
 end
 
 d = parameters(1);
@@ -97,42 +102,53 @@ n_particle = n_real + 1i*n_imaginary;
 %% Calculate the polarisability
 % *************************************************************************
 
-% standard polarisability (SI units)
+% standard polarisability (CGS units: cm^3) ?????
 alpha_0 = zeros(d.size,lambda.size);
 for m = 1:1:d.size
     alpha_0(m,:) = 4*pi*(d.values(m)*1e-9/2)^3 .* ...
         (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2); 
 end
 
-% polarisability (SI units)
+% polarisability (CGS units: cm^3) ?????
+% a correction to the polarisability may sometimes be needed
 alpha = alpha_0;
 
-%% Calculate the intensity and potential
+%% CALCULATE: intensity, potential
 % *************************************************************************
 
 KE = kb*T;  % J, kinetic energy
 
-menu_profile = 1;
-% menu_profile = menu('Beam Profile?', 'Bessel', 'Gaussian');
-    
+menu_profile = 2;
+menu_profile = menu('Beam Profile?', 'Bessel', 'Gaussian');
+
+r.name = 'Radial coordinate';
+r.symbol = 'r';
+r.units = '\mum';
+
+z.name = 'Axial coordinate';
+z.symbol = 'z';
+z.units = '\mum';    
+
 if menu_profile == 1 % Bessel
-    r.name = 'Radial coordinate';
-    r.symbol = 'r';
-    r.units = '\mum';
+    R = 9; % um. Radius of the HCPCF core
+    input_title = 'Bessel beam parameters.';
+    input_data = 'Radius of HCPCF core: R (um):';
+    default_values = {num2str(R)};
+    dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
+    answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
+    R = str2double(answer{1});
+    
     r.min = -R; 
     r.max = R; 
-    r.size = 20;
+    r.size = 201; % select and odd number
     r.values = linspace(r.min,r.max,r.size);
     r.step = r.values(2)-r.values(1);     
-    r.selected = r.min;
+    r.selected = r.max;
     
     j12 = 0.269514; % Square of the Bessel function 1st kind 1st order at the first zero of the 0th order
     j01 = 2.40483; % First zero of the Bessel function 1st kind 0th order
     J02 = besselj(0,j01*r.values/R).^2; % Square of the Bessel function 1st kind 0th order
 
-    z.name = 'Axial coordinate';
-    z.symbol = 'z';
-    z.units = 'um';
     z.min = 0; 
     z.max = 0; 
     z.size = 1;
@@ -144,16 +160,34 @@ if menu_profile == 1 % Bessel
         z.step = 0;
     end
     
-elseif menu_profile == 2 % Gaussian
-    % NEEDS UPDATING TO THE NEW STRUCTURE FORMAT!!!
-    r = linspace(0, 15, 100); % um. Radial coordinate
-    z = 0:20:200; % um. Distance from the end of the fibre
-    w0 = 5; % um. Beam radius at the end of the fibre
-    % MAKE POP UP WINDOW
+elseif menu_profile == 2 % Gaussian   
+    w0 = 0.7; % um. Beam radius at the end of the fibre
+       
+    input_title = 'Gaussian beam parameters.';
+    input_data = 'Beam waist: w0 (um):';
+    default_values = {num2str(w0)};
+    dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
+    answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
+    w0 = str2double(answer{1});
+    
+    r.min = -w0*3; 
+    r.max = w0*3;    
+    r.size = 101; % select and odd number
+    r.values = linspace(r.min,r.max,r.size);
+    r.step = r.values(2)-r.values(1);     
+    r.selected = r.min;
+
+    z.min = 0; 
+    z.max = 20; 
+    z.size = 201; % select and odd number
+    z.values = linspace(z.min,z.max,z.size);
+    z.step = z.values(2)-z.values(1);
+    z.selected = z.min;    
+    
     wz = zeros(lambda.size,z.size);
 end
 
-intensity.name = 'Intensity';
+intensity.name = 'Beam Intensity';
 intensity.symbol = 'I';
 intensity.units = 'mW/nm^2';
 intensity.values = zeros(lambda.size,power.size,r.size,z.size,d.size);
@@ -163,22 +197,18 @@ potential.symbol = 'U';
 potential.units = ['kT@' num2str(T) 'K'];
 potential.values = zeros(lambda.size,power.size,r.size,z.size,d.size);
 
-% intensity = zeros(lambda.size,power.size,r.size,z.size,d.size);
-% potential = zeros(lambda.size,power.size,r.size,z.size,d.size);
-
-
 for i = 1:1:lambda.size;
-    clc, disp([num2str(i/lambda.size*100, '%.0f') '%'])    
+    clc, disp([num2str(i/lambda.size*100, '%.0f') '%: intensity and potential'])    
     for j = 1:1:power.size        
         for k = 1:1:r.size            
             for l = 1:1:z.size                
                 if menu_profile == 1 % Bessel
-                    intensity.values(i,j,k,l) = ...
+                    intensity.values(i,j,k,l,:) = ...
                         (power.values(j)*1e-3 / (pi * (R*1e-6)^2)) / j12 * J02(k); % mW / nm^2
                 elseif menu_profile == 2 % Gaussian
                     % NEEDS UPDATING TO THE NEW STRUCTURE FORMAT!!!
                     wz(i,l) = w0 * sqrt(1+ (lambda.values(i)/1e3*z.values(l)/pi/w0^2)^2); % um. Beam diameter at distance z from the end of the fibre
-                    intensity.values(i,j,k,l) = 2*power.values(j)*1e-3 / (pi*(wz(i,l)*1e-6)^2) * exp(-2*r.values(k)^2/wz(i,l)^2);
+                    intensity.values(i,j,k,l,:) = 2*power.values(j)*1e-3 / (pi*(wz(i,l)*1e-6)^2) * exp(-2*r.values(k)^2/wz(i,l)^2);
                 end
                 for m = 1:1:d.size
                     potential.values(i,j,k,l,m) = ...
@@ -189,62 +219,140 @@ for i = 1:1:lambda.size;
         end
     end
 end
-% disp([i,j,k,l,m])
+% disp(size(intensity.values))
 % intensity(lambda,power,r,z,d)
 % potential(lambda,power,r,z,d)
 
-%% Calculate the gradient force, velocity, and time
+%% CALCULATE: gradient force, velocity, time
 % *************************************************************************
-F_grad.name = 'Gradient Force';
-F_grad.symbol = 'F_{grad}';
-F_grad.units = '???';
-F_grad.values = zeros(size(intensity.values));
+Fgrad.name = 'Gradient Force';
+Fgrad.symbol = 'F_{grad}';
+Fgrad.units = 'nN'; 
+Fgrad.values = zeros(size(intensity.values));
 
 for i = 1:1:lambda.size
+    clc, disp([num2str(i/lambda.size*100, '%.0f') '%: gradient force'])    
     for j = 1:1:power.size
         for l = 1:1:z.size
             for m = 1:1:d.size
-                F_grad.values(i,j,:,l,m) = 1/2 * eps0 * eta * nmed * real(alpha(m,i)) * ...
-                    gradient(squeeze(intensity.values(i,j,:,l,m)),r.values);
-                % IT's NOT WORKING WELL
+                % polarisability in cm^3
+                Fgrad.values(i,j,:,l,m) = 1/2 * eps0 * eta * nmed * real(alpha(m,i)) * ...
+                    gradient(squeeze(intensity.values(i,j,:,l,m)),r.values) * 1e15 * 1e9;        
             end
         end
     end
 end
 
-velocity.name = 'Particle velocity';
+velocity.name = 'Particle Velocity';
 velocity.symbol = 'v';
-velocity.units = '???';
-velocity.values = zeros(size(F_grad.values));
+velocity.units = 'm/s';
+velocity.values = zeros(size(Fgrad.values));
 
 for m = 1:1:d.size
-    velocity.values(:,:,:,:,m) = F_grad.values(:,:,:,:,m) ./ (6*pi*eta*d.values(m)/2);
+    velocity.values(:,:,:,:,m) = Fgrad.values(:,:,:,:,m) ./ (6*pi*viscosity*d.values(m)/2);
 end
 
 time.name = 'Response time';
-time.symbol = 'v';
-time.units = '???';
+time.symbol = 't';
+time.units = 's';
 time.values = zeros(size(velocity.values));
 
+% MAKE SURE THERE IS AN ODD NUMBER OF r.values
+[~,zero_index] = min(abs(r.values));
 for i = 1:1:lambda.size
+    clc, disp([num2str(i/lambda.size*100, '%.0f') '%: time'])    
     for j = 1:1:power.size
         for k = 1:1:r.size
-            for l = 1:1:z.size
-                for m = 1:1:d.size
-%                     time.values(i,j,k,l,m) = trapz(r.values(1:1:k),velocity.values(i,j,1:1:k,l,m));
-                    time.values(i,j,k,l,m) = sum(velocity.values(i,j,1:1:k,l,m));
-                    % UPDATE THIS FORMULA TO INTEGRATE FROM r = 0 to r = r.values(k)
+            if k ~= zero_index
+                if k < zero_index
+                    integration_indices = k:1:zero_index;
+                elseif k > zero_index
+                    integration_indices = zero_index:1:k;
+                end
+                for l = 1:1:z.size
+                    for m = 1:1:d.size
+                        time.values(i,j,k,l,m) = abs(trapz(r.values(integration_indices),...
+                            squeeze(velocity.values(i,j,integration_indices,l,m))));
+                    end
                 end
             end
         end
     end
 end
 
+%% LINEAR FIT: trap stiffness
+% *************************************************************************
+
+r_linear = r.max * 0.2;
+[~, linear_indices] = intersect(find(r.values < r_linear), find(r.values > - r_linear));
+
+kr.name = 'Radial Trap Stiffness';
+kr.symbol = 'kr';
+kr.units = 'pN/\mum/mW'; 
+kr.values = zeros(lambda.size,z.size,d.size);
+
+
+
+% Fgrad.values = zeros(lambda.size,power.size,r.size,z.size,d.size);
+j = power.size;
+for i = 1:1:lambda.size
+    clc, disp([num2str(i/lambda.size*100, '%.0f') '%: trap stiffness'])    
+%     if i == 1
+%         figures{end+1} = figure('Units','normalized','Position',[0.1 0.1 0.8 0.7]);
+%         plot_legend = {};
+%     end
+    for l = 1:1:z.size
+        for m = 1:1:d.size
+            fitting_parameters = polyfit(r.values(linear_indices), ...
+                squeeze(Fgrad.values(i,j,linear_indices,l,m))', 1);
+            kr.values(i,l,m) = -fitting_parameters(1) / power.values(j) * 1e3;
+            
+%             if i == 1
+%                 plot(r.values, ...
+%                     squeeze(Fgrad.values(i,j,:,l,m)), ...
+%                     '-', 'LineWidth', 2), hold all   
+%                 plot_legend{end+1} = [d.name ' = ' num2str(d.values(m)) ' ' d.units];
+%                 plot(r.values(linear_indices), ...
+%                     r.values(linear_indices)* fitting_parameters(1) + fitting_parameters(2), ...
+%                     '--', 'LineWidth', 2), hold all      
+%                 plot_legend{end+1} = ['kr = ' num2str(kr.values(i,l,m)) ' pN/\mum/mW'];
+%                 legend(plot_legend, 'Location', 'EO')
+%                 xlabel([r.name ': ' r.symbol ' (' r.units ')'])
+%                 ylabel([Fgrad.name ': ' Fgrad.symbol ' (' Fgrad.units ')'])
+%                 grid on
+%                 set(gca, 'FontSize', 16);     
+%             end
+        end
+    end
+end
 
 %% Options
 % *************************************************************************
 
-parameters = [lambda,power,r,z,d];
+variables = [potential, intensity, Fgrad, kr, velocity, time];
+variables_options = cell(size(variables));
+for i = 1:1:size(variables,2)
+    variables_options{i} = variables(i).name;
+end
+selected_variable = 2;
+
+plot_styles = {'Line','Contour'};
+selected_style = 1;
+
+[selected_style, selected_variable] = dialog_two_lists('Select plot options:', ...
+                                      'Style', plot_styles, selected_style,...
+                                      'Variable', variables_options, selected_variable);
+
+if strcmp(variables(selected_variable).symbol, 'kr')                        
+    parameters = [lambda,z,d];
+    x_index = 3;
+    y_index = 1;
+else
+    parameters = [lambda,power,r,z,d];
+    x_index = 3;
+    y_index = 2;
+end
+
 parameters_options = cell(size(parameters));
 i_counter = 0;
 for i = parameters
@@ -252,31 +360,11 @@ for i = parameters
     parameters_options{i_counter} = [i.name ': ' i.symbol ': ' ...
         num2str(i.min) ' to ' num2str(i.max) ' ' i.units];
 end
-x_index = 3;
-y_index = 2;
 
-variables = [potential, intensity, F_grad, velocity, time];
-variables_options = cell(size(variables));
-for i = 1:1:size(variables,2)
-    variables_options{i} = variables(i).name;
-end
-menu_variable = 3;
-
-plot_type = {'Line','Contour'};
-menu_plot = 1;
-
-
-%% Plot
-% *************************************************************************
-
-[menu_plot, menu_variable] = dialog_two_lists('Select plot options:', ...
-                                      'Type', plot_type, menu_plot,...
-                                      'Variable', variables_options, menu_variable);
-
-if menu_plot == 1 % line plot
+if selected_style == 1 % line plot
     plot_options{1} = 'X Axis';
     plot_options{2} = 'Legend';
-elseif menu_plot == 2 % contour plot
+elseif selected_style == 2 % contour plot
     plot_options{1} = 'X Axis';
     plot_options{2} = 'Y Axis';
 end
@@ -293,7 +381,7 @@ while okay == 0
     end
 end
 
-fixed_parameter_indices = 1:1:size(parameters_options,2);
+fixed_parameter_indices = 1:1:size(parameters,2);
 fixed_parameter_indices([x_index, y_index]) = [];
 
 default_values = cell(size(fixed_parameter_indices));
@@ -307,7 +395,6 @@ input_title = 'Select fixed parameter values';
 input_data = parameters_options(fixed_parameter_indices);
 dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
 answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
-
 i_counter = 0;
 for i = fixed_parameter_indices
     i_counter = i_counter + 1;
@@ -316,14 +403,14 @@ end
 
 indices = cell(size(parameters_options));
 if menu_profile == 1 % bessel
-    title_text = 'Au NP';
+    title_text = ['Au NP, Bessel, R = ' num2str(R) ' \mum'];
 elseif menu_profile == 2 % gaussian
-    title_text = ['Au NP, w0 = ' num2str(w0) ' \mum'];
+    title_text = ['Au NP, Gaussian, w0 = ' num2str(w0) ' \mum'];
 end
 
 for i = 1:1:size(parameters,2)  
     if i == x_index || i == y_index
-        indices{i} = 1:1:size(variables(1).values,i);
+        indices{i} = 1:1:parameters(i).size;
     else
         [~,indices{i}] = min(abs(parameters(i).values - parameters(i).selected));
         parameters(i).selected = parameters(i).values(indices{i});
@@ -333,11 +420,21 @@ for i = 1:1:size(parameters,2)
 end
 
 
-figures{end+1} = figure('Units','normalized','Position',[0.1 0.1 0.8 0.7], 'tag', 'figure_line');
+%% Plot
+% *************************************************************************
 
-if menu_plot == 1 % line plot
+% selected_style = menu('Plot Style: ', plot_styles);
+[selected_style, selected_variable] = dialog_two_lists('Select plot options:', ...
+                                      'Style', plot_styles, selected_style,...
+                                      'Variable', variables_options, selected_variable);
+
+figures{end+1} = figure('Units','normalized','Position',[0.1 0.1 0.8 0.7]);
+
+if selected_style == 1 % line plot
+    for i = 1:1:size(indices,2)
+    end
     h = plot(parameters(x_index).values, ...
-             squeeze(variables(menu_variable).values(indices{1}, indices{2}, indices{3}, indices{4}, indices{5})), ...
+             squeeze(variables(selected_variable).values(indices{:})), ...
              'LineWidth', 2); hold all
 
     plot_legend = cell(size(h,1),1);
@@ -345,7 +442,7 @@ if menu_plot == 1 % line plot
         plot_legend{i} = [parameters(y_index).symbol ' = ' num2str(parameters(y_index).values(i)) ' ' parameters(y_index).units];
     end
     xlabel([parameters(x_index).name ': ' parameters(x_index).symbol ' (' parameters(x_index).units ')'])
-    ylabel([variables(menu_variable).name ': ' variables(menu_variable).symbol ' (' variables(menu_variable).units ')'])
+    ylabel([variables(selected_variable).name ': ' variables(selected_variable).symbol ' (' variables(selected_variable).units ')'])
 
     set(gca,'FontSize', 14)
     legend(plot_legend, 'Location', 'EO')
@@ -375,8 +472,8 @@ if menu_plot == 1 % line plot
         h(i).LineWidth = 2;
     end
 
-elseif menu_plot == 2 % contour plot
-    contour_values = squeeze(variables(menu_variable).values(indices{1}, indices{2}, indices{3}, indices{4}, indices{5}));
+elseif selected_style == 2 % contour plot
+    contour_values = squeeze(variables(selected_variable).values(indices{:}));
     
     if size(contour_values,1) == parameters(x_index).size
         contour_values = contour_values';
@@ -396,6 +493,7 @@ elseif menu_plot == 2 % contour plot
     xlabel([parameters(x_index).name ': ' parameters(x_index).symbol ' (' parameters(x_index).units ')'])
     ylabel([parameters(y_index).name ': ' parameters(y_index).symbol ' (' parameters(y_index).units ')'])
     title({title_text,...
-        [variables(menu_variable).name ': ' variables(menu_variable).symbol ' (' variables(menu_variable).units ')']})
+        [variables(selected_variable).name ': ' variables(selected_variable).symbol ' (' variables(selected_variable).units ')']})
     set(gca, 'FontSize', 16);
 end
+
