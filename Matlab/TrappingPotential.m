@@ -13,17 +13,17 @@ figures = {};
 eta = 377; % Ohm. Characteristic impedance of free space
 eps0 = 8.85e-12; % F/m. Permittivity of free space
 kb = 1.38e-23; % m^2*kg*s^-2*K^-1. Boltzmann constant
-
+c=3E8; %light speed
 nmed = 1.33; % Refractive index of water
-T = 273.15 + 70; % K. Ambient temperature
+T = 273.15 + 20; % K. Ambient temperature
 viscosity_log = (1.3272*(293.15-T)-0.001053*(T-293.15).^2) ./ (T-168.15) - 2.999; % for T > 293.15 K = 20 C
 viscosity = 10.^viscosity_log; % Pa*s
 
 d.name = 'Diameter';
 d.symbol = 'd';
 d.units = 'nm';
-d.min = 10; 
-d.max = 100; 
+d.min = 60; 
+d.max = 60; 
 d.step = 10; 
 d.values = d.min : d.step : d.max;
 d.size = size(d.values,2);
@@ -32,8 +32,8 @@ d.selected = 8;
 lambda.name = 'Wavelength';
 lambda.units = 'nm';
 lambda.symbol = '\lambda';
-lambda.min = 1064;
-lambda.max = 1064;
+lambda.min = 800;
+lambda.max = 800;
 lambda.step = 50;
 lambda.values = lambda.min : lambda.step : lambda.max;
 lambda.size = size(lambda.values,2);
@@ -42,8 +42,8 @@ lambda.selected = 800;
 power.name = 'Power';
 power.symbol = 'P';
 power.units = 'mW';
-power.min = 20;
-power.max = 20;
+power.min = 1000;
+power.max = 1000;
 power.step = 50;
 power.values = power.min : power.step : power.max;
 power.size = size(power.values,2);
@@ -99,14 +99,14 @@ n_particle = n_real + 1i*n_imaginary;
 % xlim([200,1600])
 % grid on
 
-%% CALCULATE: polarisability
+%% Calculate the polarisability
 % *************************************************************************
 
 % standard polarisability (CGS units: cm^3) ?????
 alpha_0 = zeros(d.size,lambda.size);
 for m = 1:1:d.size
-    alpha_0(m,:) = 4*pi*(d.values(m)*1e-9/2)^3 .* ...
-        (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2); 
+    alpha_0(m,:) = nmed^2*eps0*4*pi*((d.values(m)*1e-9)/2)^3 .* ...
+        (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2); %from  https://www.photonics.ethz.ch/fileadmin/user_upload/FILES2SHARE/ignatovitch02.pdf
 end
 
 % polarisability (CGS units: cm^3) ?????
@@ -161,7 +161,7 @@ if menu_profile == 1 % Bessel
     end
     
 elseif menu_profile == 2 % Gaussian   
-    w0 = 0.7; % um. Beam radius at the end of the fibre
+    w0 = 1; % um. Beam radius at the end of the fibre
        
     input_title = 'Gaussian beam parameters.';
     input_data = 'Beam waist: w0 (um):';
@@ -189,7 +189,7 @@ end
 
 intensity.name = 'Beam Intensity';
 intensity.symbol = 'I';
-intensity.units = 'mW/nm^2';
+intensity.units = 'W/m^2'; %changed to W/m^2
 intensity.values = zeros(lambda.size,power.size,r.size,z.size,d.size);
     
 potential.name = 'Potential Energy';
@@ -204,15 +204,18 @@ for i = 1:1:lambda.size;
             for l = 1:1:z.size                
                 if menu_profile == 1 % Bessel
                     intensity.values(i,j,k,l,:) = ...
-                        (power.values(j)*1e-3 / (pi * (R*1e-6)^2)) / j12 * J02(k); % mW / nm^2
+                        (power.values(j)*1e-3 / (pi * (R*1e-6)^2)) / j12 * J02(k); % W / m^2
                 elseif menu_profile == 2 % Gaussian
+                    % NEEDS UPDATING TO THE NEW STRUCTURE FORMAT!!!
                     wz(i,l) = w0 * sqrt(1+ (lambda.values(i)/1e3*z.values(l)/pi/w0^2)^2); % um. Beam diameter at distance z from the end of the fibre
-                    intensity.values(i,j,k,l,:) = 2*power.values(j)*1e-3 / (pi*(wz(i,l)*1e-6)^2) * exp(-2*r.values(k)^2/wz(i,l)^2);
+                    intensity.values(i,j,k,l,:) = 2*power.values(j)*1e-3 / (pi*(wz(i,l)*1e-6)^2) * exp(-2*r.values(k)^2/wz(i,l)^2); %W/m^2
                 end
                 for m = 1:1:d.size
                     potential.values(i,j,k,l,m) = ...
-                        - 1/2 * eps0 * eta * nmed * real(alpha(m,i)) * ...
-                        intensity.values(i,j,k,l) / KE;
+                        -1/2*(2/(c*nmed*eps0))*real(alpha(m,i)) * ...
+                    intensity.values(i,j,k,l,m)/KE; 
+                     
+                                                
                 end
             end
         end
@@ -226,7 +229,7 @@ end
 % *************************************************************************
 Fgrad.name = 'Gradient Force';
 Fgrad.symbol = 'F_{grad}';
-Fgrad.units = 'nN'; 
+Fgrad.units = 'N'; 
 Fgrad.values = zeros(size(intensity.values));
 
 for i = 1:1:lambda.size
@@ -235,8 +238,8 @@ for i = 1:1:lambda.size
         for l = 1:1:z.size
             for m = 1:1:d.size
                 % polarisability in cm^3
-                Fgrad.values(i,j,:,l,m) = 1/2 * eps0 * eta * nmed * real(alpha(m,i)) * ...
-                    gradient(squeeze(intensity.values(i,j,:,l,m)),r.values) * 1e15 * 1e9;        
+                Fgrad.values(i,j,:,l,m) = 1/2*(2/(c*nmed*eps0))*real(alpha(m,i)) * ...
+                    gradient(squeeze(intensity.values(i,j,:,l,m)),r.values*1E-6);        
             end
         end
     end
@@ -423,9 +426,9 @@ end
 % *************************************************************************
 
 % selected_style = menu('Plot Style: ', plot_styles);
-% [selected_style, selected_variable] = dialog_two_lists('Select plot options:', ...
-%                                       'Style', plot_styles, selected_style,...
-%                                       'Variable', variables_options, selected_variable);
+ [selected_style, selected_variable] = dialog_two_lists('Select plot options:', ...
+                                       'Style', plot_styles, selected_style,...
+                                       'Variable', variables_options, selected_variable);
 
 figures{end+1} = figure('Units','normalized','Position',[0.1 0.1 0.8 0.7]);
 
