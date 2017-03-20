@@ -99,7 +99,7 @@ n_particle = n_real + 1i*n_imaginary;
 % xlim([200,1600])
 % grid on
 
-%% Calculate the polarisability
+%% CALCULATE: polarisability
 % *************************************************************************
 
 % standard polarisability (CGS units: cm^3) ?????
@@ -206,7 +206,6 @@ for i = 1:1:lambda.size;
                     intensity.values(i,j,k,l,:) = ...
                         (power.values(j)*1e-3 / (pi * (R*1e-6)^2)) / j12 * J02(k); % mW / nm^2
                 elseif menu_profile == 2 % Gaussian
-                    % NEEDS UPDATING TO THE NEW STRUCTURE FORMAT!!!
                     wz(i,l) = w0 * sqrt(1+ (lambda.values(i)/1e3*z.values(l)/pi/w0^2)^2); % um. Beam diameter at distance z from the end of the fibre
                     intensity.values(i,j,k,l,:) = 2*power.values(j)*1e-3 / (pi*(wz(i,l)*1e-6)^2) * exp(-2*r.values(k)^2/wz(i,l)^2);
                 end
@@ -424,9 +423,9 @@ end
 % *************************************************************************
 
 % selected_style = menu('Plot Style: ', plot_styles);
-[selected_style, selected_variable] = dialog_two_lists('Select plot options:', ...
-                                      'Style', plot_styles, selected_style,...
-                                      'Variable', variables_options, selected_variable);
+% [selected_style, selected_variable] = dialog_two_lists('Select plot options:', ...
+%                                       'Style', plot_styles, selected_style,...
+%                                       'Variable', variables_options, selected_variable);
 
 figures{end+1} = figure('Units','normalized','Position',[0.1 0.1 0.8 0.7]);
 
