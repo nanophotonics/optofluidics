@@ -1,6 +1,6 @@
 % Written by Ana Andres-Arroyo (aa938)
 % Calculates the optical potential of a Bessel/Gaussian beam
-% Calculates the gradient force and particle velocity
+% Calculates the gradient force and particle vGrad
 % Fits the gradient force to Hooke's law for small displacements
 
 clc
@@ -8,44 +8,53 @@ clear
 close all
 figures = {};
 
+directory_save = 'R:\aa938\NanoPhotonics\Laboratory\2017.03.23 - gradient force calculations\';
+
 %% Initial parameters
 % *************************************************************************
 eps0 = 8.85e-12; % F/m. Permittivity of free space
 kb = 1.38e-23; % m^2*kg/s^2/K^1. Boltzmann constant
-c=3E8; % m/s. Speed of light
+c = 3e8; % m/s. Speed of light
 T = 273.15 + 20; % K. Ambient temperature
 viscosity_log = (1.3272*(293.15-T)-0.001053*(T-293.15).^2) ./ (T-168.15) - 2.999; % for T > 293.15 K = 20 C
 viscosity = 10.^viscosity_log; % Pa*s. Viscosity of water
 
 units = 1;
 % units = menu('Units:', 'SI', 'CGS');
+% units_SI = units_display * units_conversion
 
 d.name = 'Diameter';
 d.symbol = 'd';
-d.units = 'nm';
-d.min = 6; 
-d.max = 12; 
-d.step = 2; 
+d.units_SI = 'm';
+d.units_display = 'nm';
+d.units_conversion = 1e-9;
+d.min = 6e-9; 
+d.max = 15e-9; 
+d.step = 1e-9; 
 d.values = d.min : d.step : d.max;
 d.size = size(d.values,2);
-d.selected = 8;
+d.selected = 12e-9;
 
 lambda.name = 'Wavelength';
-lambda.units = 'nm';
 lambda.symbol = '\lambda';
-lambda.min = 725;
-lambda.max = 975;
-lambda.step = 25;
+lambda.units_SI = 'm';
+lambda.units_display = 'nm';
+lambda.units_conversion = 1e-9;
+lambda.min = 725e-9;
+lambda.max = 975e-9;
+lambda.step = 25e-9;
 lambda.values = lambda.min : lambda.step : lambda.max;
 lambda.size = size(lambda.values,2);
-lambda.selected = 800;
+lambda.selected = 800e-9;
 
 power.name = 'Power';
 power.symbol = 'P';
-power.units = 'mW';
-power.min = 100;
-power.max = 2000;
-power.step = 100;
+power.units_SI = 'W';
+power.units_display = 'mW';
+power.units_conversion = 1e-3; 
+power.min = 200e-3;
+power.max = 1000e-3;
+power.step = 100e-3;
 power.values = power.min : power.step : power.max;
 power.size = size(power.values,2);
 power.selected = power.max;
@@ -56,8 +65,9 @@ column_titles = {'Min:', 'Max:', 'Step:'};
 limits = zeros(size(parameters,2),size(column_titles,2));
 row_titles = cell(size(parameters,2),1);
 for i = 1:1:size(parameters,2)
-    row_titles{i} = [parameters(i).name ' (' parameters(i).units ')'];
-    limits(i,:) = [parameters(i).min, parameters(i).max, parameters(i).step];
+    row_titles{i} = [parameters(i).name ' (' parameters(i).units_display ')'];
+    limits(i,:) = [parameters(i).min, parameters(i).max, parameters(i).step] ...
+        / parameters(i).units_conversion;
 end
           
 limits = dialog_table(row_titles,column_titles,limits);
@@ -65,9 +75,9 @@ limits = dialog_table(row_titles,column_titles,limits);
 i_counter = 0;
 for i = parameters
     i_counter = i_counter + 1;
-    i.min = limits(i_counter,1);
-    i.max = limits(i_counter,2);
-    i.step = limits(i_counter,3);
+    i.min = limits(i_counter,1) * i.units_conversion;
+    i.max = limits(i_counter,2) * i.units_conversion;
+    i.step = limits(i_counter,3) * i.units_conversion;
     i.values = i.min : i.step : i.max;
     i.size = size(i.values,2);
     parameters(i_counter) = i;
@@ -88,8 +98,8 @@ n_data = dlmread([foldername filename], '\t', 1, 0);
 % n_data(:,1) = wave (nm)
 % n_data(:,2) = n
 % n_data(:,3) = k
-n_real = spline(n_data(:,1), n_data(:,2), lambda.values);
-n_imaginary = spline(n_data(:,1), n_data(:,3), lambda.values);
+n_real = spline(n_data(:,1), n_data(:,2), lambda.values * 1e9);
+n_imaginary = spline(n_data(:,1), n_data(:,3), lambda.values * 1e9);
 n_particle = n_real + 1i*n_imaginary;
 
 % figure
@@ -109,10 +119,10 @@ n_particle = n_real + 1i*n_imaginary;
 alpha_0 = zeros(d.size,lambda.size);
 for m = 1:1:d.size
     if units == 1 % SI units: F.m^2
-        alpha_0(m,:) = nmed^2*eps0*4*pi*((d.values(m)*1e-9)/2)^3 .* ...
+        alpha_0(m,:) = nmed^2*eps0*4*pi*((d.values(m))/2)^3 .* ...
             (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2); 
     elseif units == 2 % CGS units: m^3
-        alpha_0(m,:) = 4*pi*(d.values(m)*1e-9/2)^3 .* ...
+        alpha_0(m,:) = 4*pi*(d.values(m)/2)^3 .* ...
             (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2);
     end
     
@@ -125,27 +135,29 @@ alpha = alpha_0;
 %% CALCULATE: intensity, potential
 % *************************************************************************
 
-KE = kb*T;  % J, kinetic energy
-
 menu_profile = 2;
 menu_profile = menu('Beam Profile?', 'Bessel', 'Gaussian');
 
 r.name = 'Radial coordinate';
 r.symbol = 'r';
-r.units = '\mum';
+r.units_SI = 'm';
+r.units_display = '\mum';
+r.units_conversion = 1e-6;
 
 z.name = 'Axial coordinate';
 z.symbol = 'z';
-z.units = '\mum';    
+z.units_SI = 'm';
+z.units_display = '\mum';
+z.units_conversion = 1e-6;
 
 if menu_profile == 1 % Bessel
-    R = 9; % um. Radius of the HCPCF core
+    R = 9e-6; % m. Radius of the HCPCF core
     input_title = 'Bessel beam parameters.';
     input_data = 'Radius of HCPCF core: R (um):';
-    default_values = {num2str(R)};
+    default_values = {num2str(R*1e6)};
     dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
     answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
-    R = str2double(answer{1});
+    R = str2double(answer{1})*1e-6; % m
     
     r.min = -R; 
     r.max = R; 
@@ -170,14 +182,14 @@ if menu_profile == 1 % Bessel
     end
     
 elseif menu_profile == 2 % Gaussian   
-    w0 = 1; % um. Beam radius at the end of the fibre
+    w0 = 0.35e-6; % m. Beam radius at the end of the fibre
        
     input_title = 'Gaussian beam parameters.';
     input_data = 'Beam radius: w0 (um):';
-    default_values = {num2str(w0)};
+    default_values = {num2str(w0*1e6)};
     dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
     answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
-    w0 = str2double(answer{1});
+    w0 = str2double(answer{1})*1e-6; % m
     
     r.min = -w0*3; 
     r.max = w0*3;    
@@ -187,8 +199,8 @@ elseif menu_profile == 2 % Gaussian
     r.selected = r.min;
 
     z.min = 0; 
-    z.max = 20; 
-    z.size = 201; % select and odd number
+    z.max = w0*10; % m
+    z.size = 21; % select and odd number
     z.values = linspace(z.min,z.max,z.size);
     z.step = z.values(2)-z.values(1);
     z.selected = z.min;    
@@ -198,12 +210,18 @@ end
 
 intensity.name = 'Beam Intensity';
 intensity.symbol = 'I';
-intensity.units = 'W/m^2'; % changed to W/m^2
+intensity.units_SI = 'W/m^2';
+intensity.units_display = 'W/m^2';
+intensity.units_conversion = 1;
 intensity.values = zeros(lambda.size,power.size,r.size,z.size,d.size);
     
 potential.name = 'Potential Energy';
 potential.symbol = 'U';
-potential.units = ['kT@' num2str(T) 'K'];
+potential.units_SI = 'J';
+potential.units_display = ['kT@' num2str(T) 'K'];
+potential.units_conversion = kb*T; % kinetic energy
+% potential.units_display = 'J';
+% potential.units_conversion = 1; % kinetic energy
 potential.values = zeros(lambda.size,power.size,r.size,z.size,d.size);
 
 for i = 1:1:lambda.size;
@@ -213,18 +231,19 @@ for i = 1:1:lambda.size;
             for l = 1:1:z.size                
                 if menu_profile == 1 % Bessel
                     intensity.values(i,j,k,l,:) = ...
-                        (power.values(j)*1e-3 / (pi * (R*1e-6)^2)) / j12 * J02(k); % W/m^2
+                        (power.values(j) / (pi * (R)^2)) / j12 * J02(k);
                 elseif menu_profile == 2 % Gaussian
                     wz(i,l) = w0 * sqrt(1+ ...
-                        (lambda.values(i)*1e-9*z.values(l)*1e-6/pi/(w0*1e-36)^2)^2); % um. Beam diameter at distance z from the end of the fibre
-                    intensity.values(i,j,k,l,:) = 2*power.values(j)*1e-3 / ...
-                        (pi*(wz(i,l)*1e-6)^2) * exp(-2*r.values(k)^2/wz(i,l)^2); % W/m^2
+                        (lambda.values(i)*z.values(l)/pi/w0^2)^2); % m. Beam diameter at distance z from the end of the fibre
+                    intensity.values(i,j,k,l,:) = 2*power.values(j) / ...
+                        (pi*wz(i,l)^2) * exp(-2*r.values(k)^2/wz(i,l)^2);
                 end
                 for m = 1:1:d.size
                     if units == 1 % SI
                     potential.values(i,j,k,l,m) = ...
                         -1/2*(2/(c*nmed*eps0))*real(alpha(m,i)) * ...
-                    intensity.values(i,j,k,l,m)/KE; 
+                    intensity.values(i,j,k,l,m); 
+%                     intensity.values(i,j,k,l,m)/KE; 
                     elseif units == 2 % CGS
                     end                     
                                                 
@@ -237,11 +256,13 @@ end
 % intensity(lambda,power,r,z,d)
 % potential(lambda,power,r,z,d)
 
-%% CALCULATE: gradient force, velocity, time
+%% CALCULATE: gradient force, scattering force
 % *************************************************************************
 Fgrad.name = 'Gradient Force';
 Fgrad.symbol = 'F_{grad}';
-Fgrad.units = 'N'; 
+Fgrad.units_SI = 'N'; 
+Fgrad.units_display = 'pN';
+Fgrad.units_conversion = 1e-12;
 Fgrad.values = zeros(size(intensity.values));
 
 for i = 1:1:lambda.size
@@ -251,30 +272,83 @@ for i = 1:1:lambda.size
             for m = 1:1:d.size
                 if units == 1 % SI
                     Fgrad.values(i,j,:,l,m) = (real(alpha(m,i))/(2*c*nmed*eps0))*...
-                        gradient(squeeze(intensity.values(i,j,:,l,m)),r.values * 1e-6);        
+                        gradient(squeeze(intensity.values(i,j,:,l,m)),r.values);        
                 elseif units == 2 % CGS
                     Fgrad.values(i,j,:,l,m) = (real(alpha(m,i) * nmed)/(2*c)) * ...
-                        gradient(squeeze(intensity.values(i,j,:,l,m)),r.values * 1e-6);
+                        gradient(squeeze(intensity.values(i,j,:,l,m)),r.values);
                 end
             end
         end
     end
 end
 
-velocity.name = 'Particle Velocity';
-velocity.symbol = 'v';
-velocity.units = 'm/s';
-velocity.values = zeros(size(Fgrad.values));
+Fscat.name = 'Scattering Force';
+Fscat.symbol = 'F_{scat}';
+Fscat.units_SI = 'N'; 
+Fscat.units_display = 'pN';
+Fscat.units_conversion = 1e-12;
+Fscat.values = zeros(size(intensity.values));
+
+% zeros(lambda.size,power.size,r.size,z.size,d.size);
+for i = 1:1:lambda.size
+    clc, disp([num2str(i/lambda.size*100, '%.0f') '%: scattering'])    
+    for j = 1:1:power.size
+        for l = 1:1:z.size
+            for m = 1:1:d.size
+                Fscat.values(i,j,:,l,m) = 8*pi*nmed * (2*pi/lambda.values(i))^4 * ...
+                    (d.values(m)/2)^6 / c * ...
+                    (n_particle(i)^2 - nmed^2) / (n_particle(i)^2 + 2*nmed^2) *...
+                    intensity.values(i,j,:,l,m);        
+            end
+        end
+    end
+end
+
+alpha_0 = zeros(d.size,lambda.size);
+for m = 1:1:d.size
+    if units == 1 % SI units: F.m^2
+        alpha_0(m,:) = nmed^2*eps0*4*pi*((d.values(m))/2)^3 .* ...
+            (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2); 
+    elseif units == 2 % CGS units: m^3
+        alpha_0(m,:) = 4*pi*(d.values(m)/2)^3 .* ...
+            (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2);
+    end
+    
+end
+
+%% CALCULATE: velocity, time
+% *************************************************************************
+
+vGrad.name = 'Particle velocity (due to Fgrad)';
+vGrad.symbol = 'v';
+vGrad.units_SI = 'm/s';
+vGrad.units_display = '\mum/ms';
+vGrad.units_conversion = 1e-6/1e-3;
+vGrad.values = zeros(size(Fgrad.values));
 
 for m = 1:1:d.size
-    velocity.values(:,:,:,:,m) = Fgrad.values(:,:,:,:,m) ./ ...
-        (6*pi*viscosity*d.values(m)*1e-9/2);
+    vGrad.values(:,:,:,:,m) = Fgrad.values(:,:,:,:,m) ./ ...
+        (6*pi*viscosity*d.values(m)/2);
+end
+
+vScat.name = 'Particle velocity (due to Fscat)';
+vScat.symbol = 'v';
+vScat.units_SI = 'm/s';
+vScat.units_display = '\mum/ms';
+vScat.units_conversion = 1e-6/1e-3;
+vScat.values = zeros(size(Fscat.values));
+
+for m = 1:1:d.size
+    vScat.values(:,:,:,:,m) = Fscat.values(:,:,:,:,m) ./ ...
+        (6*pi*viscosity*d.values(m)/2);
 end
 
 time.name = 'Response time';
 time.symbol = 't';
-time.units = 's';
-time.values = zeros(size(velocity.values));
+time.units_SI = 's';
+time.units_display = 'ms';
+time.units_conversion = 1e-3;
+time.values = zeros(size(vGrad.values));
 
 % MAKE SURE THERE IS AN ODD NUMBER OF r.values
 [~,zero_index] = min(abs(r.values));
@@ -290,8 +364,8 @@ for i = 1:1:lambda.size
                 end
                 for l = 1:1:z.size
                     for m = 1:1:d.size
-                        time.values(i,j,k,l,m) = abs(trapz(r.values(integration_indices)*1e-6,...
-                            squeeze(velocity.values(i,j,integration_indices,l,m))));
+                        time.values(i,j,k,l,m) = abs(trapz(r.values(integration_indices),...
+                            squeeze(vGrad.values(i,j,integration_indices,l,m))));
                     end
                 end
             end
@@ -307,12 +381,12 @@ r_linear = r.max * 0.2;
 
 kr.name = 'Radial Trap Stiffness';
 kr.symbol = 'kr';
-kr.units = 'pN/\mum/mW'; 
+kr.units_SI = 'N/m/W'; 
+kr.units_display = 'pN/\mum/mW';
+kr.units_conversion = 1e-12/1e-6/1e-3;
 kr.values = zeros(lambda.size,z.size,d.size);
 
-
-
-% Fgrad.values = zeros(lambda.size,power.size,r.size,z.size,d.size);
+% zeros(lambda.size,power.size,r.size,z.size,d.size);
 j = power.size;
 for i = 1:1:lambda.size
     clc, disp([num2str(i/lambda.size*100, '%.0f') '%: trap stiffness'])    
@@ -324,20 +398,20 @@ for i = 1:1:lambda.size
         for m = 1:1:d.size
             fitting_parameters = polyfit(r.values(linear_indices), ...
                 squeeze(Fgrad.values(i,j,linear_indices,l,m))', 1);
-            kr.values(i,l,m) = -fitting_parameters(1) / power.values(j) * 1e3;
+            kr.values(i,l,m) = -fitting_parameters(1) / power.values(j);
             
 %             if i == 1
 %                 plot(r.values, ...
 %                     squeeze(Fgrad.values(i,j,:,l,m)), ...
 %                     '-', 'LineWidth', 2), hold all   
-%                 plot_legend{end+1} = [d.name ' = ' num2str(d.values(m)) ' ' d.units];
+%                 plot_legend{end+1} = [d.name ' = ' num2str(d.values(m)) ' ' d.units_SI];
 %                 plot(r.values(linear_indices), ...
 %                     r.values(linear_indices)* fitting_parameters(1) + fitting_parameters(2), ...
 %                     '--', 'LineWidth', 2), hold all      
-%                 plot_legend{end+1} = ['kr = ' num2str(kr.values(i,l,m)) ' pN/\mum/mW'];
+%                 plot_legend{end+1} = ['kr = ' num2str(kr.values(i,l,m)) ' ' kr.units_SI];
 %                 legend(plot_legend, 'Location', 'EO')
-%                 xlabel([r.name ': ' r.symbol ' (' r.units ')'])
-%                 ylabel([Fgrad.name ': ' Fgrad.symbol ' (' Fgrad.units ')'])
+%                 xlabel([r.name ': ' r.symbol ' (' r.units_SI ')'])
+%                 ylabel([Fgrad.name ': ' Fgrad.symbol ' (' Fgrad.units_SI ')'])
 %                 grid on
 %                 set(gca, 'FontSize', 16);     
 %             end
@@ -347,7 +421,7 @@ end
 
 %% Default Variables
 % *************************************************************************
-variables = [potential, intensity, Fgrad, kr, velocity, time];
+variables = [potential, intensity, Fgrad, kr, vGrad, time, Fscat, vScat];
 variables_options = cell(size(variables));
 for i = 1:1:size(variables,2)
     variables_options{i} = variables(i).name;
@@ -364,10 +438,20 @@ else
     y_index = 2;
 end
 
+%% Variable Units
+% *************************************************************************
+
+Fgrad.units_display = 'fN';
+Fgrad.units_conversion = 1e-15;
+
+time.units_display = 'ms';
+time.units_conversion = 1e-3;
+
+variables = [potential, intensity, Fgrad, kr, vGrad, time, Fscat, vScat];
+
 
 %% Plot Options
 % *************************************************************************
-
 
 [selected_style, selected_variable] = dialog_two_lists('Select plot options:', ...
                                       'Style', plot_styles, selected_style,...
@@ -384,7 +468,8 @@ i_counter = 0;
 for i = parameters
     i_counter = i_counter + 1;
     parameters_options{i_counter} = [i.name ': ' i.symbol ': ' ...
-        num2str(i.min) ' to ' num2str(i.max) ' ' i.units];
+        num2str(i.min / i.units_conversion) ' to ' ...
+        num2str(i.max / i.units_conversion) ' ' i.units_display];
 end
 
 if selected_style == 1 % line plot
@@ -414,7 +499,7 @@ default_values = cell(size(fixed_parameter_indices));
 i_counter = 0;
 for i = fixed_parameter_indices
     i_counter = i_counter + 1;
-    default_values{i_counter} = num2str(parameters(i).selected);
+    default_values{i_counter} = num2str(parameters(i).selected / parameters(i).units_conversion);
 end
 
 input_title = 'Select fixed parameter values';
@@ -424,14 +509,14 @@ answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
 i_counter = 0;
 for i = fixed_parameter_indices
     i_counter = i_counter + 1;
-    parameters(i).selected = str2double(answer{i_counter});
+    parameters(i).selected = str2double(answer{i_counter}) * parameters(i).units_conversion;
 end
 
 indices = cell(size(parameters_options));
 if menu_profile == 1 % bessel
-    title_text = ['Au NP, Bessel, R = ' num2str(R) ' \mum'];
+    title_text = ['Au NP, Bessel, R = ' num2str(R*1e6) ' \mum'];
 elseif menu_profile == 2 % gaussian
-    title_text = ['Au NP, Gaussian, w0 = ' num2str(w0) ' \mum'];
+    title_text = ['Au NP, Gaussian, w0 = ' num2str(w0*1e6) ' \mum'];
 end
 
 for i = 1:1:size(parameters,2)  
@@ -441,7 +526,8 @@ for i = 1:1:size(parameters,2)
         [~,indices{i}] = min(abs(parameters(i).values - parameters(i).selected));
         parameters(i).selected = parameters(i).values(indices{i});
         title_text = strcat(title_text, [', ' parameters(i).symbol ' = ' ...
-            num2str(parameters(i).selected) ' ' parameters(i).units]);
+            num2str(parameters(i).selected / parameters(i).units_conversion) ' ' ...
+            parameters(i).units_display]);
     end
 end
 
@@ -459,16 +545,18 @@ figures{end+1} = figure('Units','normalized','Position',[0.1 0.1 0.8 0.7]);
 if selected_style == 1 % line plot
     for i = 1:1:size(indices,2)
     end
-    h = plot(parameters(x_index).values, ...
-             squeeze(variables(selected_variable).values(indices{:})), ...
+    h = plot(parameters(x_index).values / parameters(x_index).units_conversion, ...
+             squeeze(variables(selected_variable).values(indices{:}) / variables(selected_variable).units_conversion), ...
              'LineWidth', 2); hold all
 
     plot_legend = cell(size(h,1),1);
     for i = indices{y_index}
-        plot_legend{i} = [parameters(y_index).symbol ' = ' num2str(parameters(y_index).values(i)) ' ' parameters(y_index).units];
+        plot_legend{i} = [parameters(y_index).symbol ' = ' ...
+            num2str(parameters(y_index).values(i) / parameters(y_index).units_conversion) ' ' ...
+            parameters(y_index).units_display];
     end
-    xlabel([parameters(x_index).name ': ' parameters(x_index).symbol ' (' parameters(x_index).units ')'])
-    ylabel([variables(selected_variable).name ': ' variables(selected_variable).symbol ' (' variables(selected_variable).units ')'])
+    xlabel([parameters(x_index).name ': ' parameters(x_index).symbol ' (' parameters(x_index).units_display ')'])
+    ylabel([variables(selected_variable).name ': ' variables(selected_variable).symbol ' (' variables(selected_variable).units_display ')'])
 
     set(gca,'FontSize', 14)
     legend(plot_legend, 'Location', 'EO', 'FontSize', 10)
@@ -516,10 +604,31 @@ elseif selected_style == 2 % contour plot
     colormap(flipud(jet))
     colorbar
     
-    xlabel([parameters(x_index).name ': ' parameters(x_index).symbol ' (' parameters(x_index).units ')'])
-    ylabel([parameters(y_index).name ': ' parameters(y_index).symbol ' (' parameters(y_index).units ')'])
+    xlabel([parameters(x_index).name ': ' parameters(x_index).symbol ' (' parameters(x_index).units_SI ')'])
+    ylabel([parameters(y_index).name ': ' parameters(y_index).symbol ' (' parameters(y_index).units_SI ')'])
     title({title_text,...
-        [variables(selected_variable).name ': ' variables(selected_variable).symbol ' (' variables(selected_variable).units ')']})
+        [variables(selected_variable).name ': ' variables(selected_variable).symbol ' (' variables(selected_variable).units_SI ')']})
     set(gca, 'FontSize', 16);
 end
 
+%% saving figures
+% *************************************************************************
+menu_save_figures = 1;
+menu_save_figures = menu('Save Figures?', 'NO', 'YES');
+if menu_save_figures == 2    
+    for i = 1:1:max(size(figures))
+        if findobj(figures{i}) ~= 0
+            figure_save = figures{i};
+            file_name_save = '';
+            
+            figure(figure_save)
+            pause(0.1)
+            [file_name_save,directory_save,~] = uiputfile(['.' 'png'],...
+                'File to Save the Figure',[directory_save file_name_save]);
+            hgexport(figure_save, [directory_save file_name_save], hgexport('factorystyle'), 'Format', 'png')
+            file_name_save = strrep(file_name_save, 'png', 'fig');    
+            saveas(figure_save, [directory_save file_name_save], 'fig');
+
+        end
+    end
+end
