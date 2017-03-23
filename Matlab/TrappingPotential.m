@@ -10,21 +10,22 @@ figures = {};
 
 %% Initial parameters
 % *************************************************************************
-eta = 377; % Ohm. Characteristic impedance of free space
 eps0 = 8.85e-12; % F/m. Permittivity of free space
-kb = 1.38e-23; % m^2*kg*s^-2*K^-1. Boltzmann constant
-c=3E8; %light speed
-nmed = 1.33; % Refractive index of water
+kb = 1.38e-23; % m^2*kg/s^2/K^1. Boltzmann constant
+c=3E8; % m/s. Speed of light
 T = 273.15 + 20; % K. Ambient temperature
 viscosity_log = (1.3272*(293.15-T)-0.001053*(T-293.15).^2) ./ (T-168.15) - 2.999; % for T > 293.15 K = 20 C
-viscosity = 10.^viscosity_log; % Pa*s
+viscosity = 10.^viscosity_log; % Pa*s. Viscosity of water
+
+units = 1;
+% units = menu('Units:', 'SI', 'CGS');
 
 d.name = 'Diameter';
 d.symbol = 'd';
 d.units = 'nm';
-d.min = 60; 
-d.max = 60; 
-d.step = 10; 
+d.min = 6; 
+d.max = 12; 
+d.step = 2; 
 d.values = d.min : d.step : d.max;
 d.size = size(d.values,2);
 d.selected = 8;
@@ -32,9 +33,9 @@ d.selected = 8;
 lambda.name = 'Wavelength';
 lambda.units = 'nm';
 lambda.symbol = '\lambda';
-lambda.min = 800;
-lambda.max = 800;
-lambda.step = 50;
+lambda.min = 725;
+lambda.max = 975;
+lambda.step = 25;
 lambda.values = lambda.min : lambda.step : lambda.max;
 lambda.size = size(lambda.values,2);
 lambda.selected = 800;
@@ -42,9 +43,9 @@ lambda.selected = 800;
 power.name = 'Power';
 power.symbol = 'P';
 power.units = 'mW';
-power.min = 1000;
-power.max = 1000;
-power.step = 50;
+power.min = 100;
+power.max = 2000;
+power.step = 100;
 power.values = power.min : power.step : power.max;
 power.size = size(power.values,2);
 power.selected = power.max;
@@ -77,8 +78,10 @@ lambda = parameters(2);
 power = parameters(3);
 
 
-%% Read Gold refractive index file and interpolate
+%% READ: refractive index
 % *************************************************************************
+nmed = 1.33; % Refractive index of water
+
 foldername = '';
 filename = 'Gold Refractive-Rakic.txt';
 n_data = dlmread([foldername filename], '\t', 1, 0);
@@ -99,17 +102,23 @@ n_particle = n_real + 1i*n_imaginary;
 % xlim([200,1600])
 % grid on
 
-%% Calculate the polarisability
+%% CALCULATE: polarisability
 % *************************************************************************
 
-% standard polarisability (CGS units: cm^3) ?????
+% standard polarisability (SI units: F.m^2)
 alpha_0 = zeros(d.size,lambda.size);
 for m = 1:1:d.size
-    alpha_0(m,:) = nmed^2*eps0*4*pi*((d.values(m)*1e-9)/2)^3 .* ...
-        (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2); %from  https://www.photonics.ethz.ch/fileadmin/user_upload/FILES2SHARE/ignatovitch02.pdf
+    if units == 1 % SI units: F.m^2
+        alpha_0(m,:) = nmed^2*eps0*4*pi*((d.values(m)*1e-9)/2)^3 .* ...
+            (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2); 
+    elseif units == 2 % CGS units: m^3
+        alpha_0(m,:) = 4*pi*(d.values(m)*1e-9/2)^3 .* ...
+            (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2);
+    end
+    
 end
 
-% polarisability (CGS units: cm^3) ?????
+% polarisability
 % a correction to the polarisability may sometimes be needed
 alpha = alpha_0;
 
@@ -164,7 +173,7 @@ elseif menu_profile == 2 % Gaussian
     w0 = 1; % um. Beam radius at the end of the fibre
        
     input_title = 'Gaussian beam parameters.';
-    input_data = 'Beam waist: w0 (um):';
+    input_data = 'Beam radius: w0 (um):';
     default_values = {num2str(w0)};
     dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
     answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
@@ -189,7 +198,7 @@ end
 
 intensity.name = 'Beam Intensity';
 intensity.symbol = 'I';
-intensity.units = 'W/m^2'; %changed to W/m^2
+intensity.units = 'W/m^2'; % changed to W/m^2
 intensity.values = zeros(lambda.size,power.size,r.size,z.size,d.size);
     
 potential.name = 'Potential Energy';
@@ -204,17 +213,20 @@ for i = 1:1:lambda.size;
             for l = 1:1:z.size                
                 if menu_profile == 1 % Bessel
                     intensity.values(i,j,k,l,:) = ...
-                        (power.values(j)*1e-3 / (pi * (R*1e-6)^2)) / j12 * J02(k); % W / m^2
+                        (power.values(j)*1e-3 / (pi * (R*1e-6)^2)) / j12 * J02(k); % W/m^2
                 elseif menu_profile == 2 % Gaussian
-                    % NEEDS UPDATING TO THE NEW STRUCTURE FORMAT!!!
-                    wz(i,l) = w0 * sqrt(1+ (lambda.values(i)/1e3*z.values(l)/pi/w0^2)^2); % um. Beam diameter at distance z from the end of the fibre
-                    intensity.values(i,j,k,l,:) = 2*power.values(j)*1e-3 / (pi*(wz(i,l)*1e-6)^2) * exp(-2*r.values(k)^2/wz(i,l)^2); %W/m^2
+                    wz(i,l) = w0 * sqrt(1+ ...
+                        (lambda.values(i)*1e-9*z.values(l)*1e-6/pi/(w0*1e-36)^2)^2); % um. Beam diameter at distance z from the end of the fibre
+                    intensity.values(i,j,k,l,:) = 2*power.values(j)*1e-3 / ...
+                        (pi*(wz(i,l)*1e-6)^2) * exp(-2*r.values(k)^2/wz(i,l)^2); % W/m^2
                 end
                 for m = 1:1:d.size
+                    if units == 1 % SI
                     potential.values(i,j,k,l,m) = ...
                         -1/2*(2/(c*nmed*eps0))*real(alpha(m,i)) * ...
                     intensity.values(i,j,k,l,m)/KE; 
-                     
+                    elseif units == 2 % CGS
+                    end                     
                                                 
                 end
             end
@@ -237,9 +249,13 @@ for i = 1:1:lambda.size
     for j = 1:1:power.size
         for l = 1:1:z.size
             for m = 1:1:d.size
-                % polarisability in cm^3
-                Fgrad.values(i,j,:,l,m) = 1/2*(2/(c*nmed*eps0))*real(alpha(m,i)) * ...
-                    gradient(squeeze(intensity.values(i,j,:,l,m)),r.values*1E-6);        
+                if units == 1 % SI
+                    Fgrad.values(i,j,:,l,m) = (real(alpha(m,i))/(2*c*nmed*eps0))*...
+                        gradient(squeeze(intensity.values(i,j,:,l,m)),r.values * 1e-6);        
+                elseif units == 2 % CGS
+                    Fgrad.values(i,j,:,l,m) = (real(alpha(m,i) * nmed)/(2*c)) * ...
+                        gradient(squeeze(intensity.values(i,j,:,l,m)),r.values * 1e-6);
+                end
             end
         end
     end
@@ -251,7 +267,8 @@ velocity.units = 'm/s';
 velocity.values = zeros(size(Fgrad.values));
 
 for m = 1:1:d.size
-    velocity.values(:,:,:,:,m) = Fgrad.values(:,:,:,:,m) ./ (6*pi*viscosity*d.values(m)/2);
+    velocity.values(:,:,:,:,m) = Fgrad.values(:,:,:,:,m) ./ ...
+        (6*pi*viscosity*d.values(m)*1e-9/2);
 end
 
 time.name = 'Response time';
@@ -273,7 +290,7 @@ for i = 1:1:lambda.size
                 end
                 for l = 1:1:z.size
                     for m = 1:1:d.size
-                        time.values(i,j,k,l,m) = abs(trapz(r.values(integration_indices),...
+                        time.values(i,j,k,l,m) = abs(trapz(r.values(integration_indices)*1e-6,...
                             squeeze(velocity.values(i,j,integration_indices,l,m))));
                     end
                 end
@@ -328,9 +345,8 @@ for i = 1:1:lambda.size
     end
 end
 
-%% Options
+%% Default Variables
 % *************************************************************************
-
 variables = [potential, intensity, Fgrad, kr, velocity, time];
 variables_options = cell(size(variables));
 for i = 1:1:size(variables,2)
@@ -340,20 +356,28 @@ selected_variable = 2;
 
 plot_styles = {'Line','Contour'};
 selected_style = 1;
+if strcmp(variables(selected_variable).symbol, 'kr')                        
+    x_index = 3;
+    y_index = 1;
+else
+    x_index = 3;
+    y_index = 2;
+end
+
+
+%% Plot Options
+% *************************************************************************
+
 
 [selected_style, selected_variable] = dialog_two_lists('Select plot options:', ...
                                       'Style', plot_styles, selected_style,...
                                       'Variable', variables_options, selected_variable);
-
 if strcmp(variables(selected_variable).symbol, 'kr')                        
     parameters = [lambda,z,d];
-    x_index = 3;
-    y_index = 1;
 else
     parameters = [lambda,power,r,z,d];
-    x_index = 3;
-    y_index = 2;
 end
+
 
 parameters_options = cell(size(parameters));
 i_counter = 0;
@@ -422,13 +446,13 @@ for i = 1:1:size(parameters,2)
 end
 
 
-%% Plot
+% %% Plot
 % *************************************************************************
 
 % selected_style = menu('Plot Style: ', plot_styles);
- [selected_style, selected_variable] = dialog_two_lists('Select plot options:', ...
-                                       'Style', plot_styles, selected_style,...
-                                       'Variable', variables_options, selected_variable);
+%  [selected_style, selected_variable] = dialog_two_lists('Select plot options:', ...
+%                                        'Style', plot_styles, selected_style,...
+%                                        'Variable', variables_options, selected_variable);
 
 figures{end+1} = figure('Units','normalized','Position',[0.1 0.1 0.8 0.7]);
 
@@ -447,7 +471,7 @@ if selected_style == 1 % line plot
     ylabel([variables(selected_variable).name ': ' variables(selected_variable).symbol ' (' variables(selected_variable).units ')'])
 
     set(gca,'FontSize', 14)
-    legend(plot_legend, 'Location', 'EO')
+    legend(plot_legend, 'Location', 'EO', 'FontSize', 10)
     title(title_text)
     grid on
     
