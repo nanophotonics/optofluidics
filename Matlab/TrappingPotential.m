@@ -5,7 +5,7 @@
 
 clc
 clear 
-close all
+% close all
 figures = {};
 
 directory_save = 'R:\aa938\NanoPhotonics\Laboratory\2017.03.23 - gradient force calculations\';
@@ -19,7 +19,7 @@ T = 273.15 + 20; % K. Ambient temperature
 viscosity_log = (1.3272*(293.15-T)-0.001053*(T-293.15).^2) ./ (T-168.15) - 2.999; % for T > 293.15 K = 20 C
 viscosity = 10.^viscosity_log; % Pa*s. Viscosity of water
 
-units = 1;
+units = 2;
 % units = menu('Units:', 'SI', 'CGS');
 % units_SI = units_display * units_conversion
 
@@ -28,20 +28,20 @@ d.symbol = 'd';
 d.units_SI = 'm';
 d.units_display = 'nm';
 d.units_conversion = 1e-9;
-d.min = 6e-9; 
-d.max = 15e-9; 
+d.min = 8e-9; 
+d.max = 8e-9; 
 d.step = 1e-9; 
 d.values = d.min : d.step : d.max;
 d.size = size(d.values,2);
-d.selected = 12e-9;
+d.selected = 8e-9;
 
 lambda.name = 'Wavelength';
 lambda.symbol = '\lambda';
 lambda.units_SI = 'm';
 lambda.units_display = 'nm';
 lambda.units_conversion = 1e-9;
-lambda.min = 725e-9;
-lambda.max = 975e-9;
+lambda.min = 800e-9;
+lambda.max = 800e-9;
 lambda.step = 25e-9;
 lambda.values = lambda.min : lambda.step : lambda.max;
 lambda.size = size(lambda.values,2);
@@ -52,8 +52,8 @@ power.symbol = 'P';
 power.units_SI = 'W';
 power.units_display = 'mW';
 power.units_conversion = 1e-3; 
-power.min = 200e-3;
-power.max = 1000e-3;
+power.min = 300e-3;
+power.max = 300e-3;
 power.step = 100e-3;
 power.values = power.min : power.step : power.max;
 power.size = size(power.values,2);
@@ -90,7 +90,7 @@ power = parameters(3);
 
 %% READ: refractive index
 % *************************************************************************
-nmed = 1.33; % Refractive index of water
+nmed = 1.324; % Refractive index of water
 
 foldername = '';
 filename = 'Gold Refractive-Rakic.txt';
@@ -182,7 +182,8 @@ if menu_profile == 1 % Bessel
     end
     
 elseif menu_profile == 2 % Gaussian   
-    w0 = 0.35e-6; % m. Beam radius at the end of the fibre
+%     w0 = 0.35e-6; % m. Beam radius
+    w0 = 5.3e-6/2; % m. Beam radius
        
     input_title = 'Gaussian beam parameters.';
     input_data = 'Beam radius: w0 (um):';
@@ -191,8 +192,8 @@ elseif menu_profile == 2 % Gaussian
     answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
     w0 = str2double(answer{1})*1e-6; % m
     
-    r.min = -w0*3; 
-    r.max = w0*3;    
+    r.min = -w0*2; 
+    r.max = w0*2;    
     r.size = 101; % select and odd number
     r.values = linspace(r.min,r.max,r.size);
     r.step = r.values(2)-r.values(1);     
@@ -234,7 +235,7 @@ for i = 1:1:lambda.size;
                         (power.values(j) / (pi * (R)^2)) / j12 * J02(k);
                 elseif menu_profile == 2 % Gaussian
                     wz(i,l) = w0 * sqrt(1+ ...
-                        (lambda.values(i)*z.values(l)/pi/w0^2)^2); % m. Beam diameter at distance z from the end of the fibre
+                        (lambda.values(i)*z.values(l)/pi/w0^2)^2); % m. Beam diameter at distance z 
                     intensity.values(i,j,k,l,:) = 2*power.values(j) / ...
                         (pi*wz(i,l)^2) * exp(-2*r.values(k)^2/wz(i,l)^2);
                 end
@@ -295,10 +296,13 @@ for i = 1:1:lambda.size
     for j = 1:1:power.size
         for l = 1:1:z.size
             for m = 1:1:d.size
-                Fscat.values(i,j,:,l,m) = 8*pi*nmed * (2*pi/lambda.values(i))^4 * ...
-                    (d.values(m)/2)^6 / c * ...
-                    (n_particle(i)^2 - nmed^2) / (n_particle(i)^2 + 2*nmed^2) *...
-                    intensity.values(i,j,:,l,m);        
+%                 Fscat.values(i,j,:,l,m) = 8*pi*nmed * (2*pi/lambda.values(i))^4 * ...
+%                     (d.values(m)/2)^6 / c * ...
+%                     real((n_particle(i)^2 - nmed^2) / (n_particle(i)^2 + 2*nmed^2)) *...
+%                     intensity.values(i,j,:,l,m);      
+                Fscat.values(i,j,:,l,m) = nmed * (2*pi/lambda.values(i))^4 /6/pi/c * ...
+                    (alpha(m,i)*conj(alpha(m,i))) * intensity.values(i,j,:,l,m); 
+                    % check that this is correct
             end
         end
     end
@@ -429,13 +433,13 @@ end
 selected_variable = 2;
 
 plot_styles = {'Line','Contour'};
-selected_style = 1;
+selected_style = 2;
 if strcmp(variables(selected_variable).symbol, 'kr')                        
     x_index = 3;
     y_index = 1;
 else
     x_index = 3;
-    y_index = 2;
+    y_index = 4;
 end
 
 %% Variable Units
@@ -443,6 +447,9 @@ end
 
 Fgrad.units_display = 'fN';
 Fgrad.units_conversion = 1e-15;
+
+Fscat.units_display = 'fN';
+Fscat.units_conversion = 1e-15;
 
 time.units_display = 'ms';
 time.units_conversion = 1e-3;
@@ -510,6 +517,18 @@ i_counter = 0;
 for i = fixed_parameter_indices
     i_counter = i_counter + 1;
     parameters(i).selected = str2double(answer{i_counter}) * parameters(i).units_conversion;
+end
+
+if strcmp(variables(selected_variable).symbol, 'kr')                        
+    lambda = parameters(1);
+    z = parameters(2);
+    d = parameters(3);
+else
+    lambda = parameters(1);
+    power = parameters(2);
+    r = parameters(3);
+    z = parameters(4);
+    d = parameters(5);
 end
 
 indices = cell(size(parameters_options));
@@ -587,7 +606,8 @@ if selected_style == 1 % line plot
     end
 
 elseif selected_style == 2 % contour plot
-    contour_values = squeeze(variables(selected_variable).values(indices{:}));
+    contour_values = squeeze(variables(selected_variable).values(indices{:})/ ...
+        variables(selected_variable).units_conversion);
     
     if size(contour_values,1) == parameters(x_index).size
         contour_values = contour_values';
@@ -595,23 +615,24 @@ elseif selected_style == 2 % contour plot
     
     contour_levels = linspace(min(min(contour_values)), max(max(contour_values)), 100);
     
-    contourf(parameters(x_index).values,...
-             parameters(y_index).values,...
+    contourf(parameters(x_index).values / parameters(x_index).units_conversion,...
+             parameters(y_index).values / parameters(y_index).units_conversion,...
              contour_values,...
              'LineStyle', 'none',...
              'LevelListMode', 'manual', ...
              'LevelList', contour_levels);
-    colormap(flipud(jet))
+%     colormap(flipud(jet))
+    colormap(jet)
     colorbar
     
-    xlabel([parameters(x_index).name ': ' parameters(x_index).symbol ' (' parameters(x_index).units_SI ')'])
-    ylabel([parameters(y_index).name ': ' parameters(y_index).symbol ' (' parameters(y_index).units_SI ')'])
+    xlabel([parameters(x_index).name ': ' parameters(x_index).symbol ' (' parameters(x_index).units_display ')'])
+    ylabel([parameters(y_index).name ': ' parameters(y_index).symbol ' (' parameters(y_index).units_display ')'])
     title({title_text,...
-        [variables(selected_variable).name ': ' variables(selected_variable).symbol ' (' variables(selected_variable).units_SI ')']})
+        [variables(selected_variable).name ': ' variables(selected_variable).symbol ' (' variables(selected_variable).units_display ')']})
     set(gca, 'FontSize', 16);
 end
 
-%% saving figures
+%% Saving figures
 % *************************************************************************
 menu_save_figures = 1;
 menu_save_figures = menu('Save Figures?', 'NO', 'YES');
