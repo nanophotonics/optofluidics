@@ -5,7 +5,7 @@
 
 clc
 clear 
-% close all
+close all
 figures = {};
 
 directory_save = 'R:\aa938\NanoPhotonics\Laboratory\2017.03.23 - gradient force calculations\';
@@ -20,7 +20,7 @@ viscosity_log = (1.3272*(293.15-T)-0.001053*(T-293.15).^2) ./ (T-168.15) - 2.999
 viscosity = 10.^viscosity_log; % Pa*s. Viscosity of water
 
 units = 2;
-% units = menu('Units:', 'SI', 'CGS');
+units = menu('Units:', 'SI', 'CGS');
 % units_SI = units_display * units_conversion
 
 d.name = 'Diameter';
@@ -28,8 +28,8 @@ d.symbol = 'd';
 d.units_SI = 'm';
 d.units_display = 'nm';
 d.units_conversion = 1e-9;
-d.min = 8e-9; 
-d.max = 8e-9; 
+d.min = 80e-9; 
+d.max = 80e-9; 
 d.step = 1e-9; 
 d.values = d.min : d.step : d.max;
 d.size = size(d.values,2);
@@ -40,9 +40,9 @@ lambda.symbol = '\lambda';
 lambda.units_SI = 'm';
 lambda.units_display = 'nm';
 lambda.units_conversion = 1e-9;
-lambda.min = 800e-9;
-lambda.max = 800e-9;
-lambda.step = 25e-9;
+lambda.min = 400e-9;
+lambda.max = 720e-9;
+lambda.step = 2e-9;
 lambda.values = lambda.min : lambda.step : lambda.max;
 lambda.size = size(lambda.values,2);
 lambda.selected = 800e-9;
@@ -52,8 +52,8 @@ power.symbol = 'P';
 power.units_SI = 'W';
 power.units_display = 'mW';
 power.units_conversion = 1e-3; 
-power.min = 300e-3;
-power.max = 300e-3;
+power.min = 1000e-3;
+power.max = 1000e-3;
 power.step = 100e-3;
 power.values = power.min : power.step : power.max;
 power.size = size(power.values,2);
@@ -90,7 +90,7 @@ power = parameters(3);
 
 %% READ: refractive index
 % *************************************************************************
-nmed = 1.324; % Refractive index of water
+nmed = 1.33; % Refractive index of water
 
 foldername = '';
 filename = 'Gold Refractive-Rakic.txt';
@@ -115,7 +115,7 @@ n_particle = n_real + 1i*n_imaginary;
 %% CALCULATE: polarisability
 % *************************************************************************
 
-% standard polarisability (SI units: F.m^2)
+% standard polarisability
 alpha_0 = zeros(d.size,lambda.size);
 for m = 1:1:d.size
     if units == 1 % SI units: F.m^2
@@ -161,7 +161,7 @@ if menu_profile == 1 % Bessel
     
     r.min = -R; 
     r.max = R; 
-    r.size = 201; % select and odd number
+    r.size = 200; % select and even number
     r.values = linspace(r.min,r.max,r.size);
     r.step = r.values(2)-r.values(1);     
     r.selected = r.max;
@@ -200,7 +200,7 @@ elseif menu_profile == 2 % Gaussian
     r.selected = r.min;
 
     z.min = 0; 
-    z.max = w0*10; % m
+    z.max = 2*w0*10; % m
     z.size = 21; % select and odd number
     z.values = linspace(z.min,z.max,z.size);
     z.step = z.values(2)-z.values(1);
@@ -257,7 +257,7 @@ end
 % intensity(lambda,power,r,z,d)
 % potential(lambda,power,r,z,d)
 
-%% CALCULATE: gradient force, scattering force
+%% CALCULATE: gradient force
 % *************************************************************************
 Fgrad.name = 'Gradient Force';
 Fgrad.symbol = 'F_{grad}';
@@ -283,6 +283,22 @@ for i = 1:1:lambda.size
     end
 end
 
+%% CALCULATE: scattering force
+% *************************************************************************
+Cext.name = 'Extinction Cross-Section';
+Cext.symbol = 'C_{ext}';
+Cext.units_SI = 'm^2'; 
+Cext.units_display = 'm^2';
+Cext.units_conversion = 1;
+Cext.values = zeros(lambda.size,d.size);
+
+Qext.name = 'Extinction Efficiency';
+Qext.symbol = 'Q_{ext}';
+Qext.units_SI = ''; 
+Qext.units_display = '';
+Qext.units_conversion = 1;
+Qext.values = zeros(lambda.size,d.size);
+
 Fscat.name = 'Scattering Force';
 Fscat.symbol = 'F_{scat}';
 Fscat.units_SI = 'N'; 
@@ -292,33 +308,60 @@ Fscat.values = zeros(size(intensity.values));
 
 % zeros(lambda.size,power.size,r.size,z.size,d.size);
 for i = 1:1:lambda.size
+% for i = 176
     clc, disp([num2str(i/lambda.size*100, '%.0f') '%: scattering'])    
-    for j = 1:1:power.size
-        for l = 1:1:z.size
-            for m = 1:1:d.size
+    for m = 1:1:d.size
+%         lambda.values(i)
+%         Qext = 6; % read it from the paper
+%         Cext(i) = Qext * (pi*(d.values(m)/2)^2);
+%         Cext(i) = 2*pi/lambda.values(i) / eps0 / nmed^2 * imag(alpha(m,i)); % m^2, SI
+        if units == 1 % alpha SI units: F.m^2
+%             Cext.values(i,m) = 2*pi/lambda.values(i) / eps0 / nmed^2 * imag(alpha(m,i)); % m^2, SI
+            Cext.values(i,m) = 2*pi/lambda.values(i) / eps0 * nmed^2 * imag(alpha(m,i)); % m^2, SI
+        elseif units == 2 % alpha in CGS units: m^3
+            Cext.values(i,m) = 2*pi/lambda.values(i) * imag(alpha(m,i)); % m^2, SI
+        end
+        Qext.values(i,m) = Cext.values(i,m) / (pi*(d.values(m)/2)^2);
+        
+        for j = 1:1:power.size
+            for l = 1:1:z.size
+            
 %                 Fscat.values(i,j,:,l,m) = 8*pi*nmed * (2*pi/lambda.values(i))^4 * ...
 %                     (d.values(m)/2)^6 / c * ...
-%                     real((n_particle(i)^2 - nmed^2) / (n_particle(i)^2 + 2*nmed^2)) *...
-%                     intensity.values(i,j,:,l,m);      
-                Fscat.values(i,j,:,l,m) = nmed * (2*pi/lambda.values(i))^4 /6/pi/c * ...
-                    (alpha(m,i)*conj(alpha(m,i))) * intensity.values(i,j,:,l,m); 
+%                     imag((n_particle(i)^2 - nmed^2) / (n_particle(i)^2 + 2*nmed^2)) *...
+%                     intensity.values(i,j,:,l,m); 
+                
+%                 Fscat.values(i,j,:,l,m) = nmed * (2*pi/lambda.values(i))^4 /6/pi/c * ...
+%                     (alpha(m,i)*conj(alpha(m,i))) * intensity.values(i,j,:,l,m); 
+%                     % check that this is correct
+%                     % CGS units
+                    
+%                 Cext(i) = 5.7e-15; % from Jain paper with Qext = 15, and reff = 11nm;
+                
+                Fscat.values(i,j,:,l,m) = nmed / c * intensity.values(i,j,:,l,m) * Cext.values(i,m); 
                     % check that this is correct
+                    
             end
         end
     end
 end
 
-alpha_0 = zeros(d.size,lambda.size);
-for m = 1:1:d.size
-    if units == 1 % SI units: F.m^2
-        alpha_0(m,:) = nmed^2*eps0*4*pi*((d.values(m))/2)^3 .* ...
-            (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2); 
-    elseif units == 2 % CGS units: m^3
-        alpha_0(m,:) = 4*pi*(d.values(m)/2)^3 .* ...
-            (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2);
-    end
-    
-end
+% close all
+% figure
+% plot(lambda.values*1e9, Cext), hold all
+% plot(lambda.values*1e9, Qext.values), hold all
+
+% alpha_0 = zeros(d.size,lambda.size);
+% for m = 1:1:d.size
+%     if units == 1 % SI units: F.m^2
+%         alpha_0(m,:) = nmed^2*eps0*4*pi*((d.values(m))/2)^3 .* ...
+%             (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2); 
+%     elseif units == 2 % CGS units: m^3
+%         alpha_0(m,:) = 4*pi*(d.values(m)/2)^3 .* ...
+%             (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2);
+%     end
+%     
+% end
 
 %% CALCULATE: velocity, time
 % *************************************************************************
@@ -354,28 +397,28 @@ time.units_display = 'ms';
 time.units_conversion = 1e-3;
 time.values = zeros(size(vGrad.values));
 
-% MAKE SURE THERE IS AN ODD NUMBER OF r.values
-[~,zero_index] = min(abs(r.values));
-for i = 1:1:lambda.size
-    clc, disp([num2str(i/lambda.size*100, '%.0f') '%: time'])    
-    for j = 1:1:power.size
-        for k = 1:1:r.size
-            if k ~= zero_index
-                if k < zero_index
-                    integration_indices = k:1:zero_index;
-                elseif k > zero_index
-                    integration_indices = zero_index:1:k;
-                end
-                for l = 1:1:z.size
-                    for m = 1:1:d.size
-                        time.values(i,j,k,l,m) = abs(trapz(r.values(integration_indices),...
-                            squeeze(vGrad.values(i,j,integration_indices,l,m))));
-                    end
-                end
-            end
-        end
-    end
-end
+% MAKE SURE THERE IS AN EVEN NUMBER OF r.values
+% [~,zero_index] = min(abs(r.values));
+% for i = 1:1:lambda.size
+%     clc, disp([num2str(i/lambda.size*100, '%.0f') '%: time'])    
+%     for j = 1:1:power.size
+%         for k = 1:1:r.size
+%             if k ~= zero_index
+%                 if k < zero_index
+%                     integration_indices = k:1:zero_index;
+%                 elseif k > zero_index
+%                     integration_indices = zero_index:1:k;
+%                 end
+%                 for l = 1:1:z.size
+%                     for m = 1:1:d.size
+%                         time.values(i,j,k,l,m) = abs(trapz(r.values(integration_indices),...
+%                             squeeze(1./vGrad.values(i,j,integration_indices,l,m))));
+%                     end
+%                 end
+%             end
+%         end
+%     end
+% end
 
 %% LINEAR FIT: trap stiffness
 % *************************************************************************
@@ -425,7 +468,7 @@ end
 
 %% Default Variables
 % *************************************************************************
-variables = [potential, intensity, Fgrad, kr, vGrad, time, Fscat, vScat];
+variables = [potential, intensity, Fgrad, kr, vGrad, time, Fscat, vScat, Cext, Qext];
 variables_options = cell(size(variables));
 for i = 1:1:size(variables,2)
     variables_options{i} = variables(i).name;
@@ -437,9 +480,17 @@ selected_style = 2;
 if strcmp(variables(selected_variable).symbol, 'kr')                        
     x_index = 3;
     y_index = 1;
+elseif strcmp(variables(selected_variable).symbol, 'C_{ext}') % doesn't work
+    x_index = 1;
+    y_index = 2;
+elseif strcmp(variables(selected_variable).symbol, 'Q_{ext}') % doesn't work
+    x_index = 1;
+    y_index = 2;
 else
-    x_index = 3;
-    y_index = 4;
+%     x_index = 3;
+%     y_index = 4;
+    x_index = 1;
+    y_index = 2;
 end
 
 %% Variable Units
@@ -448,23 +499,29 @@ end
 Fgrad.units_display = 'fN';
 Fgrad.units_conversion = 1e-15;
 
-Fscat.units_display = 'fN';
-Fscat.units_conversion = 1e-15;
+Fscat.units_display = 'pN';
+Fscat.units_conversion = 1e-12;
 
 time.units_display = 'ms';
 time.units_conversion = 1e-3;
 
-variables = [potential, intensity, Fgrad, kr, vGrad, time, Fscat, vScat];
+vGrad.units_display = 'm/s';
+vGrad.units_conversion = 1;
 
 
 %% Plot Options
 % *************************************************************************
+variables = [potential, intensity, Fgrad, kr, vGrad, time, Fscat, vScat, Cext, Qext];
 
 [selected_style, selected_variable] = dialog_two_lists('Select plot options:', ...
                                       'Style', plot_styles, selected_style,...
                                       'Variable', variables_options, selected_variable);
 if strcmp(variables(selected_variable).symbol, 'kr')                        
     parameters = [lambda,z,d];
+elseif strcmp(variables(selected_variable).symbol, 'C_{ext}') 
+    parameters = [lambda,d];
+elseif strcmp(variables(selected_variable).symbol, 'Q_{ext}')  
+    parameters = [lambda,d];
 else
     parameters = [lambda,power,r,z,d];
 end
@@ -509,20 +566,30 @@ for i = fixed_parameter_indices
     default_values{i_counter} = num2str(parameters(i).selected / parameters(i).units_conversion);
 end
 
-input_title = 'Select fixed parameter values';
-input_data = parameters_options(fixed_parameter_indices);
-dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
-answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
-i_counter = 0;
-for i = fixed_parameter_indices
-    i_counter = i_counter + 1;
-    parameters(i).selected = str2double(answer{i_counter}) * parameters(i).units_conversion;
+if isempty(fixed_parameter_indices)
+    selected_style = 1; % line plot
+else
+    input_title = 'Select fixed parameter values';
+    input_data = parameters_options(fixed_parameter_indices);
+    dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
+    answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
+    i_counter = 0;
+    for i = fixed_parameter_indices
+        i_counter = i_counter + 1;
+        parameters(i).selected = str2double(answer{i_counter}) * parameters(i).units_conversion;
+    end
 end
 
 if strcmp(variables(selected_variable).symbol, 'kr')                        
     lambda = parameters(1);
     z = parameters(2);
     d = parameters(3);
+elseif strcmp(variables(selected_variable).symbol, 'C_{ext}') 
+    lambda = parameters(1);
+    d = parameters(2);
+elseif strcmp(variables(selected_variable).symbol, 'Q_{ext}') 
+    lambda = parameters(1);
+    d = parameters(2);
 else
     lambda = parameters(1);
     power = parameters(2);
