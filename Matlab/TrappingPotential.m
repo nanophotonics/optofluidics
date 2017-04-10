@@ -5,7 +5,7 @@
 
 clc
 clear 
-close all
+% close all
 figures = {};
 
 directory_save = 'R:\aa938\NanoPhotonics\Laboratory\2017.03.23 - gradient force calculations\';
@@ -28,9 +28,9 @@ d.symbol = 'd';
 d.units_SI = 'm';
 d.units_display = 'nm';
 d.units_conversion = 1e-9;
-d.min = 80e-9; 
-d.max = 80e-9; 
-d.step = 1e-9; 
+d.min = 10e-9; 
+d.max = 100e-9; 
+d.step = 10e-9; 
 d.values = d.min : d.step : d.max;
 d.size = size(d.values,2);
 d.selected = 8e-9;
@@ -40,9 +40,9 @@ lambda.symbol = '\lambda';
 lambda.units_SI = 'm';
 lambda.units_display = 'nm';
 lambda.units_conversion = 1e-9;
-lambda.min = 400e-9;
-lambda.max = 720e-9;
-lambda.step = 2e-9;
+lambda.min = 1050e-9;
+lambda.max = 1050e-9;
+lambda.step = 20e-9;
 lambda.values = lambda.min : lambda.step : lambda.max;
 lambda.size = size(lambda.values,2);
 lambda.selected = 800e-9;
@@ -91,26 +91,33 @@ power = parameters(3);
 %% READ: refractive index
 % *************************************************************************
 nmed = 1.33; % Refractive index of water
+material = 1;
+material = menu('Nanoparticle material', 'Gold', 'Polystyrene');
+if material == 1 % gold
+    foldername = '';
+    filename = 'Gold Refractive-Rakic.txt';
+    n_data = dlmread([foldername filename], '\t', 1, 0);
+    % n_data(:,1) = wave (nm)
+    % n_data(:,2) = n
+    % n_data(:,3) = k
+    n_real = spline(n_data(:,1), n_data(:,2), lambda.values * 1e9);
+    n_imaginary = spline(n_data(:,1), n_data(:,3), lambda.values * 1e9);
+    n_particle = n_real + 1i*n_imaginary;
 
-foldername = '';
-filename = 'Gold Refractive-Rakic.txt';
-n_data = dlmread([foldername filename], '\t', 1, 0);
-% n_data(:,1) = wave (nm)
-% n_data(:,2) = n
-% n_data(:,3) = k
-n_real = spline(n_data(:,1), n_data(:,2), lambda.values * 1e9);
-n_imaginary = spline(n_data(:,1), n_data(:,3), lambda.values * 1e9);
-n_particle = n_real + 1i*n_imaginary;
+    % figure
+    % plot(n_data(:,1), n_data(:,2), 'LineWidth', 2), hold all
+    % plot(n_data(:,1), n_data(:,3), 'LineWidth', 2), hold all
+    % xlabel('Wavelength (nm)')
+    % ylabel('Refractive index = n + i*k')
+    % legend('n','k', 'Location', 'NW')
+    % title(filename)
+    % xlim([200,1600])
+    % grid on
+elseif material == 2 % polystyrene
+    n_particle = 1.592*ones(size(lambda.values)); 
+end
 
-% figure
-% plot(n_data(:,1), n_data(:,2), 'LineWidth', 2), hold all
-% plot(n_data(:,1), n_data(:,3), 'LineWidth', 2), hold all
-% xlabel('Wavelength (nm)')
-% ylabel('Refractive index = n + i*k')
-% legend('n','k', 'Location', 'NW')
-% title(filename)
-% xlim([200,1600])
-% grid on
+
 
 %% CALCULATE: polarisability
 % *************************************************************************
@@ -164,7 +171,7 @@ if menu_profile == 1 % Bessel
     r.size = 200; % select and even number
     r.values = linspace(r.min,r.max,r.size);
     r.step = r.values(2)-r.values(1);     
-    r.selected = r.max;
+    r.selected = 0;
     
     j12 = 0.269514; % Square of the Bessel function 1st kind 1st order at the first zero of the 0th order
     j01 = 2.40483; % First zero of the Bessel function 1st kind 0th order
@@ -200,8 +207,8 @@ elseif menu_profile == 2 % Gaussian
     r.selected = r.min;
 
     z.min = 0; 
-    z.max = 2*w0*10; % m
-    z.size = 21; % select and odd number
+    z.max = 5*w0*10; % m
+    z.size = 31; % select and odd number
     z.values = linspace(z.min,z.max,z.size);
     z.step = z.values(2)-z.values(1);
     z.selected = z.min;    
@@ -257,8 +264,42 @@ end
 % intensity(lambda,power,r,z,d)
 % potential(lambda,power,r,z,d)
 
-%% CALCULATE: gradient force
+%% CALCULATE: scattering cross-section, gradient force
 % *************************************************************************
+
+menu_Csca = 2;
+menu_Csca = menu('Scattering efficiency/cross-section for GRADIENT force', 'Calculate', 'Read from file');
+
+Csca.name = 'Scattering Cross-Section';
+Csca.symbol = 'C_{sca}';
+Csca.units_SI = 'm^2'; 
+Csca.units_display = 'm^2';
+Csca.units_conversion = 1;
+Csca.values = zeros(lambda.size,d.size);
+
+Qsca.name = 'Scattering Efficiency';
+Qsca.symbol = 'Q_{sca}';
+Qsca.units_SI = ''; 
+Qsca.units_display = '';
+Qsca.units_conversion = 1;
+Qsca.values = zeros(lambda.size,d.size);
+
+if menu_Csca == 2 % read from file
+    file_path = 'R:\aa938\NanoPhotonics\Matlab\Cross Section\';
+    file_name = 'Qsca-Au-NR-11nm.txt';
+    [file_name, file_path, ~] = uigetfile('.txt','Scattering Efficiency',...
+        [file_path file_name], 'MultiSelect','off');
+    data_Qsca = dlmread([file_path file_name], '\t', 1, 0);
+    % data_Qsca(:,1) = lambda (nm)
+    % data_Qsca(:,2) = Qsca
+    Qsca.units_SI = file_name; 
+    Qsca.units_display = file_name; 
+    for m = 1:1:d.size
+        Qsca.values(:,m) = spline(data_Qsca(:,1)*1e-9, data_Qsca(:,2), lambda.values);
+    end
+end
+
+
 Fgrad.name = 'Gradient Force';
 Fgrad.symbol = 'F_{grad}';
 Fgrad.units_SI = 'N'; 
@@ -278,13 +319,26 @@ for i = 1:1:lambda.size
                     Fgrad.values(i,j,:,l,m) = (real(alpha(m,i) * nmed)/(2*c)) * ...
                         gradient(squeeze(intensity.values(i,j,:,l,m)),r.values);
                 end
+%                 if menu_Csca == 1 % calculate
+%                     alpha_modulus = abs(alpha(i,m));
+%                 elseif menu_Csca == 2 % read from file
+% %                     d_physical = d.values(m);
+%                     d_physical = 11.43e-9; % metres
+%                     Csca.values(i,m) = Qsca.values(i,m) * (pi*(d_physical/2)^2);
+%                     alpha_modulus = sqrt(abs(Csca.values(i,m)) * 4*pi / (2*pi*nmed/lambda.values(i))^4);
+%                 end
+%                 Fgrad.values(i,j,:,l,m) = alpha_modulus/eps0/nmed/c/2 * ...
+%                     gradient(squeeze(intensity.values(i,j,:,l,m)),r.values); % Svoboda and Block
             end
         end
     end
 end
 
-%% CALCULATE: scattering force
+%% CALCULATE: extinction cross-section, scattering force
 % *************************************************************************
+menu_Cext = 2;
+menu_Cext = menu('Extinction efficiency/cross-section for SCATTERING force', 'Calculate', 'Read from file');
+
 Cext.name = 'Extinction Cross-Section';
 Cext.symbol = 'C_{ext}';
 Cext.units_SI = 'm^2'; 
@@ -299,6 +353,21 @@ Qext.units_display = '';
 Qext.units_conversion = 1;
 Qext.values = zeros(lambda.size,d.size);
 
+if menu_Cext == 2 % calculate
+    file_path = 'R:\aa938\NanoPhotonics\Matlab\Cross Section\';
+    file_name = 'Qext-Au-NR-11nm.txt';
+    [file_name, file_path, ~] = uigetfile('.txt','Extinction Efficiency',...
+        [file_path file_name], 'MultiSelect','off');
+    data_Qext = dlmread([file_path file_name], '\t', 1, 0);
+    % data_Qext(:,1) = lambda (nm)
+    % data_Qext(:,2) = Qext
+    Qext.units_SI = file_name; 
+    Qext.units_display = file_name; 
+    for m = 1:1:d.size
+        Qext.values(:,m) = spline(data_Qext(:,1)*1e-9, data_Qext(:,2), lambda.values);
+    end
+end
+
 Fscat.name = 'Scattering Force';
 Fscat.symbol = 'F_{scat}';
 Fscat.units_SI = 'N'; 
@@ -311,17 +380,20 @@ for i = 1:1:lambda.size
 % for i = 176
     clc, disp([num2str(i/lambda.size*100, '%.0f') '%: scattering'])    
     for m = 1:1:d.size
-%         lambda.values(i)
-%         Qext = 6; % read it from the paper
-%         Cext(i) = Qext * (pi*(d.values(m)/2)^2);
-%         Cext(i) = 2*pi/lambda.values(i) / eps0 / nmed^2 * imag(alpha(m,i)); % m^2, SI
-        if units == 1 % alpha SI units: F.m^2
-%             Cext.values(i,m) = 2*pi/lambda.values(i) / eps0 / nmed^2 * imag(alpha(m,i)); % m^2, SI
-            Cext.values(i,m) = 2*pi/lambda.values(i) / eps0 * nmed^2 * imag(alpha(m,i)); % m^2, SI
-        elseif units == 2 % alpha in CGS units: m^3
-            Cext.values(i,m) = 2*pi/lambda.values(i) * imag(alpha(m,i)); % m^2, SI
+        if menu_Cext == 1 % calculate
+            if units == 1 % alpha SI units: F.m^2
+%                 Cext.values(i,m) = 2*pi/lambda.values(i) / eps0 / nmed^2 * imag(alpha(m,i)); % m^2, SI
+                Cext.values(i,m) = 2*pi/lambda.values(i) / eps0 * nmed^2 * imag(alpha(m,i)); % m^2, SI
+            elseif units == 2 % alpha in CGS units: m^3
+                Cext.values(i,m) = 2*pi/lambda.values(i) * imag(alpha(m,i)); % m^2, SI
+            end
+            Qext.values(i,m) = Cext.values(i,m) / (pi*(d.values(m)/2)^2);
+        
+        elseif menu_Cext == 2 % read from file
+%             d_physical = d.values(m);
+            d_physical = 11.43e-9; % metres
+            Cext.values(i,m) = Qext.values(i,m) * (pi*(d_physical/2)^2);
         end
-        Qext.values(i,m) = Cext.values(i,m) / (pi*(d.values(m)/2)^2);
         
         for j = 1:1:power.size
             for l = 1:1:z.size
@@ -373,11 +445,6 @@ vGrad.units_display = '\mum/ms';
 vGrad.units_conversion = 1e-6/1e-3;
 vGrad.values = zeros(size(Fgrad.values));
 
-for m = 1:1:d.size
-    vGrad.values(:,:,:,:,m) = Fgrad.values(:,:,:,:,m) ./ ...
-        (6*pi*viscosity*d.values(m)/2);
-end
-
 vScat.name = 'Particle velocity (due to Fscat)';
 vScat.symbol = 'v';
 vScat.units_SI = 'm/s';
@@ -386,8 +453,12 @@ vScat.units_conversion = 1e-6/1e-3;
 vScat.values = zeros(size(Fscat.values));
 
 for m = 1:1:d.size
+%     d_hydrodynamic = d.values(m);
+    d_hydrodynamic = 8e-9; % metres
+    vGrad.values(:,:,:,:,m) = Fgrad.values(:,:,:,:,m) ./ ...
+        (6*pi*viscosity*d_hydrodynamic/2);
     vScat.values(:,:,:,:,m) = Fscat.values(:,:,:,:,m) ./ ...
-        (6*pi*viscosity*d.values(m)/2);
+        (6*pi*viscosity*d_hydrodynamic/2);
 end
 
 time.name = 'Response time';
@@ -397,7 +468,7 @@ time.units_display = 'ms';
 time.units_conversion = 1e-3;
 time.values = zeros(size(vGrad.values));
 
-% MAKE SURE THERE IS AN EVEN NUMBER OF r.values
+% % MAKE SURE THERE IS AN EVEN NUMBER OF r.values
 % [~,zero_index] = min(abs(r.values));
 % for i = 1:1:lambda.size
 %     clc, disp([num2str(i/lambda.size*100, '%.0f') '%: time'])    
@@ -468,7 +539,8 @@ end
 
 %% Default Variables
 % *************************************************************************
-variables = [potential, intensity, Fgrad, kr, vGrad, time, Fscat, vScat, Cext, Qext];
+variables = [potential, intensity, Fgrad, kr, vGrad, time, ...
+             Fscat, vScat, Cext, Qext, Csca, Qsca];
 variables_options = cell(size(variables));
 for i = 1:1:size(variables,2)
     variables_options{i} = variables(i).name;
@@ -496,8 +568,8 @@ end
 %% Variable Units
 % *************************************************************************
 
-Fgrad.units_display = 'fN';
-Fgrad.units_conversion = 1e-15;
+Fgrad.units_display = 'pN';
+Fgrad.units_conversion = 1e-12;
 
 Fscat.units_display = 'pN';
 Fscat.units_conversion = 1e-12;
@@ -505,13 +577,16 @@ Fscat.units_conversion = 1e-12;
 time.units_display = 'ms';
 time.units_conversion = 1e-3;
 
-vGrad.units_display = 'm/s';
-vGrad.units_conversion = 1;
+vGrad.units_display = '\mum/s';
+vGrad.units_conversion = 1e-6;
 
+vScat.units_display = '\mum/s';
+vScat.units_conversion = 1e-6;
 
 %% Plot Options
 % *************************************************************************
-variables = [potential, intensity, Fgrad, kr, vGrad, time, Fscat, vScat, Cext, Qext];
+variables = [potential, intensity, Fgrad, kr, vGrad, time, ...
+             Fscat, vScat, Cext, Qext, Csca, Qsca];
 
 [selected_style, selected_variable] = dialog_two_lists('Select plot options:', ...
                                       'Style', plot_styles, selected_style,...
@@ -521,6 +596,10 @@ if strcmp(variables(selected_variable).symbol, 'kr')
 elseif strcmp(variables(selected_variable).symbol, 'C_{ext}') 
     parameters = [lambda,d];
 elseif strcmp(variables(selected_variable).symbol, 'Q_{ext}')  
+    parameters = [lambda,d];
+elseif strcmp(variables(selected_variable).symbol, 'C_{sca}')  
+    parameters = [lambda,d];
+elseif strcmp(variables(selected_variable).symbol, 'Q_{sca}')  
     parameters = [lambda,d];
 else
     parameters = [lambda,power,r,z,d];
@@ -590,6 +669,12 @@ elseif strcmp(variables(selected_variable).symbol, 'C_{ext}')
 elseif strcmp(variables(selected_variable).symbol, 'Q_{ext}') 
     lambda = parameters(1);
     d = parameters(2);
+elseif strcmp(variables(selected_variable).symbol, 'C_{sca}') 
+    lambda = parameters(1);
+    d = parameters(2);
+elseif strcmp(variables(selected_variable).symbol, 'Q_{sca}') 
+    lambda = parameters(1);
+    d = parameters(2);
 else
     lambda = parameters(1);
     power = parameters(2);
@@ -629,8 +714,6 @@ end
 figures{end+1} = figure('Units','normalized','Position',[0.1 0.1 0.8 0.7]);
 
 if selected_style == 1 % line plot
-    for i = 1:1:size(indices,2)
-    end
     h = plot(parameters(x_index).values / parameters(x_index).units_conversion, ...
              squeeze(variables(selected_variable).values(indices{:}) / variables(selected_variable).units_conversion), ...
              'LineWidth', 2); hold all
