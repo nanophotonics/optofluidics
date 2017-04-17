@@ -7,38 +7,76 @@
 clc
 clear
 close all
+figures = {};
 
-%% READING DATA
+%% CHOOSING FILES
 % *************************************************************************
 
 % specify default path
-% file_path = 'R:\aa938\NanoPhotonics\Laboratory\';
-file_path = 'R:\3-Temporary\aa938\';
+folder_path = 'R:\aa938\NanoPhotonics\Laboratory\';
+% folder_path = 'R:\3-Temporary\aa938\';
 
-% pop up window to choose the file(s) to read
-[file_name, file_path, ~] = uigetfile('.txt',...
-                                      'PicoScope Files to Read (use CTRL to select multiple files)',...
-                                      file_path,...
-                                      'MultiSelect','on');
-file_path_save = file_path;
-if strfind(file_path, 'Laboratory')
-    title_cell_channels{1} = file_path(strfind(file_path, 'Laboratory')+11:end-1);
-elseif strfind(file_path, 'aa938')
-    title_cell_channels{1} = file_path(strfind(file_path, 'aa938')+6:end-1);
+number_of_folders = 2;
+% number_of_folders = menu('Where are the files located?', 'SINGLE folder', 'MULTIPLE folders');
+
+if number_of_folders == 1
+    % pop up window to choose the file(s) to read from a SINGLE FOLDER
+    [file_name, folder_path, ~] = uigetfile('.txt',...
+                                          'PicoScope Files to Read (use CTRL to select multiple files)',...
+                                          folder_path,...
+                                          'MultiSelect','on');
+    file_name = cellstr(file_name); % convert to cell array of strings
+    file_path = cell(size(file_name));
+    for i = 1:1:size(file_name,2)
+        file_path{i} = [folder_path file_name{i}];
+    end
 else
-    title_cell_channels{1} = file_path;
+    % pop up window to choose the file(s) to read from MULTIPLE FOLDERS
+    paths = uipickfiles('FilterSpec', [folder_path '*.txt']);
+    file_path = {};
+    for i = 1:1:size(paths,2)
+        if strfind(paths{i}, 'txt')
+            file_path{end+1} = paths{i};
+        else
+            directory_contents = dir(paths{i});
+            for j = 3:1:size(directory_contents,1)
+%             for j = 3
+                file_path{end+1} = [paths{i} '\' directory_contents(j).name];
+                if strfind(file_path{end}, 'txt')
+                else % delete all non-txt files
+                    file_path(end) = [];
+                end
+            end
+        end
+    end
+    folder_path = file_path{1};
+    file_name = cell(size(file_path));
+    for i = 1:1:size(file_path,2)
+        slash = strfind(folder_path, '\');
+        file_name{i} = file_path{i}(slash(end)+1:end);
+    end
 end
-    
-% if just a single file is selected, change the variable file_names
-% from a string to a cell so the loops indexing will work
-if isa(file_name,'char')
-    temporary = file_name;
-    clear file_name
-    file_name{1} = temporary;
-    clear temporary;
-end
-
 number_of_files = size(file_name,2);
+
+
+folder_path_save = folder_path;
+if strfind(folder_path, 'Laboratory')
+    slash = strfind(folder_path, '\');
+    slash_index = find(slash > strfind(folder_path, 'Laboratory')+11);
+%     title_cell_channels{1} = folder_path(strfind(folder_path, 'Laboratory')+11:end-1);
+    title_cell_channels{1} = folder_path(strfind(folder_path, 'Laboratory')+11:slash(slash_index(1))-1);
+elseif strfind(folder_path, 'aa938')
+    slash = strfind(folder_path, '\');
+    slash_index = find(slash > strfind(folder_path, 'aa938')+6);
+%     title_cell_channels{1} = folder_path(strfind(folder_path, 'aa938')+6:end-1);
+    title_cell_channels{1} = folder_path(strfind(folder_path, 'aa938')+6:slash(slash_index(1))-1);
+else
+    title_cell_channels{1} = folder_path;
+end    
+
+
+%% READING DATA
+% *************************************************************************
 
 % reading the data from the txt files
 % it takes a while because the files are large
@@ -47,14 +85,14 @@ raw_data = cell(size(file_name));
 for i = 1:1:number_of_files
     disp(['Reading File ' num2str(i) '/' num2str(number_of_files)])
     measurement_numbers(i) = str2double(file_name{i}(10:13));
-    raw_data{i} = dlmread([file_path file_name{i}], '\t', 2, 0);
+    raw_data{i} = dlmread(file_path{i}, '\t', 2, 0);
     
     % raw_data{i}(:,1) = time
     % raw_data{i}(:,2) = channel A
     % raw_data{i}(:,3) = channel B
     
     % read channel names and units
-    file_identifier = fopen([file_path file_name{i}], 'r');
+    file_identifier = fopen(file_path{i}, 'r');
     line1 = fgets(file_identifier);
     line1 = strrep(line1, 'ChannelA', 'Channel A');
     line1 = strrep(line1, 'ChannelB', 'Channel B');
@@ -74,6 +112,7 @@ for i = 1:1:number_of_files
             disp(['Check Channel (' num2str(i) ',' num2str(j) ') Units!'])
         end
     end
+    yaxis_units = 'V';
 end
 disp('Finished reading all files!')
 
@@ -83,13 +122,13 @@ options = {'Savitzky-Golay Filtering', ...
            'Normalisation', ...
            'Average & Standard Dev.',...
            'Period Selection',...
-           'Channel B / Channel A',...
            'Read Info File',...
            'Calculate Power',...
+           'Channel B / Channel A',...
            };
-% selected_options = [5,6,7];
+selected_options = [1,5,6,7];
 % selected_options = 2;
-selected_options = 5;
+% selected_options = 5;
 [selected_options, ~] = listdlg('PromptString', 'Select options:',...
                                 'SelectionMode', 'multiple', ...
                                 'ListString', options, ...
@@ -195,65 +234,77 @@ end
 
 %% READING INFO FILE
 % *************************************************************************
+
+if find(cell2mat(strfind(channel_name(1,:), 'Channel A')))
+    ND_A = zeros(size(file_path));
+end
+if find(cell2mat(strfind(channel_name(1,:), 'Channel B')))
+    ND_B = zeros(size(file_path));
+end
+waveplate_angle = zeros(size(file_path));
+% wavelength = zeros(size(file_path));
+sample = cell(size(file_path));
+    
 if find(strcmp(options(selected_options), 'Read Info File'))
-    [file_name_info, file_path, ~] = uigetfile('.xlsx',...
+    [file_name_info, folder_path, ~] = uigetfile('.xlsx',...
                                           'Select one info file to read', ...
-                                          file_path, ...
+                                          folder_path, ...
                                           'MultiSelect','off');
-    file_path_save = file_path;
-    info_data = readtable([file_path file_name_info]);
+    folder_path_save = folder_path;
+    info_data = readtable([folder_path file_name_info]);
     info_numbers = info_data{:,'Number'};
     [~,measurement_indices,~] = intersect(info_numbers, measurement_numbers);
-    ND_A = info_data{measurement_indices,'ND_A'};
-    ND_B = info_data{measurement_indices,'ND_B'};
-    waveplate_angle = info_data{measurement_indices,'Angle_deg'}; % degrees
-else
-    if find(cell2mat(strfind(channel_name(1,:), 'Channel A')))
-        ND_A = zeros(number_of_files,1);
+%     ND_A = info_data{measurement_indices,'ND_A'};
+%     ND_B = info_data{measurement_indices,'ND_B'};
+%     waveplate_angle = info_data{measurement_indices,'Angle_deg'}; % degrees
+%     wavelength = info_data{measurement_indices,'Wavelength_nm'}; % nm
+    waveplate_angle = zeros(size(file_path));
+    wavelength = zeros(size(file_path));
+    for i = 1:1:number_of_files
+        waveplate_angle(i) = info_data{info_data.Number == measurement_numbers(i), 'Angle_deg'}; % degrees
+        wavelength(i) = info_data{info_data.Number == measurement_numbers(i), 'Wavelength_nm'}; % nm
+        sample(i) = info_data{info_data.Number == measurement_numbers(i), 'Sample'};
     end
-    if find(cell2mat(strfind(channel_name(1,:), 'Channel B')))
-        ND_B = zeros(number_of_files,1);
-    end
-    waveplate_angle = zeros(number_of_files,1);
 end
 
 %% ND filters
 % *************************************************************************
 
-
 default_values = [];
 dialog_title = {};
 dialog_title{end+1} = 'Waveplate angle (deg)';
-default_values = [default_values, waveplate_angle];
+default_values = [default_values; waveplate_angle];
 if find(cell2mat(strfind(channel_name(1,:), 'Channel A')))
-    default_values = [default_values, ND_A];
+    default_values = [default_values; ND_A];
     dialog_title{end+1} = 'ND A';
 end
 if find(cell2mat(strfind(channel_name(1,:), 'Channel B')))
-    default_values = [default_values, ND_B];
+    default_values = [default_values; ND_B];
     dialog_title{end+1} = 'ND B';
 end
-ND = default_values;
+% ND = default_values;
+ND = default_values(2:end,:);
 % answer_values = dialog_table(file_name, dialog_title, default_values);
 % waveplate_angle = answer_values(:,1);
 % ND = answer_values(:,2:end);
 
 channel_data = period_data;
 for i = 1:1:number_of_files % files
-    for j = 2:1:size(channel_name,2)-1 % channels
-        channel_data{i}(:,j) = channel_data{i}(:,j)*10^ND(i,j-1);
+    for j = 2:1:size(channel_name,2) % channels
+        channel_data{i}(:,j) = channel_data{i}(:,j)*10^ND(j-1,i);
     end
 end
 plot_data = channel_data;
 
 %% calculating the power
 % *************************************************************************
+power_data = channel_data;
 laser_power = zeros(number_of_files,1);
 if find(strcmp(options(selected_options), 'Calculate Power'))
-    reference_angle = 30; % degrees
-    reference_power = 16; % mW
+    reference_angle = 35; % degrees
+    reference_power = 88; % mW
     input_title = 'Reference'; 
-    input_data = {'Reference Angle','Reference Power (mW)'};
+    input_data = {'Reference Angle (deg)','Reference Power (mW)'};
     dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
     default_values = {num2str(reference_angle),num2str(reference_power)};
     answer = inputdlg(input_data, input_title, dim, default_values, dlg_options);
@@ -261,71 +312,77 @@ if find(strcmp(options(selected_options), 'Calculate Power'))
     reference_power = str2double(answer{2}); 
     
     reference_index = find(waveplate_angle == reference_angle);
-    reference_voltage = max(plot_data{reference_index}(:,2));
+    reference_voltage = max(plot_data{reference_index(end)});
     for i = 1:1:number_of_files % files
-        laser_power(i) = reference_power * max(plot_data{i}(:,2))/reference_voltage;
-        % Use power_fitted and compare the results.
+        laser_power(i) = reference_power * max(channel_data{i}(:,2))/reference_voltage(2);
+%         for j = 2:1:size(channel_name,2) % channels
+%             power_data{i}(:,j) = reference_power * channel_data{i}(:,j)/reference_voltage(j);
+%         end
+%         yaxis_units = 'mW';
     end
     laser_power_fitted = power_fitted(reference_angle, reference_power, waveplate_angle);
     laser_power_spline = power_spline(reference_angle, reference_power, waveplate_angle);
     
-% %     close all
-%     figure('Units','normalized','Position',[0.01 0.07 0.95 0.8],'tag','figure_picoscope');
-%     
-%     subplot(1,2,1)
-% %     yyaxis left
-%     plot(measurement_numbers, laser_power, '.', 'MarkerSize', 16), hold all
-%     plot(measurement_numbers, laser_power_fitted, 'o', 'MarkerSize', 4, 'LineWidth', 1), hold all
-%     plot(measurement_numbers, laser_power_spline, 'x', 'MarkerSize', 8, 'LineWidth', 1.5), hold all
-%     title(['Reference angle = ' num2str(reference_angle) ...
-%         '\circ, Reference power = ' num2str(reference_power) ' mW'])
-%     xlabel('Measurement Number')
-%     ylabel('Power (mW)')
-%     legend('Picoscope reference power', ...
-%            'Ti:Sa calibration coefficients', ...
-%            'Ti:Sa calibration interpolation', ...
-%            'Location', 'NW')
-%     grid on
-% %     yyaxis right
-% %     plot(measurement_numbers, waveplate_angle, '<', 'MarkerSize', 6, 'LineWidth', 1.5), hold all
-% %     ylabel('Waveplate Angle (degrees)')
-%     
-%     subplot(1,2,2)
-%     plot(waveplate_angle, laser_power, '.', 'MarkerSize', 16), hold all
-% %     plot(waveplate_angle, laser_power_fitted, 'o', 'MarkerSize', 4, 'LineWidth', 1), hold all
-%     plot(min(waveplate_angle):max(waveplate_angle), ...
-%          power_fitted(reference_angle, reference_power, min(waveplate_angle):max(waveplate_angle)), ...
-%          '-', 'MarkerSize', 4, 'LineWidth', 1), hold all
-%     plot(waveplate_angle, laser_power_spline, 'x', 'MarkerSize', 8, 'LineWidth', 1.5), hold all
-%     title(['Reference angle = ' num2str(reference_angle) ...
-%         '\circ, Reference power = ' num2str(reference_power) ' mW'])
-%     xlabel('Waveplate Angle (degrees)')
-%     ylabel('Power (mW)')
-%     legend('Picoscope reference power', ...
-%            'Ti:Sa calibration coefficients', ...
-%            'Ti:Sa calibration interpolation', ...
-%            'Location', 'NW')
-%     grid on
-%     
-%     text(waveplate_angle + 1, ...
-%          laser_power, ...
-%          strread(num2str(measurement_numbers),'%s'), ...
-%          'HorizontalAlignment', 'center',...
-%          'Color', 'k')
+%     close all
+    figures{end+1} = figure('Units','normalized','Position',[0.01 0.07 0.95 0.8]);
+    
+    subplot(1,2,1)
+%     yyaxis left
+    plot(measurement_numbers, laser_power, '.', 'MarkerSize', 16), hold all
+    plot(measurement_numbers, laser_power_fitted, 'o', 'MarkerSize', 4, 'LineWidth', 1), hold all
+    plot(measurement_numbers, laser_power_spline, 'x', 'MarkerSize', 8, 'LineWidth', 1.5), hold all
+    title(['Ref angle = ' num2str(reference_angle) ...
+        '\circ, Ref power = ' num2str(reference_power) ' mW, ' ...
+        'Ref # = ' num2str(measurement_numbers(reference_index(end)))])
+    xlabel('Measurement Number')
+    ylabel('Power (mW)')
+    legend('Picoscope reference power', ...
+           'Ti:Sa calibration coefficients', ...
+           'Ti:Sa calibration interpolation', ...
+           'Location', 'NW')
+    grid on
+    yyaxis right
+    plot(measurement_numbers, waveplate_angle, '<', 'MarkerSize', 6, 'LineWidth', 1.5), hold all
+    ylabel('Waveplate Angle (degrees)')
+    
+    subplot(1,2,2)
+    plot(waveplate_angle, laser_power, '.', 'MarkerSize', 16), hold all
+%     plot(waveplate_angle, laser_power_fitted, 'o', 'MarkerSize', 4, 'LineWidth', 1), hold all
+    plot(min(waveplate_angle):max(waveplate_angle), ...
+         power_fitted(reference_angle, reference_power, min(waveplate_angle):max(waveplate_angle)), ...
+         '-', 'MarkerSize', 4, 'LineWidth', 1), hold all
+    plot(waveplate_angle, laser_power_spline, 'x', 'MarkerSize', 8, 'LineWidth', 1.5), hold all
+    title(['Ref angle = ' num2str(reference_angle) ...
+        '\circ, Ref power = ' num2str(reference_power) ' mW, ' ...
+        'Ref # = ' num2str(measurement_numbers(reference_index(end)))])
+    xlabel('Waveplate Angle (degrees)')
+    ylabel('Power (mW)')
+    legend('Picoscope reference power', ...
+           'Ti:Sa calibration coefficients', ...
+           'Ti:Sa calibration interpolation', ...
+           'Location', 'NW')
+    grid on
+    
+    text(waveplate_angle + 0.1, ...
+         laser_power, ...
+         strread(num2str(measurement_numbers),'%s'), ...
+         'HorizontalAlignment', 'center',...
+         'Color', 'k')
     
     
 end
-
+plot_data = power_data;
 
 %% PLOTTING FIGURES
 % *************************************************************************
 % close all
-centre_wavelength = zeros(size(file_name));
-% centre_wavelength = [459, 500, 550, 600, 650, 700, 750, 790];
-% centre_wavelength = [592, 592, 676.2, 744.5, 831.0];
-% centre_wavelength = [698.5, 698.5, 698.5, 698.5, 698.5];
+% wavelength = zeros(size(file_name));
+% wavelength = [459, 500, 550, 600, 650, 700, 750, 790];
+% wavelength = [592, 592, 676.2, 744.5, 831.0];
+% wavelength = [698.5, 698.5, 698.5, 698.5, 698.5];
 
-files_to_plot = 1:1:number_of_files;
+% files_to_plot = 1:1:number_of_files;
+files_to_plot = number_of_files:-1:1;
 % files_to_plot = 1:1:6;
 % files_to_plot = 2:1:number_of_files;
 % files_to_plot = 3:4;
@@ -348,12 +405,12 @@ elseif menu_subplots == 3 % vertical
     layout = [2,1];
 end
 
-figure_picoscope = figure('Units','normalized','Position',[0.01 0.07 0.95 0.8],'tag','figure_picoscope');
+figures{end+1} = figure('Units','normalized','Position',[0.01 0.07 0.95 0.8]);
+figure_picoscope = figures{end};
 % plotting raw or smoothed channels
 legend_A = {}; % initialising the legend cell
 legend_B = {}; % initialising the legend cell
-% for i = files_to_plot % files
-for i = files_to_plot(end:-1:1) % files
+for i = files_to_plot % files
 %     disp([num2str(i) ' / ' num2str(max(size(files_to_plot))) ' files'])
 %     for j = 2:1:size(plot_data{i},2) % channels
 %     for j = 2:1:3 % channels
@@ -370,24 +427,22 @@ for i = files_to_plot(end:-1:1) % files
             end
             
             
-            ylabel('Channel A (V)')
+            ylabel(['Channel A (' yaxis_units ')'])
             if strcmp(options(selected_options), 'Normalisation')
                 ylabel('Channel A normalised')
             end
             grid on
-            legend_A{end+1} = file_name{i};
-%             legend_A{end+1} = [num2str(measurement_numbers(i), '%02.f')...
-%                                ' // ' num2str(laser_power(i), '%03.0f') ' mW'...
-%                                ];
-%                 file_name{i}(1:end-4) ...
-%                 ' // ' channel_name{i,j} ...
+%             legend_A{end+1} = file_name{i};
+            legend_A{end+1} = num2str(measurement_numbers(i), '%02.f');
+            if find(strcmp(options(selected_options), 'Read Info File'))
+                legend_A{end} = [legend_A{end} ' // ' sample{i}];
+                legend_A{end} = [legend_A{end} ' // ' num2str(wavelength(i), '%03.0f') ' nm'];
+                legend_A{end} = [legend_A{end} ' // ' num2str(waveplate_angle(i), '%02.0f') ' deg'];
+            end
+            if find(strcmp(options(selected_options), 'Calculate Power'))
+                legend_A{end} = [legend_A{end} ' // ' num2str(laser_power(i), '%03.0f') ' mW'];
+            end
 
-%                 ' // ND = ' num2str(ND_A(i), '%.0f') ...
-%                 ' x ' num2str(channel_factor(j)*measurement_factor(i), '%01.2f')...
-%                 ' // centre = ' num2str(centre_wavelength(i), '%03.1f') ' nm'...
-
-%             ylim([-1,4])
-%             pause(0.1)
         elseif strfind(channel_name{i,j}, 'Channel B')
 %             disp('Channel B')
             if menu_subplots == 1
@@ -398,24 +453,21 @@ for i = files_to_plot(end:-1:1) % files
                 subplot(layout(1),layout(2),2)
             end
             
-            ylabel('Channel B (V)')
+            ylabel(['Channel B (' yaxis_units ')'])
             if strcmp(options(selected_options), 'Normalisation')
                 ylabel('Channel B normalised')
             end
             grid on
-            legend_B{end+1} = file_name{i};
-%             legend_B{end+1} = [num2str(measurement_numbers(i), '%02.0f')...
-%                                ' // ' num2str(laser_power(i), '%03.0f') ' mW'...
-%                                ];
-%             legend_B{end+1} = [file_name{i}(1:end-4) ...
-%                 ' // ' channel_name{i,j} ...
-%                 ' // ' num2str(laser_power(i), '%.0f') ' mW'...
-%                 ' // ND = ' num2str(ND_B(i), '%.0f') ...     
-%                 ' // \lambda = ' num2str(centre_wavelength(i), '%03.0f') ' nm'...
-%                 ' x ' num2str(channel_factor(j)*measurement_factor(i), '%01.2f')...
-%                 ' // centre = ' num2str(centre_wavelength(i), '%03.1f') ' nm'...   
-%                 ];
-%             ylim([-2,8])
+%             legend_B{end+1} = file_name{i};
+            legend_B{end+1} = num2str(measurement_numbers(i), '%02.f');
+            if find(strcmp(options(selected_options), 'Read Info File'))
+                legend_B{end} = [legend_B{end} ' // ' sample{i}];
+                legend_B{end} = [legend_B{end} ' // ' num2str(wavelength(i), '%03.0f') ' nm'];
+                legend_B{end} = [legend_B{end} ' // ' num2str(waveplate_angle(i), '%02.0f') ' deg'];
+            end
+            if find(strcmp(options(selected_options), 'Calculate Power'))
+                legend_B{end} = [legend_B{end} ' // ' num2str(laser_power(i), '%03.0f') ' mW'];
+            end
         end
         
         h(i,j) = plot(plot_data{i}(:,1), ...
@@ -435,10 +487,18 @@ figure(figure_picoscope)
 for j = channels_to_plot
     for i = files_to_plot    
         if selected_colour > 1 
-            colour_RGB = colour_gradient(i, number_of_files, colour_type(selected_colour));
-%             colour_RGB = colour_gradient(find(waveplate_angle_unique == waveplate_angle(i)), ...
-%                 size(waveplate_angle_unique,2), ...
-%                 colour_type(selected_colour));
+            if find(strcmp(options(selected_options), 'Calculate Power'))
+                colour_RGB = colour_gradient(find(unique(laser_power) == laser_power(i)), ...
+                    size(unique(laser_power),1), ...
+                    colour_type(selected_colour));
+            elseif find(strcmp(options(selected_options), 'Read Info File'))
+                colour_RGB = colour_gradient(find(unique(waveplate_angle) == waveplate_angle(i)), ...
+                    size(unique(waveplate_angle),1), ...
+                    colour_type(selected_colour));
+            else
+                colour_RGB = colour_gradient(i, number_of_files, colour_type(selected_colour));
+            end
+
             h(i,j).Color = colour_RGB;  
         end
         h(i,j).MarkerSize = 1;
@@ -454,14 +514,15 @@ end
 % ylabel('Channel B (V)')
 % grid on
 
-%% axis limits
+%% axis limits and legend location
 figure(figure_picoscope)
-legend_location = 'best';
+legend_location = 'none';
 % x_limits = xlim;
 % x_limits = [-5,25];
 % x_limits = [-1,2];
 % x_limits = [0,1.5];
-x_limits = [-10,10];
+% x_limits = [-10,10];
+x_limits = [-1,9];
 
 input_title = 'Plot formatting';
 input_data = {'Legend Location', 'X Axis Min', 'X Axis Max'};
@@ -475,7 +536,11 @@ if menu_subplots == 1
     title(title_cell_channels, 'interpreter', 'none')
     xlabel('Time (ms)')
     legend_channels = [legend_A, legend_B];
-    legend(legend_channels, 'Location', legend_location, 'interpreter', 'none')
+    if strfind(legend_location, 'none')
+    elseif strfind(legend_location, 'off')
+    else
+        legend(legend_channels, 'Location', legend_location, 'interpreter', 'none')
+    end
     axis auto
     xlim(x_limits)
 
@@ -488,13 +553,32 @@ if menu_subplots == 1
     
 elseif menu_subplots == 2
     subplot(layout(1),layout(2),1)
-    legend(legend_A, 'Location', legend_location, 'interpreter', 'none')
+    if strfind(legend_location, 'none')
+    elseif strfind(legend_location, 'off')
+    else
+        legend(legend_A, 'Location', legend_location, 'interpreter', 'none')
+    end
     title(title_cell_channels, 'interpreter', 'none')
     xlabel('Time (ms)')
     xlim(x_limits)
+    [~,measurement_indices] = unique(measurement_numbers);
+    for i = 1:1:size(measurement_indices,1)
+        text(mean(xlim), ...
+            max(plot_data{measurement_indices(i)}(:,2))*0.98, ...
+            legend_A{files_to_plot(measurement_indices(i))}, ...
+            'HorizontalAlignment', 'center',...
+            'VerticalAlignment', 'top', ...
+            'Color', 'k',...
+            'FontSize', 8)
+    end
+     
     
     subplot(layout(1),layout(2),2)
-    legend(legend_B, 'Location', legend_location, 'interpreter', 'none')
+    if strfind(legend_location, 'none')
+    elseif strfind(legend_location, 'off')
+    else
+        legend(legend_B, 'Location', legend_location, 'interpreter', 'none')
+    end
     title(title_cell_channels, 'interpreter', 'none')
     xlabel('Time (ms)')
     xlim(x_limits)
@@ -513,19 +597,25 @@ end
 %% plotting ratio B/A
 if find(strcmp(options(selected_options), 'Channel B / Channel A'))
 %     subplot(subplot_division)
-    figure_division = figure('Units','normalized','Position',[0.01 0.07 0.95 0.8],'tag','figure_division');
+    figures{end+1} = figure('Units','normalized','Position',[0.01 0.07 0.95 0.8]);
+    figure_division = figures{end};
     legend_division = {}; % initialising the legend cell
-%     for i = files_to_plot % files
-    for i = files_to_plot(end:-1:1) % files
+    for i = files_to_plot % files
+%     for i = files_to_plot(end:-1:1) % files
         h_div(i) = plot(plot_data{i}(:,1), ...
             divided_data{i},...
             'LineWidth', 1); hold all
-        legend_division{end+1} = [file_name{i}(1:end-4) ' // B/A'...
-%             ' // centre = ' num2str(centre_wavelength(i), '%03.1f') ' nm'...
-            ];
+%         legend_division{end+1} = file_name{i};
+        legend_division{end+1} = num2str(measurement_numbers(i), '%02.f');
+        if find(strcmp(options(selected_options), 'Read Info File'))
+            legend_division{end} = [legend_division{end} ' // ' sample{i}];
+            legend_division{end} = [legend_division{end} ' // ' num2str(wavelength(i), '%03.0f') ' nm'];
+            legend_division{end} = [legend_division{end} ' // ' num2str(waveplate_angle(i), '%02.0f') ' deg'];
+        end
+        if find(strcmp(options(selected_options), 'Calculate Power'))
+            legend_division{end} = [legend_division{end} ' // ' num2str(laser_power(i), '%03.0f') ' mW'];
+        end
     end
-    legend(legend_division, 'Location', 'NEO', 'interpreter', 'none')
-%     legend(legend_A, 'Location', 'NEO', 'interpreter', 'none')
     title(title_cell_divided, 'interpreter', 'none')
     ylabel('B/A')
     xlabel('Time (ms)')
@@ -545,10 +635,17 @@ if find(strcmp(options(selected_options), 'Channel B / Channel A'))
                                'InitialValue', selected_colour);
     for i = files_to_plot    
         if selected_colour > 1 
-            colour_RGB = colour_gradient(i, number_of_files, colour_type(selected_colour));
-    %             colour_RGB = colour_gradient(find(waveplate_angle_unique == waveplate_angle(i)), ...
-    %                 size(waveplate_angle_unique,2), ...
-    %                 colour_type(selected_colour));
+            if find(strcmp(options(selected_options), 'Calculate Power'))
+                colour_RGB = colour_gradient(find(unique(laser_power) == laser_power(i)), ...
+                    size(unique(laser_power),1), ...
+                    colour_type(selected_colour));
+            elseif find(strcmp(options(selected_options), 'Read Info File'))
+                colour_RGB = colour_gradient(find(unique(waveplate_angle) == waveplate_angle(i)), ...
+                    size(unique(waveplate_angle),1), ...
+                    colour_type(selected_colour));
+            else
+                colour_RGB = colour_gradient(i, number_of_files, colour_type(selected_colour));
+            end
             h_div(i).Color = colour_RGB;  
         end
         h_div(i).MarkerSize = 1;
@@ -556,13 +653,13 @@ if find(strcmp(options(selected_options), 'Channel B / Channel A'))
         h_div(i).LineWidth = 1;
     end
     
-    %% axis limits
+    %% axis limits and legend location
     figure(figure_division)
     legend_location = 'NEO';
 %     x_limits = xlim;
     x_limits = [0,8];
 %     y_limits = ylim;
-    y_limits = [1,3];
+    y_limits = [0,1];
 
     input_title = 'Plot formatting';
     input_data = {'Legend Location', ...
@@ -577,6 +674,12 @@ if find(strcmp(options(selected_options), 'Channel B / Channel A'))
     x_limits = [str2double(answer{2}),str2double(answer{3})];
     y_limits = [str2double(answer{4}),str2double(answer{5})];
     
+    if strfind(legend_location, 'none')
+    elseif strfind(legend_location, 'off')
+    else
+        legend(legend_division, 'Location', 'NEO', 'interpreter', 'none')
+    end
+    
     xlim(x_limits)
     ylim(y_limits)
 
@@ -584,35 +687,55 @@ end
 
 %% SAVING FIGURES
 % *************************************************************************
+% menu_save_figures = 1;
+% menu_save_figures = menu('Save Figures?', 'NO', 'YES');
+% if menu_save_figures == 2    
+%     if findobj('tag','figure_picoscope') ~= 0
+%         figure_save = figure_picoscope;
+%         file_name_save = file_name{1}(1:end-4);
+%         
+%         figure(figure_save)
+%         pause(0.1)
+%         [file_name_save,folder_path_save,~] = uiputfile(['.' 'png'],...
+%             'File to Save the Figure',[folder_path_save file_name_save]);
+%         hgexport(figure_save, [folder_path_save file_name_save], hgexport('factorystyle'), 'Format', 'png')
+%         file_name_save = strrep(file_name_save, 'png', 'fig');    
+%         saveas(figure_save, [folder_path_save file_name_save], 'fig');
+%         
+%     end
+%     
+%     if findobj('tag','figure_division') ~= 0
+%         figure_save = figure_division;
+%         file_name_save = file_name{1}(1:end-4);
+%         
+%         figure(figure_save)
+%         pause(0.1)
+%         [file_name_save,folder_path_save,~] = uiputfile(['.' 'png'],...
+%             'File to Save the Figure',[folder_path_save file_name_save]);
+%         hgexport(figure_save, [folder_path_save file_name_save], hgexport('factorystyle'), 'Format', 'png')
+%         file_name_save = strrep(file_name_save, 'png', 'fig');    
+%         saveas(figure_save, [folder_path_save file_name_save], 'fig');
+%         
+%     end
+% end
+
 menu_save_figures = 1;
 menu_save_figures = menu('Save Figures?', 'NO', 'YES');
 if menu_save_figures == 2    
-    if findobj('tag','figure_picoscope') ~= 0
-        figure_save = figure_picoscope;
-        file_name_save = file_name{1}(1:end-4);
-        
-        figure(figure_save)
-        pause(0.1)
-        [file_name_save,file_path_save,~] = uiputfile(['.' 'png'],...
-            'File to Save the Figure',[file_path_save file_name_save]);
-        hgexport(figure_save, [file_path_save file_name_save], hgexport('factorystyle'), 'Format', 'png')
-        file_name_save = strrep(file_name_save, 'png', 'fig');    
-        saveas(figure_save, [file_path_save file_name_save], 'fig');
-        
-    end
-    
-    if findobj('tag','figure_division') ~= 0
-        figure_save = figure_division;
-        file_name_save = file_name{1}(1:end-4);
-        
-        figure(figure_save)
-        pause(0.1)
-        [file_name_save,file_path_save,~] = uiputfile(['.' 'png'],...
-            'File to Save the Figure',[file_path_save file_name_save]);
-        hgexport(figure_save, [file_path_save file_name_save], hgexport('factorystyle'), 'Format', 'png')
-        file_name_save = strrep(file_name_save, 'png', 'fig');    
-        saveas(figure_save, [file_path_save file_name_save], 'fig');
-        
+    for i = 1:1:max(size(figures))
+        if findobj(figures{i}) ~= 0
+            figure_save = figures{i};
+            file_name_save = '';
+            
+            figure(figure_save)
+            pause(0.1)
+            [file_name_save,folder_path_save,~] = uiputfile(['.' 'png'],...
+                'File to Save the Figure',[folder_path_save file_name_save]);
+            hgexport(figure_save, [folder_path_save file_name_save], hgexport('factorystyle'), 'Format', 'png')
+            file_name_save = strrep(file_name_save, 'png', 'fig');    
+            saveas(figure_save, [folder_path_save file_name_save], 'fig');
+
+        end
     end
 end
 
