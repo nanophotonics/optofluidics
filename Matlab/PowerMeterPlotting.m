@@ -1,8 +1,5 @@
 % Created by Ana (aa938)
-% Reads txt files created with the PicoScope software
-% Savitzky-Golay filtering
-% Plots the channels
-% #ok<*ST2NM>
+% Reads txt files created with the Thorlabs Powermeter
 
 clc
 clear
@@ -13,8 +10,8 @@ figures = {};
 % *************************************************************************
 
 % specify default path
-folder_path = 'R:\aa938\NanoPhotonics\Laboratory\';
-% folder_path = 'R:\3-Temporary\aa938\';
+% folder_path = 'R:\aa938\NanoPhotonics\Laboratory\';
+folder_path = 'R:\3-Temporary\aa938\';
 % folder_path = 'R:\3-Temporary\os354\';
 
 number_of_folders = 2;
@@ -83,42 +80,36 @@ end
 % it takes a while because the files are large
 measurement_numbers = zeros(size(file_name));
 raw_data = cell(size(file_name));
+plot_data = cell(size(file_name));
 for i = 1:1:number_of_files
     disp(['Reading File ' num2str(i) '/' num2str(number_of_files)])
-    measurement_numbers(i) = str2double(file_name{i}(10:13));
-    raw_data{i} = dlmread(file_path{i}, '\t', 2, 0);
+%     measurement_numbers(i) = str2double(file_name{i}(10:13));
+    measurement_numbers(i) = 0;
+    raw_data{i} = readtable(file_path{i});
     
-    % raw_data{i}(:,1) = time
-    % raw_data{i}(:,2) = channel A
-    % raw_data{i}(:,3) = channel B
+    % raw_data{i}(:,1) = time stamp
+    % raw_data{i}(:,2) = power 
+    % raw_data{i}(:,3) = units
     
-    % read channel names and units
-    file_identifier = fopen(file_path{i}, 'r');
-    line1 = fgets(file_identifier);
-    line1 = strrep(line1, 'ChannelA', 'Channel A');
-    line1 = strrep(line1, 'ChannelB', 'Channel B');
-    line1 = strrep(line1, 'ChannelC', 'Channel C');
-    line1 = strrep(line1, 'ChannelD', 'Channel D');
-    line2 = fgets(file_identifier);
-    fclose(file_identifier);
-    channel_name(i,:) = strsplit(line1(1:end-1),'\t');
-    channel_unit(i,:) = strsplit(line2(1:end-1),'\t');
+    xaxis_units = '(s)';
+    channel_name{i,1} = 'Time';
+    channel_unit{i,1} = '(s)';
+    channel_name{i,2} = 'Power Meter';
+    channel_unit{i,2} = ['(' raw_data{1}.Var3{1} ')'];
+%     yaxis_units = raw_data{1}.Var3(1);
+    % TO TO: change all powers to Watts
     
-    % change all channel units to Volts
-    for j = 2:1:size(raw_data{i},2) % channels
-        if strfind(channel_unit{i,j}, '(V)')
-        elseif strfind(channel_unit{i,j}, '(mV)')
-            channel_unit{i,j} = '(V)';
-            raw_data{i}(:,j) = raw_data{i}(:,j)/1000;
-        else
-            disp(channel_unit{i,j})
-            disp(['Check Channel (' num2str(i) ',' num2str(j) ') Units!'])
-        end
+    % convert time stamp to milliseconds
+    date_vector = datevec(datestr(raw_data{i}.Var1(:),'dd-mm-yyyy HH:MM:SS.FFF'));
+    for j = 1:1:size(date_vector,1)
+        time_data{i}(j,1) = etime(date_vector(j,:),date_vector(1,:));
     end
-    yaxis_units = 'V';
-
+    time_data{i}(:,2) = raw_data{i}.Var2(:);
+    
 end
 disp('Finished reading all files!')
+% figure
+% plot(time_data{i}(:,1),time_data{i}(:,2))
 
 %% OPTIONS
 % *************************************************************************
@@ -130,8 +121,7 @@ options = {'Savitzky-Golay Filtering', ...
            'Calculate Power',...
            'Channel B / Channel A',...
            };
-selected_options = [1,5];
-% selected_options = [1,5,6,7];
+selected_options = [3];
 % selected_options = 2;
 % selected_options = 5;
 [selected_options, ~] = listdlg('PromptString', 'Select options:',...
@@ -149,10 +139,10 @@ colour_type = {'DEFAULT', ...
                };
 selected_colour = 1;
 
-%% Savitzky-Golay Filtering
+%% smoothing
 % *************************************************************************
 
-smoothed_data = raw_data;   
+smoothed_data = time_data;   
 % title_cell_channels{2} = 'Raw unfiltered data';
 if find(strcmp(options(selected_options), 'Savitzky-Golay Filtering'))
     % if polynomial_order = 1 then this becomes a moving average
@@ -169,7 +159,7 @@ if find(strcmp(options(selected_options), 'Savitzky-Golay Filtering'))
     frame_size = str2double(answer{2});    
       
     
-    title_cell_channels{2} = ['SG filtering. '...
+    title_cell_channels{2} = ['Savitzky-Golay filtering. '...
         'Polynomial order = ' num2str(polynomial_order) '. '...
         'Frame size =  ' num2str(frame_size) ' points.'];
     
@@ -204,13 +194,15 @@ average = zeros(size(channel_name));
 stdev = zeros(size(channel_name));
 if find(strcmp(options(selected_options), 'Average & Standard Dev.'))
     for i = 1:1:number_of_files
-        threshold_ref = max(period_data{i}(:,2))/2; % V
-        [t_ref,~] = find(period_data{i}(:,2) > threshold_ref);
-        t_ref(end-9:end) = [];
-        t_ref(1:10) = [];    
-        for j = 1:1:size(channel_name,2)
-            average(i,j) = mean(period_data{i}(t_ref,1));
-            stdev(i,j) = std(period_data{i}(t_ref,1));
+%         threshold_ref = max(period_data{i}(:,2))/2; % V
+%         [t_ref,~] = find(period_data{i}(:,2) > threshold_ref);
+%         t_ref(end-9:end) = [];
+%         t_ref(1:10) = [];    
+        t_ref = 1:1:size(normalised_data{i}(:,2),1);
+        for j = 2:1:size(channel_name,2)
+            average(i,j) = mean(normalised_data{i}(t_ref,j));
+            stdev(i,j) = std(normalised_data{i}(t_ref,j));
+%             normalised_data{i}(:,j) = normalised_data{i}(:,j) - average(i,j);
         end
     end
 end
@@ -246,6 +238,9 @@ end
 if find(cell2mat(strfind(channel_name(1,:), 'Channel B')))
     ND_B = zeros(size(file_path));
 end
+if find(cell2mat(strfind(channel_name(1,:), 'Power Meter')))
+    ND_PM = zeros(size(file_path));
+end
 waveplate_angle = zeros(size(file_path));
 % wavelength = zeros(size(file_path));
 sample = cell(size(file_path));
@@ -263,79 +258,49 @@ if find(strcmp(options(selected_options), 'Read Info File'))
 %     ND_B = info_data{measurement_indices,'ND_B'};
 %     waveplate_angle = info_data{measurement_indices,'Angle_deg'}; % degrees
 %     wavelength = info_data{measurement_indices,'Wavelength_nm'}; % nm
-    waveplate_angle = zeros(size(file_path'));
+    waveplate_angle = zeros(size(file_path));
     wavelength = zeros(size(file_path));
     for i = 1:1:number_of_files
         waveplate_angle(i) = info_data{info_data.Number == measurement_numbers(i), 'Angle_deg'}; % degrees
         wavelength(i) = info_data{info_data.Number == measurement_numbers(i), 'Wavelength_nm'}; % nm
         sample(i) = info_data{info_data.Number == measurement_numbers(i), 'Sample'};
-        ND_A(i) = info_data{info_data.Number == measurement_numbers(i), 'ND_A'};
-        ND_B(i) = info_data{info_data.Number == measurement_numbers(i), 'ND_B'};
     end
 end
 
 %% ND filters
 % *************************************************************************
 
-clear default_values
 default_values = [];
 dialog_title = {};
 dialog_title{end+1} = 'Waveplate angle (deg)';
 default_values = [default_values; waveplate_angle];
 if find(cell2mat(strfind(channel_name(1,:), 'Channel A')))
-    default_values = [default_values, ND_A'];
+    default_values = [default_values; ND_A];
     dialog_title{end+1} = 'ND A';
 end
 if find(cell2mat(strfind(channel_name(1,:), 'Channel B')))
-    default_values = [default_values, ND_B'];
+    default_values = [default_values; ND_B];
     dialog_title{end+1} = 'ND B';
 end
-if find(cell2mat(strfind(channel_name(1,:), 'Channel C')))
-    default_values = [default_values, ND_C'];
-    dialog_title{end+1} = 'ND C';
+if find(cell2mat(strfind(channel_name(1,:), 'Power Meter')))
+    default_values = [default_values; ND_PM];
+    dialog_title{end+1} = 'ND Power Meter';
 end
-if find(cell2mat(strfind(channel_name(1,:), 'Channel D')))
-    default_values = [default_values, ND_D'];
-    dialog_title{end+1} = 'ND D';
-end
-% default_values = default_values';
-ND = default_values(:,2:end);
+
 
 % ND = default_values;
+ND = default_values(2:end,:);
 % answer_values = dialog_table(file_name, dialog_title, default_values);
 % waveplate_angle = answer_values(:,1);
 % ND = answer_values(:,2:end);
 
 channel_data = period_data;
-
-% close all
-% figure
-% legend_ND = {};
-% for i = 1:1:number_of_files % files
-%     for j = 2:1:size(channel_name,2) % channels        
-%         if i > 1
-%             legend_ND{end+1} = ['LOG( ' file_name{1} ' / ' file_name{i} ' ) - ' channel_name{i,j}];
-%             plot(channel_data{i}(:,1), log10(channel_data{1}(:,j)./channel_data{i}(:,j)), ...
-%                 'LineWidth', 2), hold all
-%         end
-%     end
-% end
-% xlabel(['Time ' channel_unit{1,1}])
-% ylabel('ND')
-% grid on
-% xlim([-0,9])
-% ylim([-1,5])
-% title(title_cell_channels, 'interpreter', 'none')
-% legend(legend_ND, 'Location', 'best', 'interpreter', 'none')
-
 for i = 1:1:number_of_files % files
     for j = 2:1:size(channel_name,2) % channels
-        channel_data{i}(:,j) = channel_data{i}(:,j)*10^ND(i,j-1);
+        channel_data{i}(:,j) = channel_data{i}(:,j)*10^ND(j-1,i);
     end
 end
 plot_data = channel_data;
-
-
 
 %% calculating the power
 % *************************************************************************
@@ -361,15 +326,8 @@ if find(strcmp(options(selected_options), 'Calculate Power'))
 %         end
 %         yaxis_units = 'mW';
     end
-    
-    file_path_waveplate_fit = 'power_calibration_fit_170213.txt';
-    file_path_waveplate_data = 'power_calibration_data_170213.txt';
-    
-%     file_path_waveplate_fit = 'power_calibration_fit_170426.txt';
-%     file_path_waveplate_data = 'power_calibration_data_170426.txt';
-    
-    laser_power_fitted = power_fitted(reference_angle, reference_power, waveplate_angle, file_path_waveplate_fit);
-    laser_power_spline = power_spline(reference_angle, reference_power, waveplate_angle, file_path_waveplate_data);
+    laser_power_fitted = power_fitted(reference_angle, reference_power, waveplate_angle);
+    laser_power_spline = power_spline(reference_angle, reference_power, waveplate_angle);
     
 %     close all
     figures{end+1} = figure('Units','normalized','Position',[0.01 0.07 0.95 0.8]);
@@ -397,7 +355,7 @@ if find(strcmp(options(selected_options), 'Calculate Power'))
     plot(waveplate_angle, laser_power, '.', 'MarkerSize', 16), hold all
 %     plot(waveplate_angle, laser_power_fitted, 'o', 'MarkerSize', 4, 'LineWidth', 1), hold all
     plot(min(waveplate_angle):max(waveplate_angle), ...
-         power_fitted(reference_angle, reference_power, min(waveplate_angle):max(waveplate_angle), file_path_waveplate_fit), ...
+         power_fitted(reference_angle, reference_power, min(waveplate_angle):max(waveplate_angle)), ...
          '-', 'MarkerSize', 4, 'LineWidth', 1), hold all
     plot(waveplate_angle, laser_power_spline, 'x', 'MarkerSize', 8, 'LineWidth', 1.5), hold all
     title(['Ref angle = ' num2str(reference_angle) ...
@@ -435,7 +393,7 @@ files_to_plot = number_of_files:-1:1;
 % files_to_plot = 2:1:number_of_files;
 % files_to_plot = 3:4;
 
-channels_to_plot = [2,3];
+channels_to_plot = [2];
 % [channels_to_plot, ~] = listdlg('PromptString', 'Channels to plot',...
 %                                 'SelectionMode', 'multiple', ...
 %                                 'ListString', channel_name(1,2:end),...
@@ -445,7 +403,7 @@ channels_to_plot = [2,3];
 menu_subplots = 1;
 if size(channels_to_plot,2) > 1
     menu_subplots = 2;
-%     menu_subplots = menu('Plot each channel in a different subplot?', 'NO', 'YES (horizontal)', 'YES (vertical)');
+    menu_subplots = menu('Plot each channel in a different subplot?', 'NO', 'YES (horizontal)', 'YES (vertical)');
 end
 if menu_subplots == 2 % horizontal
     layout = [1,2];
@@ -464,66 +422,44 @@ for i = files_to_plot % files
 %     for j = 2:1:3 % channels
     for j = channels_to_plot % channels
 %         disp([num2str(j) ' / ' num2str(max(size(channels_to_plot))) ' channels'])
-        if strfind(channel_name{i,j}, 'Channel A')
-%             disp('Channel A')
+        if strfind(channel_name{i,j}, 'Power Meter')
             if menu_subplots == 1
                 if size(channels_to_plot,2)>1
-%                     yyaxis left
+                    yyaxis left
                 end
             elseif menu_subplots == 2
                 subplot(layout(1),layout(2),1)
             end
             
-            
-            ylabel(['Channel A (' yaxis_units ')'])
             if strcmp(options(selected_options), 'Normalisation')
-                ylabel('Channel A normalised')
+                ylabel('Power Meter normalised')
             end
             grid on
+            legend_A{end+1} = '';
 %             legend_A{end+1} = file_name{i};
-            legend_A{end+1} = num2str(measurement_numbers(i), '%02.f');
+%             legend_A{end+1} = num2str(measurement_numbers(i), '%02.f');
             if find(strcmp(options(selected_options), 'Read Info File'))
                 legend_A{end} = [legend_A{end} ' // ' sample{i}];
                 legend_A{end} = [legend_A{end} ' // ' num2str(wavelength(i), '%03.0f') ' nm'];
                 legend_A{end} = [legend_A{end} ' // ' num2str(waveplate_angle(i), '%02.0f') ' deg'];
-                legend_A{end} = [legend_A{end} ' // ND = ' num2str(ND(i,1), '%01.2f')];
             end
             if find(strcmp(options(selected_options), 'Calculate Power'))
                 legend_A{end} = [legend_A{end} ' // ' num2str(laser_power(i), '%03.0f') ' mW'];
             end
-
-        elseif strfind(channel_name{i,j}, 'Channel B')
-%             disp('Channel B')
-            if menu_subplots == 1
-                if size(channels_to_plot,2)>1
-%                     yyaxis right
-                end
-            elseif menu_subplots == 2
-                subplot(layout(1),layout(2),2)
+            if find(strcmp(options(selected_options), 'Average & Standard Dev.'))
+                legend_A{end} = [legend_A{end} 'Average = ' num2str(average(i,2), '%03.3f') ' W'];
+                legend_A{end} = [legend_A{end} ' //  Std = ' num2str(stdev(i,2), '%03.6f') ' W'];
+                legend_A{end} = [legend_A{end} ' = ' num2str(stdev(i,2)/average(i,2)*100, '%03.2f') ' %'];
             end
-            
-            ylabel(['Channel B (' yaxis_units ')'])
-            if strcmp(options(selected_options), 'Normalisation')
-                ylabel('Channel B normalised')
-            end
-            grid on
-%             legend_B{end+1} = file_name{i};
-            legend_B{end+1} = num2str(measurement_numbers(i), '%02.f');
-            if find(strcmp(options(selected_options), 'Read Info File'))
-                legend_B{end} = [legend_B{end} ' // ' sample{i}];
-                legend_B{end} = [legend_B{end} ' // ' num2str(wavelength(i), '%03.0f') ' nm'];
-                legend_B{end} = [legend_B{end} ' // ' num2str(waveplate_angle(i), '%02.0f') ' deg'];
-                legend_B{end} = [legend_B{end} ' // ND = ' num2str(ND(i,2), '%01.2f')];
-            end
-            if find(strcmp(options(selected_options), 'Calculate Power'))
-                legend_B{end} = [legend_B{end} ' // ' num2str(laser_power(i), '%03.0f') ' mW'];
-            end
+            legend_A{end} = [legend_A{end} ' // ' file_name{i}];
         end
+
         
         h(i,j) = plot(plot_data{i}(:,1), ...
             plot_data{i}(:,j),...
             'LineWidth', 2); hold all
-        xlabel(['Time ' channel_unit{1,1}])
+        xlabel([channel_name{1,1} ' ' channel_unit{1,1}])
+        ylabel([channel_name{1,2} ' ' channel_unit{1,2}])
 %         pause(0.5)
     end
 end
@@ -541,10 +477,10 @@ for j = channels_to_plot
                 colour_RGB = colour_gradient(find(unique(laser_power) == laser_power(i)), ...
                     size(unique(laser_power),1), ...
                     colour_type(selected_colour));
-%             elseif find(strcmp(options(selected_options), 'Read Info File'))
-%                 colour_RGB = colour_gradient(find(unique(waveplate_angle) == waveplate_angle(i)), ...
-%                     size(unique(waveplate_angle),2), ...
-%                     colour_type(selected_colour));
+            elseif find(strcmp(options(selected_options), 'Read Info File'))
+                colour_RGB = colour_gradient(find(unique(waveplate_angle) == waveplate_angle(i)), ...
+                    size(unique(waveplate_angle),1), ...
+                    colour_type(selected_colour));
             else
                 colour_RGB = colour_gradient(i, number_of_files, colour_type(selected_colour));
             end
@@ -566,14 +502,8 @@ end
 
 %% axis limits and legend location
 figure(figure_picoscope)
-legend_location = 'none';
-% x_limits = xlim;
-% x_limits = [-5,25];
-% x_limits = [-1,2];
-% x_limits = [0,1.5];
-% x_limits = [-10,10];
-x_limits = [-2,10];
-% x_limits = [0,50];
+legend_location = 'best';
+x_limits = xlim;
 
 input_title = 'Plot formatting';
 input_data = {'Legend Location', 'X Axis Min', 'X Axis Max'};
@@ -582,10 +512,10 @@ dlg_options.WindowStyle = 'normal'; dlg_options.Resize = 'on'; dim = [1 80];
 answer = inputdlg(input_data, input_title, dim, default_values, dlg_options);
 legend_location = answer{1};
 x_limits = [str2double(answer{2}),str2double(answer{3})];
+set(gca,'FontSize', 14)
 
 if menu_subplots == 1
     title(title_cell_channels, 'interpreter', 'none')
-    ylabel('Channels (V)')
     xlabel(['Time ' channel_unit{1,1}])
     legend_channels = [legend_A, legend_B];
     if strfind(legend_location, 'none')
@@ -596,12 +526,12 @@ if menu_subplots == 1
     axis auto
     xlim(x_limits)
 
-%     if size(channels_to_plot,2)>1
-%         yyaxis left
-%         ylim([0,7])
-%         yyaxis right
-%         ylim([0,2.5])
-%     end
+    if size(channels_to_plot,2)>1
+        yyaxis left
+        ylim([0,7])
+        yyaxis right
+        ylim([0,2.5])
+    end
     
 elseif menu_subplots == 2
     subplot(layout(1),layout(2),1)

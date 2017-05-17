@@ -3,7 +3,8 @@ clear
 % close all
 
 % default directory
-DirectoryRead = 'R:\aa938\NanoPhotonics\Laboratory\';
+% DirectoryRead = 'R:\aa938\NanoPhotonics\Laboratory\';
+DirectoryRead = 'R:\pk428\Measurements\NP-Deposition\2017-05-16-Absorption-GoldNP-Solution\';
 FolderRead = '';
 FolderPathRead = [DirectoryRead FolderRead];
 FileNameRead = '';
@@ -140,8 +141,8 @@ index_time = index_time_all(1):time_interval_index:index_time_all(end);
 % *************************************************************************
 
 menu_ref = 1;
-% menu_ref = menu('Correct for the System Response?', 'NO', 'YES (data/reference)', ...
-%     'YES (data/1st spectra)', 'YES ((data-background)/(reference-background))');
+menu_ref = menu('Correct for the System Response?', 'NO', 'YES (data/reference)', ...
+    'YES (data/1st spectra)', 'YES ((data-background)/(reference-background))');
 
 data_corrected = data_python;
 

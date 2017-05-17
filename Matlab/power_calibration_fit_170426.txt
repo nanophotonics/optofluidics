@@ -1,0 +1,7 @@
+power(x) = a*(sin(b*x*pi/180+c))^2
+x ---> angle of the waveplate (degrees)
+power ---> power of the Ti:Sa laser (W)
+
+a =  5.665  (5.651, 5.678)  W
+b =  2.000  (1.999, 2.001)  1/rad
+c =  2.097  (2.093, 2.100)  rad

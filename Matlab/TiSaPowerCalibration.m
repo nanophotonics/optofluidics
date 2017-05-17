@@ -2,8 +2,8 @@ clc
 clear
 close all
 
-file_directory = 'R:\aa938\NanoPhotonics\Laboratory\2016.10.12 - TiSa power calibration 767 nm\';
-file_name = '2016.10.12 - TiSa power calibration 767 nm.txt';
+file_directory = 'R:\aa938\NanoPhotonics\Laboratory\';
+file_name = '';
 [file_name, file_directory, ~] = uigetfile('.txt',...
                                            'Select a calibration file to read',...
                                            [file_directory file_name],...
@@ -36,7 +36,7 @@ coefficient_confidence = confint(fit_object);
 
 xlabel('Angle (degrees)')
 ylabel('Ti:Sa power (W)') 
-title(file_name(1:end-4))
+title(file_name(1:end-4), 'interpreter', 'none')
 
 %% ---
 text_cell{1} = 'power(x) = a*(sin(b*x*pi/180+c))^2';
@@ -59,7 +59,8 @@ text('Units','normalized','Position',[0.08,0.92], ...
     'VerticalAlignment', 'top', 'String' , text_cell)
 
 %% ---
-file_name_save = [file_name(1:end-4) ' - fit.txt'];
+% file_name_save = [file_name(1:end-4) ' - fit.txt'];
+file_name_save = strrep(file_name, 'data', 'fit');
 [file_name_save,file_directory_save,~] = uiputfile('.txt',...
                                                    'Select a file to save the fitting parameters',...
                                                    [file_directory_save file_name_save]); 

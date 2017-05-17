@@ -2,7 +2,7 @@
 % Calculates the power at a certain angle based on the half-waveplate
 % calibration fitting parameters for the Ti:Sa laser.
 
-function power = power_fitted(reference_angle, reference_power, angle)
+function power = power_fitted(reference_angle, reference_power, angle, file_path)
 
 % reference_angle in degrees
 % reference_power in W or mW.
@@ -21,14 +21,16 @@ function power = power_fitted(reference_angle, reference_power, angle)
 % reference_power = str2double(answer{2});   
 
 
-file_directory = '';
-file_name = 'power_calibration_fit.txt';
+% file_directory = '';
+% file_name = 'power_calibration_fit.txt';
 % [file_name, file_directory, ~] = uigetfile('.txt',...
 %                                            'Select a calibration file to read',...
 %                                            [file_directory file_name],...
 %                                            'MultiSelect','off');
+% file_path = [file_directory, file_name];
+
 header_rows = 5;
-file_id = fopen([file_directory file_name], 'r');
+file_id = fopen(file_path, 'r');
 for i = 1:1:header_rows
     fgets(file_id);
 end

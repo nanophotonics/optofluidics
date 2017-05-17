@@ -5,7 +5,7 @@
 % RESULTS ARE INACCURATE FOR SMALL REFERENCE POWERS
 % use power_fitted instead
 
-function power = power_spline(reference_angle, reference_power, angle)
+function power = power_spline(reference_angle, reference_power, angle, file_path)
 
 % reference_angle in degrees
 % reference_power in W or mW.
@@ -23,15 +23,16 @@ function power = power_spline(reference_angle, reference_power, angle)
 % reference_angle = str2double(answer{1});   
 % reference_power = str2double(answer{2});   
 
-file_directory = '';
-file_name = 'power_calibration_data.txt';
+% file_directory = '';
+% file_name = 'power_calibration_data.txt';
 % [file_name, file_directory, ~] = uigetfile('.txt',...
 %                                            'Select a calibration file to read',...
 %                                            [file_directory file_name],...
 %                                            'MultiSelect','off');
+% file_path = [file_directory, file_name];
 
 header_rows = 2;
-data = dlmread([file_directory, file_name], '\t', header_rows, 0);
+data = dlmread(file_path, '\t', header_rows, 0);
 % data(:,1) = angle of the waveplate (deg)
 % data(:,2) = power of the Ti:Sa laser after the polariser (W)
 calibration_angle = data(:,1); % degrees
