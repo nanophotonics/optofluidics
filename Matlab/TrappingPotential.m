@@ -23,17 +23,17 @@ units = 2;
 units = menu('Units:', 'SI', 'CGS');
 % units_SI = units_display * units_conversion
 
-d.name = 'Diameter';
-d.symbol = 'd';
-d.units_SI = 'm';
-d.units_display = 'nm';
-d.units_conversion = 1e-9;
-d.min = 10e-9; 
-d.max = 100e-9; 
-d.step = 10e-9; 
-d.values = d.min : d.step : d.max;
-d.size = size(d.values,2);
-d.selected = 8e-9;
+d_hydro.name = 'Hydrodynamic diameter';
+d_hydro.symbol = 'd_h';
+d_hydro.units_SI = 'm';
+d_hydro.units_display = 'nm';
+d_hydro.units_conversion = 1e-9;
+d_hydro.min = 10e-9; 
+d_hydro.max = 100e-9; 
+d_hydro.step = 10e-9; 
+d_hydro.values = d_hydro.min : d_hydro.step : d_hydro.max;
+d_hydro.size = size(d_hydro.values,2);
+d_hydro.selected = 8e-9;
 
 lambda.name = 'Wavelength';
 lambda.symbol = '\lambda';
@@ -59,7 +59,7 @@ power.values = power.min : power.step : power.max;
 power.size = size(power.values,2);
 power.selected = power.max;
 
-parameters = [d,lambda,power];
+parameters = [d_hydro,lambda,power];
 
 column_titles = {'Min:', 'Max:', 'Step:'};
 limits = zeros(size(parameters,2),size(column_titles,2));
@@ -83,7 +83,7 @@ for i = parameters
     parameters(i_counter) = i;
 end
 
-d = parameters(1);
+d_hydro = parameters(1);
 lambda = parameters(2);
 power = parameters(3);
 
@@ -123,13 +123,13 @@ end
 % *************************************************************************
 
 % standard polarisability
-alpha_0 = zeros(d.size,lambda.size);
-for m = 1:1:d.size
+alpha_0 = zeros(d_hydro.size,lambda.size);
+for m = 1:1:d_hydro.size
     if units == 1 % SI units: F.m^2
-        alpha_0(m,:) = nmed^2*eps0*4*pi*((d.values(m))/2)^3 .* ...
+        alpha_0(m,:) = nmed^2*eps0*4*pi*((d_hydro.values(m))/2)^3 .* ...
             (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2); 
     elseif units == 2 % CGS units: m^3
-        alpha_0(m,:) = 4*pi*(d.values(m)/2)^3 .* ...
+        alpha_0(m,:) = 4*pi*(d_hydro.values(m)/2)^3 .* ...
             (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2);
     end
     
@@ -208,7 +208,7 @@ elseif menu_profile == 2 % Gaussian
 
     z.min = 0; 
     z.max = 5*w0*10; % m
-    z.size = 31; % select and odd number
+    z.size = 101; % select and odd number
     z.values = linspace(z.min,z.max,z.size);
     z.step = z.values(2)-z.values(1);
     z.selected = z.min;    
@@ -221,7 +221,7 @@ intensity.symbol = 'I';
 intensity.units_SI = 'W/m^2';
 intensity.units_display = 'W/m^2';
 intensity.units_conversion = 1;
-intensity.values = zeros(lambda.size,power.size,r.size,z.size,d.size);
+intensity.values = zeros(lambda.size,power.size,r.size,z.size,d_hydro.size);
     
 potential.name = 'Potential Energy';
 potential.symbol = 'U';
@@ -230,7 +230,7 @@ potential.units_display = ['kT@' num2str(T) 'K'];
 potential.units_conversion = kb*T; % kinetic energy
 % potential.units_display = 'J';
 % potential.units_conversion = 1; % kinetic energy
-potential.values = zeros(lambda.size,power.size,r.size,z.size,d.size);
+potential.values = zeros(lambda.size,power.size,r.size,z.size,d_hydro.size);
 
 for i = 1:1:lambda.size;
     clc, disp([num2str(i/lambda.size*100, '%.0f') '%: intensity and potential'])    
@@ -246,7 +246,7 @@ for i = 1:1:lambda.size;
                     intensity.values(i,j,k,l,:) = 2*power.values(j) / ...
                         (pi*wz(i,l)^2) * exp(-2*r.values(k)^2/wz(i,l)^2);
                 end
-                for m = 1:1:d.size
+                for m = 1:1:d_hydro.size
                     if units == 1 % SI
                     potential.values(i,j,k,l,m) = ...
                         -1/2*(2/(c*nmed*eps0))*real(alpha(m,i)) * ...
@@ -275,14 +275,14 @@ Csca.symbol = 'C_{sca}';
 Csca.units_SI = 'm^2'; 
 Csca.units_display = 'm^2';
 Csca.units_conversion = 1;
-Csca.values = zeros(lambda.size,d.size);
+Csca.values = zeros(lambda.size,d_hydro.size);
 
 Qsca.name = 'Scattering Efficiency';
 Qsca.symbol = 'Q_{sca}';
 Qsca.units_SI = ''; 
 Qsca.units_display = '';
 Qsca.units_conversion = 1;
-Qsca.values = zeros(lambda.size,d.size);
+Qsca.values = zeros(lambda.size,d_hydro.size);
 
 if menu_Csca == 2 % read from file
     file_path = 'R:\aa938\NanoPhotonics\Matlab\Cross Section\';
@@ -294,7 +294,7 @@ if menu_Csca == 2 % read from file
     % data_Qsca(:,2) = Qsca
     Qsca.units_SI = file_name; 
     Qsca.units_display = file_name; 
-    for m = 1:1:d.size
+    for m = 1:1:d_hydro.size
         Qsca.values(:,m) = spline(data_Qsca(:,1)*1e-9, data_Qsca(:,2), lambda.values);
     end
 end
@@ -311,7 +311,7 @@ for i = 1:1:lambda.size
     clc, disp([num2str(i/lambda.size*100, '%.0f') '%: gradient force'])    
     for j = 1:1:power.size
         for l = 1:1:z.size
-            for m = 1:1:d.size
+            for m = 1:1:d_hydro.size
                 if units == 1 % SI
                     Fgrad.values(i,j,:,l,m) = (real(alpha(m,i))/(2*c*nmed*eps0))*...
                         gradient(squeeze(intensity.values(i,j,:,l,m)),r.values);        
@@ -344,14 +344,14 @@ Cext.symbol = 'C_{ext}';
 Cext.units_SI = 'm^2'; 
 Cext.units_display = 'm^2';
 Cext.units_conversion = 1;
-Cext.values = zeros(lambda.size,d.size);
+Cext.values = zeros(lambda.size,d_hydro.size);
 
 Qext.name = 'Extinction Efficiency';
 Qext.symbol = 'Q_{ext}';
 Qext.units_SI = ''; 
 Qext.units_display = '';
 Qext.units_conversion = 1;
-Qext.values = zeros(lambda.size,d.size);
+Qext.values = zeros(lambda.size,d_hydro.size);
 
 if menu_Cext == 2 % calculate
     file_path = 'R:\aa938\NanoPhotonics\Matlab\Cross Section\';
@@ -363,7 +363,7 @@ if menu_Cext == 2 % calculate
     % data_Qext(:,2) = Qext
     Qext.units_SI = file_name; 
     Qext.units_display = file_name; 
-    for m = 1:1:d.size
+    for m = 1:1:d_hydro.size
         Qext.values(:,m) = spline(data_Qext(:,1)*1e-9, data_Qext(:,2), lambda.values);
     end
 end
@@ -379,7 +379,7 @@ Fscat.values = zeros(size(intensity.values));
 for i = 1:1:lambda.size
 % for i = 176
     clc, disp([num2str(i/lambda.size*100, '%.0f') '%: scattering'])    
-    for m = 1:1:d.size
+    for m = 1:1:d_hydro.size
         if menu_Cext == 1 % calculate
             if units == 1 % alpha SI units: F.m^2
 %                 Cext.values(i,m) = 2*pi/lambda.values(i) / eps0 / nmed^2 * imag(alpha(m,i)); % m^2, SI
@@ -387,11 +387,11 @@ for i = 1:1:lambda.size
             elseif units == 2 % alpha in CGS units: m^3
                 Cext.values(i,m) = 2*pi/lambda.values(i) * imag(alpha(m,i)); % m^2, SI
             end
-            Qext.values(i,m) = Cext.values(i,m) / (pi*(d.values(m)/2)^2);
+            Qext.values(i,m) = Cext.values(i,m) / (pi*(d_hydro.values(m)/2)^2);
         
         elseif menu_Cext == 2 % read from file
 %             d_physical = d.values(m);
-            d_physical = 11.43e-9; % metres
+            d_physical = 11.43e-9*2; % metres
             Cext.values(i,m) = Qext.values(i,m) * (pi*(d_physical/2)^2);
         end
         
@@ -448,17 +448,18 @@ vGrad.values = zeros(size(Fgrad.values));
 vScat.name = 'Particle velocity (due to Fscat)';
 vScat.symbol = 'v';
 vScat.units_SI = 'm/s';
-vScat.units_display = '\mum/ms';
-vScat.units_conversion = 1e-6/1e-3;
+vScat.units_display = '\mum/s';
+vScat.units_conversion = 1e-6;
 vScat.values = zeros(size(Fscat.values));
 
-for m = 1:1:d.size
-%     d_hydrodynamic = d.values(m);
-    d_hydrodynamic = 8e-9; % metres
+for m = 1:1:d_hydro.size
+    d_hydrodynamic = d_hydro.values(m);
+%     d_hydrodynamic = 8e-9; % metres
     vGrad.values(:,:,:,:,m) = Fgrad.values(:,:,:,:,m) ./ ...
         (6*pi*viscosity*d_hydrodynamic/2);
     vScat.values(:,:,:,:,m) = Fscat.values(:,:,:,:,m) ./ ...
         (6*pi*viscosity*d_hydrodynamic/2);
+    vScat.values(:,:,:,:,m) = vScat.values(:,:,:,:,m) / max(max(max(max(abs(vScat.values(:,:,:,:,m))))));
 end
 
 time.name = 'Response time';
@@ -502,7 +503,7 @@ kr.symbol = 'kr';
 kr.units_SI = 'N/m/W'; 
 kr.units_display = 'pN/\mum/mW';
 kr.units_conversion = 1e-12/1e-6/1e-3;
-kr.values = zeros(lambda.size,z.size,d.size);
+kr.values = zeros(lambda.size,z.size,d_hydro.size);
 
 % zeros(lambda.size,power.size,r.size,z.size,d.size);
 j = power.size;
@@ -513,7 +514,7 @@ for i = 1:1:lambda.size
 %         plot_legend = {};
 %     end
     for l = 1:1:z.size
-        for m = 1:1:d.size
+        for m = 1:1:d_hydro.size
             fitting_parameters = polyfit(r.values(linear_indices), ...
                 squeeze(Fgrad.values(i,j,linear_indices,l,m))', 1);
             kr.values(i,l,m) = -fitting_parameters(1) / power.values(j);
@@ -577,11 +578,8 @@ Fscat.units_conversion = 1e-12;
 time.units_display = 'ms';
 time.units_conversion = 1e-3;
 
-vGrad.units_display = '\mum/s';
-vGrad.units_conversion = 1e-6;
-
-vScat.units_display = '\mum/s';
-vScat.units_conversion = 1e-6;
+vScat.units_display = 'm/s';
+vScat.units_conversion = 1;
 
 %% Plot Options
 % *************************************************************************
@@ -592,17 +590,17 @@ variables = [potential, intensity, Fgrad, kr, vGrad, time, ...
                                       'Style', plot_styles, selected_style,...
                                       'Variable', variables_options, selected_variable);
 if strcmp(variables(selected_variable).symbol, 'kr')                        
-    parameters = [lambda,z,d];
+    parameters = [lambda,z,d_hydro];
 elseif strcmp(variables(selected_variable).symbol, 'C_{ext}') 
-    parameters = [lambda,d];
+    parameters = [lambda,d_hydro];
 elseif strcmp(variables(selected_variable).symbol, 'Q_{ext}')  
-    parameters = [lambda,d];
+    parameters = [lambda,d_hydro];
 elseif strcmp(variables(selected_variable).symbol, 'C_{sca}')  
-    parameters = [lambda,d];
+    parameters = [lambda,d_hydro];
 elseif strcmp(variables(selected_variable).symbol, 'Q_{sca}')  
-    parameters = [lambda,d];
+    parameters = [lambda,d_hydro];
 else
-    parameters = [lambda,power,r,z,d];
+    parameters = [lambda,power,r,z,d_hydro];
 end
 
 
@@ -662,25 +660,25 @@ end
 if strcmp(variables(selected_variable).symbol, 'kr')                        
     lambda = parameters(1);
     z = parameters(2);
-    d = parameters(3);
+    d_hydro = parameters(3);
 elseif strcmp(variables(selected_variable).symbol, 'C_{ext}') 
     lambda = parameters(1);
-    d = parameters(2);
+    d_hydro = parameters(2);
 elseif strcmp(variables(selected_variable).symbol, 'Q_{ext}') 
     lambda = parameters(1);
-    d = parameters(2);
+    d_hydro = parameters(2);
 elseif strcmp(variables(selected_variable).symbol, 'C_{sca}') 
     lambda = parameters(1);
-    d = parameters(2);
+    d_hydro = parameters(2);
 elseif strcmp(variables(selected_variable).symbol, 'Q_{sca}') 
     lambda = parameters(1);
-    d = parameters(2);
+    d_hydro = parameters(2);
 else
     lambda = parameters(1);
     power = parameters(2);
     r = parameters(3);
     z = parameters(4);
-    d = parameters(5);
+    d_hydro = parameters(5);
 end
 
 indices = cell(size(parameters_options));
