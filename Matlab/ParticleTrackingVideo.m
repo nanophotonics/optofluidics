@@ -17,15 +17,16 @@ figures = {};
 % folder_path = 'R:\aa938\NanoPhotonics\Matlab\Particle Tracking\';
 % file_name{1} = 'test_1.csv';
 
+file_names{1} = '';
 folder_path = 'R:\aa938\NanoPhotonics\Laboratory\2017.05.21 - Omid particle tracking\';
-file_names{1} = '780_Substack_0_1999_linked.csv';
-file_names{2} = '780_Substack_1_12236.tif';
+% file_names{1} = '780_Substack_0_1999_linked.csv';
+% file_names{2} = '780_Substack_1_12236.tif';
 
 for i = 1:1:numel(file_names)
     file_path{i} = [folder_path file_names{i}];
 end
 
-number_of_folders = 0; % if 0 it will not ask for user input
+number_of_folders = 1; % if 0 it will not ask for user input
 % number_of_folders = menu('Where are the files located?', 'SINGLE folder', 'MULTIPLE folders');
 
 if number_of_folders == 1
@@ -117,7 +118,7 @@ filter_options = {'Frame', 'Particle'};
 selected_data = raw_data{csv_files(1)};
 
 if find(strcmp(filter_options(selected_filter), 'Frame'))
-    desired_frames = 1:1:100;
+    desired_frames = 1:1:5999;
     desired_frames_indices = [];
     for j = desired_frames
         desired_frames_indices = [desired_frames_indices; ...
@@ -195,9 +196,10 @@ menu_save_video = 1;
 menu_save_video = menu('Save Video?', 'NO', 'YES: avi');
 % menu_save_video = menu('Save Video?', 'NO', 'YES: avi', 'YES: tif');
 if menu_save_video == 2 
-    video_path_save = file_path{1};
+    video_path_save = file_path{2};
     video_path_save = strrep(video_path_save,'test','video');
     video_path_save = strrep(video_path_save,'csv','avi');
+    video_path_save = strrep(video_path_save,'tif','avi');
     
     [video_name_save,folder_path_save,~] = uiputfile(['.' 'avi'],...
                 'File to Save the Video',video_path_save);
@@ -217,3 +219,5 @@ elseif menu_save_video == 3 % DOESN'T WORK YET
         imwrite(stack(:,:,k), video_path_save, 'writemode', 'append');
     end
 end
+
+disp('Finished saving video :)')

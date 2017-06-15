@@ -103,6 +103,10 @@ disp(raw_data{i}.Properties.VariableNames)
 % size: units of pixels
 % mass: brightness of the blog
 
+% invert the x axis so the particle travells from left to right
+% raw_data{i}.x = max(raw_data{i}.x) - raw_data{i}.x;
+
+
 %% sort data by particles
 % *************************************************************************
 % close all
@@ -124,6 +128,8 @@ for j = 1:1:numel(particle_numbers)
 end
 particles = array2table(particles);
 particles.Properties.VariableNames = {'number','mass','mass_std','size','size_std','frames','x_travelled'};
+
+%% PLOT
 
 % figures{end+1} = figure;
 % errorbar(particles.number, particles.mass, particles.mass_std, '.')
@@ -162,13 +168,22 @@ particles.Properties.VariableNames = {'number','mass','mass_std','size','size_st
 figures{end+1} = figure;
 suptitle([folder_name ': ' file_name{1}])
 subplot(1,2,1)
-plot(raw_data{i}.size, raw_data{i}.mass, '.', 'MarkerSize', 8), hold all
+plot(raw_data{1}.size, raw_data{1}.mass, '.', 'MarkerSize', 8), hold all
 plot(particles.size, particles.mass, '.', 'MarkerSize', 8), hold all
+% plot(1:1:20, 3e3*(((1:1:20)-6).^2+0), '-k', 'LineWidth', 2), hold all
 xlabel('particle size (px)')
 ylabel('mass')
 % title([folder_name ': ' file_name{1}], 'interpreter', 'none')
 set(gca, 'FontSize', 12)
 legend([num2str(size(raw_data{1},1)) ' points'], [num2str(size(particles,1)) ' particles'], 'Location', 'NW')
+
+subplot(1,2,2)
+plot(particles.frames, particles.x_travelled, '.')
+ylabel('x travelled (px)')
+xlabel('frames')
+% title([folder_name ': ' file_name{1}], 'interpreter', 'none')
+set(gca, 'FontSize', 12)
+legend([num2str(size(particles,1)) ' particles'])
 
 % figures{end+1} = figure;
 % histogram(raw_data{i}.mass./raw_data{i}.size,'Normalization','probability'), hold all
@@ -187,14 +202,6 @@ legend([num2str(size(raw_data{1},1)) ' points'], [num2str(size(particles,1)) ' p
 % title([folder_name ': ' file_name{1}], 'interpreter', 'none')
 % set(gca, 'FontSize', 16)
 % legend([num2str(size(raw_data{1},1)) ' points'], [num2str(size(particles,1)) ' particles'])
-
-% figures{end+1} = figure;
-% subplot(2,2,4)
-% histogram(particles.frames, 50,'Normalization','probability')
-% xlabel('frames per particle')
-% ylabel('probability')
-% title([folder_name ': ' file_name{1}], 'interpreter', 'none')
-% set(gca, 'FontSize', 16)
 
 % figures{end+1} = figure;
 % histogram(particles.x_travelled,40,'Normalization','probability'), hold all
@@ -221,21 +228,22 @@ legend([num2str(size(raw_data{1},1)) ' points'], [num2str(size(particles,1)) ' p
 % set(gca, 'FontSize', 16)
 
 % figures{end+1} = figure;
-subplot(1,2,2)
-plot(particles.frames, particles.x_travelled, '.')
-ylabel('x travelled (px)')
-xlabel('frames')
-% title([folder_name ': ' file_name{1}], 'interpreter', 'none')
-set(gca, 'FontSize', 12)
-legend([num2str(size(particles,1)) ' particles'])
-
-% figures{end+1} = figure;
 % plot(raw_data{i}.y, raw_data{i}.mass, '.', 'MarkerSize', 8), hold all
 % xlabel('y particle position (px)')
 % ylabel('mass')
 % title([folder_name ': ' file_name{1}], 'interpreter', 'none')
 % set(gca, 'FontSize', 16)
 % legend([num2str(size(raw_data{1},1)) ' points'])
+
+% figures{end+1} = figure;
+% % subplot(2,2,4)
+% hframes = histogram(particles.frames, 100);
+% hframes.Normalization = 'count';
+% xlabel('frames per particle')
+% ylabel(hframes.Normalization)
+% title([folder_name ': ' file_name{1}], 'interpreter', 'none')
+% set(gca, 'FontSize', 16)
+
 
 
 %% units
@@ -254,7 +262,7 @@ frame_rate = 1;
 pixel_scale = 1;
 
 if find(strcmp(time_units(t), 's'))
-    frame_rate = 159.22; % frames / second
+    frame_rate = 159.22; % frames / second --> 6.28 ms temporal resolution
 %     input_title = 'Video parameters';
 %     input_data = {'Frame rate (fps):'};
 %     default_values = {num2str(frame_rate)};
@@ -303,94 +311,32 @@ for j = 2:1:size(raw_data{i},1)
             vy(end+1) = (raw_data{i}.y(j) - raw_data{i}.y(j-1)) / ...
                 (raw_data{i}.frame(j) - raw_data{i}.frame(j-1)) *...
                 pixel_scale * frame_rate;
-%         end
-    end
+        end
+%     end
     % the number of particles is equal to size(raw_data{i},1) - size(x,2)
 end
 % velocity = table(x,y,vx,vy);
 % velocity.Properties.VariableNames = {'x','y','vx','vy'};
-
-%% CALCULATE velocity maps
-% *************************************************************************
-menu_velocity = 1;
-% menu_velocity = menu('Velocity:', 'Average', 'Maximum', 'Minimum', 'Mode');
-
-x_sections = 19;
-y_sections = 11;
-
-x_edges = linspace(min(x), max(x), x_sections + 2);
-x_bin = discretize(x,x_edges);
-y_edges = linspace(min(y), max(y), y_sections + 2);
-y_bin = discretize(y,y_edges);
-
-masses_map = zeros(numel(x_edges)-1,numel(y_edges)-1);
-sizes_map = zeros(numel(x_edges)-1,numel(y_edges)-1);
-vx_grid = cell(numel(x_edges)-1,numel(y_edges)-1);
-vx_map = zeros(numel(x_edges)-1,numel(y_edges)-1);
-vy_map = zeros(numel(x_edges)-1,numel(y_edges)-1);
-for i = 1:1:numel(x_edges)-1
-    x_indices = find(x_bin == i);
-    for j = 1:1:numel(y_edges)-1
-        y_indices = find(y_bin == j);
-        xy_indices = intersect(x_indices, y_indices);
-%         disp(numel(xy_indices))
-        
-        if menu_velocity == 1 % average
-            vx_grid{i,j} = vx(xy_indices);
-            vx_map(i,j) = mean(vx(xy_indices));
-            vy_map(i,j) = mean(vy(xy_indices));
-            masses_map(i,j) = mean(masses(xy_indices));
-            sizes_map(i,j) = mean(sizes(xy_indices));
-            v_label = 'average';
-            
-        elseif menu_velocity == 2 % maximum
-            if isempty(vx(xy_indices))
-                vx_map(i,j) = NaN;
-            else           
-                vx_map(i,j) = max(vx(xy_indices));
-            end
-            if isempty(vy(xy_indices))
-                vy_map(i,j) = NaN;
-            else           
-                vy_map(i,j) = max(vy(xy_indices));
-            end
-            v_label = 'max';
-            
-        elseif menu_velocity == 3 % mimimum
-            if isempty(vx(xy_indices))
-                vx_map(i,j) = NaN;
-            else           
-                vx_map(i,j) = min(vx(xy_indices));
-            end
-            if isempty(vy(xy_indices))
-                vy_map(i,j) = NaN;
-            else           
-                vy_map(i,j) = min(vy(xy_indices));
-            end
-            v_label = 'min';
-            
-        elseif menu_velocity == 4 % mode
-            vx_map(i,j) = mode(round(vx(xy_indices),0));
-            vy_map(i,j) = mode(round(vy(xy_indices),0));
-            v_label = 'mode';
-        end
-        
-    end
-end
 
 %% PLOT velocity histogram
 % *************************************************************************
 % close all
 
 figures{end+1} = figure;
+% subplot(1,2,1)
 legend_hv = {};
 text_hv = {};
 
 number_of_bins = 100;
 % number_of_bins = round(size(particles,1)/10);
 
-hvx = histogram(vx,number_of_bins,'Normalization','probability'); hold all, legend_hv{end+1} = 'vx';
-hvy = histogram(vy,number_of_bins,'Normalization','probability'); hold all, legend_hv{end+1} = 'vy';
+hvx = histogram(vx,number_of_bins); hold all, legend_hv{end+1} = 'vx';
+hvy = histogram(vy,number_of_bins); hold all, legend_hv{end+1} = 'vy';
+
+hvx.Normalization = 'count';
+% hvx.Normalization = 'probability';
+
+hvy.Normalization = hvx.Normalization;
 
 text_hv{end+1} = 'Gaussian fit:';
 text_hv{end+1} = 'y =  a1*exp(-((x-b1)/c1)^2)';
@@ -400,12 +346,14 @@ hvx_x = hvx.BinEdges(1:end-1) + hvx.BinWidth/2;
 hvx_y = hvx.Values;
 fit_vx = fit(hvx_x', hvx_y', 'gauss1');
 confint_vx = confint(fit_vx);
+c1_error = abs((confint_vx(1,3)-confint_vx(2,3))/2);
 pvx = plot(fit_vx); hold all, legend_hv{end+1} = 'vx fit';
 pvx.Color = 'b';
 pvx.LineWidth = 2;
-% text_hv{end+1} = ['vx mean = ' num2str(mean(vx)) ' ' position_units{p} '/' time_units{t}];
-text_hv{end+1} = ['vx: a1 = ' num2str(fit_vx.a1, '%.4f') ' \pm ' ...
-    num2str(abs(confint_vx(1,1)-confint_vx(2,1))/2, '%.4f') ...
+text_hv{end+1} = ['mean(vx) = ' num2str(mean(vx)) ' ' position_units{p} '/' time_units{t}];
+% text_hv{end+1} = ['mean(abs(vx)) = ' num2str(mean(abs(vx))) ' ' position_units{p} '/' time_units{t}];
+text_hv{end+1} = ['vx: a1 = ' num2str(fit_vx.a1, '%.3g') ' \pm ' ...
+    num2str(abs(confint_vx(1,1)-confint_vx(2,1))/2, '%.2g') ...
     ' '];
 text_hv{end+1} = ['vx: b1 = ' num2str(fit_vx.b1, '%.1f') ' \pm ' ...
     num2str(abs(confint_vx(1,2)-confint_vx(2,2))/2, '%.1f') ' ' ...
@@ -413,18 +361,23 @@ text_hv{end+1} = ['vx: b1 = ' num2str(fit_vx.b1, '%.1f') ' \pm ' ...
 text_hv{end+1} = ['vx: c1 = ' num2str(fit_vx.c1, '%.1f') ' \pm ' ...
     num2str(abs(confint_vx(1,3)-confint_vx(2,3))/2, '%.1f')  ' ' ...
     position_units{p} '/' time_units{t}];
+text_hv{end+1} = ['vx: D = ' ...
+    num2str(1/frame_rate/4*(fit_vx.c1)^2, '%.3g') ' \pm ' ...
+    num2str(1/frame_rate*(fit_vx.c1)/2*c1_error, '%.2g') ' \mum^2/s'];
 text_hv{end+1} = '';
 
 hvy_x = hvy.BinEdges(1:end-1) + hvy.BinWidth/2;
 hvy_y = hvy.Values;
 fit_vy = fit(hvy_x', hvy_y', 'gauss1');
 confint_vy = confint(fit_vy);
+c1_error = abs((confint_vy(1,3)-confint_vy(2,3))/2);
 pvy = plot(fit_vy); hold all, legend_hv{end+1} = 'vy fit';
 pvy.Color = 'r';
 pvy.LineWidth = 2;
-% text_hv{end+1} = ['vy mean = ' num2str(mean(vy)) ' ' position_units{p} '/' time_units{t}];
-text_hv{end+1} = ['vy: a1 = ' num2str(fit_vy.a1, '%.4f') ' \pm ' ...
-    num2str(abs(confint_vy(1,1)-confint_vy(2,1))/2, '%.4f') ...
+text_hv{end+1} = ['mean(vy) = ' num2str(mean(vy)) ' ' position_units{p} '/' time_units{t}];
+% text_hv{end+1} = ['mean(abs(vy)) = ' num2str(mean(abs(vy))) ' ' position_units{p} '/' time_units{t}];
+text_hv{end+1} = ['vy: a1 = ' num2str(fit_vy.a1, '%.3g') ' \pm ' ...
+    num2str(abs(confint_vy(1,1)-confint_vy(2,1))/2, '%.2g') ...
     ' '];
 text_hv{end+1} = ['vy: b1 = ' num2str(fit_vy.b1, '%.1f') ' \pm ' ...
     num2str(abs(confint_vy(1,2)-confint_vy(2,2))/2, '%.1f') ...
@@ -432,10 +385,13 @@ text_hv{end+1} = ['vy: b1 = ' num2str(fit_vy.b1, '%.1f') ' \pm ' ...
 text_hv{end+1} = ['vy: c1 = ' num2str(fit_vy.c1, '%.1f') ' \pm ' ...
     num2str(abs(confint_vy(1,3)-confint_vy(2,3))/2, '%.1f') ...
     position_units{p} '/' time_units{t}];
+text_hv{end+1} = ['vy: D = ' ...
+    num2str(1/frame_rate/4*(fit_vy.c1)^2, '%.3g') ' \pm ' ...
+    num2str(1/frame_rate*(fit_vy.c1)/2*c1_error, '%.2g') ' \mum^2/s'];
 
 legend(legend_hv)
 xlabel(['velocity (' position_units{p} '/' time_units{t} ')'])
-ylabel('probability')
+ylabel(hvx.Normalization)
 title([folder_name ': ' file_name{1}], 'interpreter', 'none')
 set(gca, 'FontSize', 16)
 
@@ -443,12 +399,260 @@ set(gca, 'FontSize', 16)
 text('Units','normalized','Position',[0.08,0.95], ...
     'FontSize', 12, 'VerticalAlignment', 'top', 'String' , text_hv)
 
+% subplot(1,2,2)
+% semilogy(hvx_x,hvx_y, '.-'), hold all
+% semilogy(hvy_x,hvy_y, '.-'), hold all
+% xlabel(['velocity (' position_units{p} '/' time_units{t} ')'])
+% ylabel(hvx.Normalization)
+% set(gca, 'FontSize', 16)
+% legend('vx','vy')
+% grid on
+% suptitle([folder_name ': ' file_name{1}])
+
+%% PLOT velocity scatter plot
+% *************************************************************************
+% figures{end+1} = figure;
+% subplot(2,1,1)
+% plot(x,vx, '.', 'MarkerSize', 8), hold all
+% plot(x,vy, '.', 'MarkerSize', 8), hold all
+% legend('vx vs. x', 'vy vs. x')
+% xlabel(['x position (' position_units{p} ')'])
+% ylabel(['velocity (' position_units{p} '/' time_units{t} ')'])
+% title([folder_name ': ' file_name{1}], 'interpreter', 'none')
+% set(gca, 'FontSize', 16)
+% 
+% subplot(2,1,2)
+% plot(y,vy, '.', 'MarkerSize', 8), hold all
+% plot(y,vx, '.', 'MarkerSize', 8), hold all
+% legend('vy vs. y', 'vx vs. y')
+% xlabel(['y position (' position_units{p} ')'])
+% ylabel(['velocity (' position_units{p} '/' time_units{t} ')'])
+% set(gca, 'FontSize', 16)
+
+% figures{end+1} = figure;
+% hvx_x = hvx.BinEdges(1:end-1) + hvx.BinWidth/2;
+% hvx_y = hvx.Values;
+% vx_colours = jet(numel(hvx.Values));
+% for i = numel(hvx.Values):-1:1
+%     indices_larger = find(vx >= hvx.BinEdges(i));
+%     indices_smaller = find(vx < hvx.BinEdges(i+1));
+%     indices = intersect(indices_larger, indices_smaller);
+%     plot(x(indices), y(indices), ...
+%         '.', 'MarkerSize', 8, ...
+%         'Color', vx_colours(i,:))
+%     hold all
+% end
+% 
+% xlabel('x position (px)')
+% ylabel('y position (px)')
+% set(gca, 'FontSize', 16)
+% title([folder_name ': ' file_name{1}], 'interpreter', 'none')
+
+
+%% CALCULATE velocity maps
+% *************************************************************************
+clear map_labels
+
+menu_vmap = 5;
+menu_vmap = menu('Velocity:', 'Average', 'Maximum', 'Minimum', 'Mode', 'Gaussian Fit');
+
+x_sections = 19;
+y_sections = 11;
+
+% x_sections = 1;
+% y_sections = 3;
+
+x_edges = linspace(min(x), max(x), x_sections + 1);
+x_centres = (x_edges(1:end-1)+x_edges(2:end))/2;
+x_bin = discretize(x,x_edges);
+y_edges = linspace(min(y), max(y), y_sections + 1);
+y_centres = (y_edges(1:end-1)+y_edges(2:end))/2;
+y_bin = discretize(y,y_edges);
+
+masses_map = zeros(numel(x_centres),numel(y_centres));
+sizes_map = zeros(numel(x_centres),numel(y_centres));
+vx_grid = cell(numel(x_centres),numel(y_centres));
+
+vx_map = zeros(numel(x_centres),numel(y_centres),1);
+vy_map = zeros(numel(x_centres),numel(y_centres),1);
+
+for i = 1:1:numel(x_centres)
+    x_indices = find(x_bin == i);
+    for j = 1:1:numel(y_centres)
+        y_indices = find(y_bin == j);
+        xy_indices = intersect(x_indices, y_indices);
+%         disp(numel(xy_indices))
+
+        if numel(xy_indices) < 30
+            vx_map(i,j,:) = NaN;
+            vy_map(i,j,:) = NaN;
+            masses_map(i,j) = NaN;
+            sizes_map(i,j) = NaN;
+        else
+            if menu_vmap == 1 % average
+                vx_grid{i,j} = vx(xy_indices);
+                vx_map(i,j,1) = mean(vx(xy_indices));
+                vy_map(i,j,1) = mean(vy(xy_indices));
+                masses_map(i,j) = mean(masses(xy_indices));
+                sizes_map(i,j) = mean(sizes(xy_indices));
+                map_labels{1} = ['average v (' position_units{p} '/' time_units{t} ')'];
+
+            elseif menu_vmap == 2 % maximum
+                if isempty(vx(xy_indices))
+                    vx_map(i,j,1) = NaN;
+                else           
+                    vx_map(i,j,1) = max(vx(xy_indices));
+                end
+                if isempty(vy(xy_indices))
+                    vy_map(i,j,1) = NaN;
+                else           
+                    vy_map(i,j,1) = max(vy(xy_indices));
+                end
+                map_labels{1} = ['max v (' position_units{p} '/' time_units{t} ')'];
+
+            elseif menu_vmap == 3 % mimimum
+                if isempty(vx(xy_indices))
+                    vx_map(i,j,1) = NaN;
+                else           
+                    vx_map(i,j,1) = min(vx(xy_indices));
+                end
+                if isempty(vy(xy_indices))
+                    vy_map(i,j,1) = NaN;
+                else           
+                    vy_map(i,j,1) = min(vy(xy_indices));
+                end
+                map_labels{1} = ['min v (' position_units{p} '/' time_units{t} ')'];
+
+            elseif menu_vmap == 4 % mode
+                vx_map(i,j,1) = mode(round(vx(xy_indices),0));
+                vy_map(i,j,1) = mode(round(vy(xy_indices),0));
+                map_labels{1} = ['mode v (' position_units{p} '/' time_units{t} ')'];
+            
+            elseif menu_vmap == 5 % gaussian fit
+                clc
+                disp(['Calculating map section: (' num2str(i) ',' num2str(j) ') of (' ...
+                    num2str(numel(x_centres)) ',' num2str(numel(y_centres)) ')'])
+                
+                number_of_bins = min(round(numel(xy_indices)/10), 100);
+                
+                [vx_counts,vx_edges] = histcounts(vx(xy_indices),number_of_bins);
+                vx_centres = (vx_edges(1:end-1) + vx_edges(2:end)) / 2;
+                
+                fit_parameters = fit(vx_centres', vx_counts', 'gauss1');
+                vx_map(i,j,1) = fit_parameters.b1; % gaussian centre
+                vx_map(i,j,2) = fit_parameters.c1; % gaussian width
+                vx_map(i,j,3) = fit_parameters.a1; % gaussian height
+                vx_map(i,j,4) = 1/frame_rate/4*fit_parameters.c1^2; % D (units of velocity^2/time)
+                
+                [vy_counts,vy_edges] = histcounts(vy(xy_indices),number_of_bins);
+                vy_centres = (vy_edges(1:end-1) + vy_edges(2:end)) / 2;
+                
+                fit_parameters = fit(vy_centres', vy_counts', 'gauss1');
+                vy_map(i,j,1) = fit_parameters.b1; % gaussian centre
+                vy_map(i,j,2) = fit_parameters.c1; % gaussian width
+                vy_map(i,j,3) = fit_parameters.a1; % gaussian height               
+                vy_map(i,j,4) = 1/frame_rate/4*fit_parameters.c1^2; % D (units of velocity^2/time)
+
+                vx_map(i,j,5) = numel(xy_indices); % number of data points
+                vy_map(i,j,5) = numel(xy_indices); % number of data points
+                
+                vx_map(i,j,6) = number_of_bins; % number of bins
+                vy_map(i,j,6) = number_of_bins; % number of bins
+                
+%                 vx_map(i,j,5) = numel(xy_indices); % number of data points
+%                 vy_map(i,j,5) = number_of_bins; % number of bins
+                
+                map_labels{1} = ['Gauss. centre v (' position_units{p} '/' time_units{t} ')'];
+                map_labels{2} = ['Gauss. width v (' position_units{p} '/' time_units{t} ')'];
+                map_labels{3} = 'Gauss. height (counts)';
+                map_labels{4} = ['D (' position_units{p} '^2/' time_units{t} ')'];
+                map_labels{5} = 'No. of points';
+                map_labels{6} = 'No. of bins';
+                
+%                 plot(vx_centres,vx_counts), hold all
+%                 plot(vy_centres,vy_counts), hold all
+            end
+        end
+    end
+end
+disp('Finished the map calculations.')
+
+
+
+%% PLOT velocity color maps
+% *************************************************************************
+% close all
+
+axis_labels = {'x','y'};
+menu_vmap_axis = [1,2];
+menu_vmap_plot = 1;
+
+% [menu_vmap_plot, ~] = listdlg('PromptString', 'Velocity colour maps to plot:',...
+%                            'SelectionMode', 'multiple', ...
+%                            'ListString', map_labels,...
+%                            'InitialValue', menu_vmap_plot);
+
+% [menu_vmap_axis, ~] = listdlg('PromptString', 'Axis to plot:',...
+%                            'SelectionMode', 'multiple', ...
+%                            'ListString', axis_labels,...
+%                            'InitialValue', menu_vmap_axis);
+                       
+[menu_vmap_plot, menu_vmap_axis] = dialog_two_lists('Select plot options:', ...
+    'Variable:', map_labels, menu_vmap_plot,...
+    'Axis:', axis_labels, menu_vmap_axis);
+                       
+map_variables = {vx_map,vy_map};
+
+if min(size(vx_map(:,:,1))) > 5
+    for i = menu_vmap_plot
+        figures{end+1} = figure;
+        k = 0;
+        for j = menu_vmap_axis            
+            k = k + 1;
+            subplot(numel(menu_vmap_axis),1,k)
+
+            % set NaN to blank
+            imAlpha=ones(size(map_variables{j}(:,:,i)'));
+            imAlpha(isnan(map_variables{j}(:,:,i)'))=0;
+
+%             contour_levels = linspace(-36.2922, 22.1115, 100);
+%             contour_levels = linspace(min(min(map_variables{j}(:,:,i))), max(max(map_variables{j}(:,:,i))), 100);
+%             contour_levels = linspace(min(min(min(map_variables{1}(:,:,i))),min(min(map_variables{2}(:,:,i)))), ...
+%                 max(max(max(map_variables{1}(:,:,i))),max(max(map_variables{2}(:,:,i)))), 100);
+            contour_levels = linspace(min(min(min(map_variables{1}(2:end-1,2:end-1,i))), ...
+                min(min(map_variables{2}(2:end-1,2:end-1,i)))), ...
+                max(max(max(map_variables{1}(2:end-1,2:end-1,i))), ...
+                max(max(map_variables{2}(2:end-1,2:end-1,i)))), 100);
+
+            p_vx = imagesc(x_centres, y_centres, map_variables{j}(:,:,i)','AlphaData',imAlpha); 
+%             set(gca,'YDir','normal')
+    %         p_vx = pcolor(x_edges(1:end-1), y_edges(1:end-1), map_variables{j}(:,:,i)');
+    %         p_vx.EdgeColor = 'none';
+
+%             colormap(flipud(jet))
+            colormap(jet)
+            c = colorbar;
+    %         c.Label.String = [map_labels{i} ' vx (' position_units{p} '/' time_units{t} ')'];
+            c.Label.String = [axis_labels{j} ' ' map_labels{i}];
+            c.FontSize = 16;
+
+            caxis([min(contour_levels), max(contour_levels)])
+
+            xlabel(['x position (' position_units{p} ')'])
+            ylabel(['y position (' position_units{p} ')'])
+            title([file_name{1} ' // average = ' ...
+                num2str(nanmean(nanmean(map_variables{j}(:,:,i))), '%.3g')])
+            set(gca, 'FontSize', 16)
+        end
+        
+    end
+end
 
 %% PLOT velocity histogram by sections
 % *************************************************************************
 % close all
 
-if max(size(vx_map)) < 5
+if max(size(vx_map(:,:,1))) < 5
     figures{end+1} = figure;
     legend_vx_grid = {};
     text_hv = {};
@@ -458,12 +662,11 @@ if max(size(vx_map)) < 5
     
     grid_colours = parula(size(vx_grid,1)*size(vx_grid,2));
     k = 1;
-    vx_map_centre = zeros(size(vx_grid));
     for i = 1:1:size(vx_grid,1)
         for j = 1:1:size(vx_grid,2)
             ph(i,j) = histogram(vx_grid{i,j},30); hold all
-%             ph(i,j).Normalization = 'count';
-            ph(i,j).Normalization = 'probability';
+            ph(i,j).Normalization = 'count';
+%             ph(i,j).Normalization = 'probability';
             ph(i,j).FaceColor = grid_colours(k,:);
             legend_vx_grid{end+1} = ['x = ' num2str(x_edges(i),'%02.0f') ' ' position_units{p} ...
                 ', y = ' num2str(y_edges(j),'%02.0f') ' ' position_units{p}];
@@ -472,7 +675,6 @@ if max(size(vx_map)) < 5
             hvx_y = ph(i,j).Values;
             fit_vx_grid{i,j} = fit(hvx_x', hvx_y', 'gauss1');
             confint_vx_grid{i,j} = confint(fit_vx_grid{i,j});
-            vx_map_centre(i,j) = fit_vx_grid{i,j}.b1;
             
             pvx_grid{i,j} = plot(fit_vx_grid{i,j}); hold all
             pvx_grid{i,j}.Color = ph(i,j).FaceColor;
@@ -502,115 +704,24 @@ if max(size(vx_map)) < 5
     'FontSize', 12, 'VerticalAlignment', 'top', 'String' , text_hv)
 
     % for i = 1:1:size(vx_map,2)
-    %     h{1}(i) = plot(x_edges(1:end-1),vx_map(:,i), '.-', 'MarkerSize', 8); hold all
+    %     h{1}(i) = plot(x_edges(1:end-1),vx_map(:,i,1), '.-', 'MarkerSize', 8); hold all
     %     legend_cell{1}{end+1} = ['y = ' num2str(y_edges(i),'%02.0f') ' ' position_units{p}];
     % end
     % xlabel(['x position (' position_units{p} ')'])
-    % ylabel([v_label ' x velocity (' position_units{p} '/' time_units{t} ')'])
+    % ylabel([map_labels{1} ' x velocity (' position_units{p} '/' time_units{t} ')'])
 end
-
-%% PLOT velocity scatter plot
-% *************************************************************************
-% figures{end+1} = figure;
-% subplot(2,1,1)
-% plot(x,vx, '.', 'MarkerSize', 8), hold all
-% plot(x,vy, '.', 'MarkerSize', 8), hold all
-% legend('vx vs. x', 'vy vs. x')
-% xlabel(['x position (' position_units{p} ')'])
-% ylabel(['velocity (' position_units{p} '/' time_units{t} ')'])
-% title([folder_name ': ' file_name{1}], 'interpreter', 'none')
-% set(gca, 'FontSize', 16)
-% 
-% subplot(2,1,2)
-% plot(y,vy, '.', 'MarkerSize', 8), hold all
-% plot(y,vx, '.', 'MarkerSize', 8), hold all
-% legend('vy vs. y', 'vx vs. y')
-% xlabel(['y position (' position_units{p} ')'])
-% ylabel(['velocity (' position_units{p} '/' time_units{t} ')'])
-% set(gca, 'FontSize', 16)
-
-figures{end+1} = figure;
-plot(x,y, '.', 'MarkerSize', 8), hold all
-xlabel('x position (px)')
-ylabel('y position (px)')
-set(gca, 'FontSize', 16)
-
-
-%% PLOT velocity color maps
-% *************************************************************************
-% close all
-
-if min(size(vx_map)) > 1
-    figures{end+1} = figure;
-    subplot(2,1,1)
-%     subplot(3,1,1)
-    
-    contour_levels = linspace(-35, 15, 100);
-%     contour_levels = linspace(min(min(vx_map)), max(max(vx_map)), 100);
-%     % contour_levels = linspace(min(min(vx_map)), 10, 100);
-%     % contour_levels = linspace(min(min(min(vx_map)),min(min(vy_map))), max(max(max(vx_map)),max(max(vy_map))), 100);
-
-%     contourf(x_edges(1:end-1), y_edges(1:end-1),vx_map',...
-%                 'LineStyle', 'none',...
-%                 'LevelListMode', 'manual', ...
-%                 'LevelList', contour_levels)
-
-    p_vx = pcolor(vx_map');
-    p_vx.EdgeColor = 'none';
-    % FIX X AND Y AXIS
-    
-    colormap(flipud(jet))
-    colorbar
-    caxis([min(contour_levels), max(contour_levels)])
-    
-    xlabel(['x position (' position_units{p} ')'])
-    ylabel(['y position (' position_units{p} ')'])
-    title([file_name{1} ' // ' v_label ' vx (' position_units{p} '/' time_units{t} ')'], 'interpreter', 'none')
-
-%     subplot(3,1,2)
-%     p_vx = pcolor(vx_map_centre');
-%     p_vx.EdgeColor = 'none';
-%     
-%     colormap(flipud(jet))
-%     colorbar
-%     caxis([min(contour_levels), max(contour_levels)])
-%     
-%     xlabel(['x position (' position_units{p} ')'])
-%     ylabel(['y position (' position_units{p} ')'])
-%     title([file_name{1} ' // centre vx (' position_units{p} '/' time_units{t} ')'], 'interpreter', 'none')
-
-    subplot(2,1,2)
-%     subplot(3,1,3)
-    % contour_levels = linspace(-10, 10, 100);
-    % contour_levels = linspace(min(min(vy_map)), max(max(vy_map)), 100);
-%     contourf(x_edges(1:end-1), y_edges(1:end-1),vy_map',...
-%                 'LineStyle', 'none',...
-%                 'LevelListMode', 'manual', ...
-%                 'LevelList', contour_levels)
-%     colormap(flipud(jet))
-    
-    p_vy = pcolor(vy_map');
-    p_vy.EdgeColor = 'none';
-    
-    colormap(flipud(jet))
-    colorbar
-    caxis([min(contour_levels), max(contour_levels)])
-    
-    xlabel(['x position (' position_units{p} ')'])
-    ylabel(['y position (' position_units{p} ')'])
-    title([file_name{1} ' // ' v_label ' vy (' position_units{p} '/' time_units{t} ')'], 'interpreter', 'none')
-end
-
-
 
 
 %% PLOT mass and size color maps
 % *************************************************************************
 % close all
-if min(size(vx_map)) > 30
+if min(size(vx_map(:,:,1))) > 10 && 1
     figures{end+1} = figure;
     subplot(2,1,1)
     % subplot(3,1,1)
+    % set NaN to blank
+    imAlpha=ones(size(masses_map'));
+    imAlpha(isnan(masses_map'))=0;
     % contour_levels = linspace(-35, 5, 100);
     contour_levels = linspace(min(min(masses_map)), max(max(masses_map)), 100);
     % contour_levels = linspace(min(min(mass_map)), 10, 100);
@@ -620,21 +731,29 @@ if min(size(vx_map)) > 30
 %                 'LevelListMode', 'manual', ...
 %                 'LevelList', contour_levels)
     
-    p_mass = pcolor(masses_map');
-    p_mass.EdgeColor = 'none';
+%     p_mass = pcolor(x_edges(1:end-1), y_edges(1:end-1), masses_map');
+%     p_mass.EdgeColor = 'none';
+    p_mass = imagesc(x_centres, y_centres, masses_map','AlphaData',imAlpha); 
     
     colormap(jet)
-    colorbar
+    c = colorbar;
+    c.Label.String = 'mass';
+    c.FontSize = 16;
     caxis([min(contour_levels), max(contour_levels)])
     
+    set(gca,'FontSize',16)
     xlabel(['x position (' position_units{p} ')'])
     ylabel(['y position (' position_units{p} ')'])
-    title([file_name{1} ' //  mass'], 'interpreter', 'none')
-
+%     title([file_name{1} ' //  mass'], 'interpreter', 'none')
+    title(file_name{1} , 'interpreter', 'none')
+    
 
     subplot(2,1,2)
     % subplot(3,1,1)
     % contour_levels = linspace(-35, 5, 100);
+    % set NaN to blank
+    imAlpha=ones(size(sizes_map'));
+    imAlpha(isnan(sizes_map'))=0;
     contour_levels = linspace(min(min(sizes_map)), max(max(sizes_map)), 100);
     % contour_levels = linspace(min(min(size_map)), 10, 100);
     
@@ -643,27 +762,32 @@ if min(size(vx_map)) > 30
 %                 'LevelListMode', 'manual', ...
 %                 'LevelList', contour_levels)
             
-    p_size = pcolor(sizes_map');
-    p_size.EdgeColor = 'none';
+%     p_size = pcolor(x_edges(1:end-1), y_edges(1:end-1), sizes_map');
+%     p_size.EdgeColor = 'none';
+    p_size = imagesc(x_centres, y_centres, sizes_map','AlphaData',imAlpha); 
     
     colormap(jet)
-    colorbar
+    c = colorbar;
+    c.Label.String = 'size (px)';
+    c.FontSize = 16;
+    caxis([min(contour_levels), max(contour_levels)])
     caxis([min(contour_levels), max(contour_levels)])
     
+    set(gca,'FontSize',16)
     xlabel(['x position (' position_units{p} ')'])
     ylabel(['y position (' position_units{p} ')'])
-    title([file_name{1} ' //  size (px)'], 'interpreter', 'none')
+%     title([file_name{1} ' //  size (px)'], 'interpreter', 'none')
 end
 
 %% PLOT velocity quiver map
 % *************************************************************************
-if min(size(vx_map)) > 3
+if min(size(vx_map(:,:,1))) > 3 && 0
     figures{end+1} = figure;
     % subplot(3,1,3)
-    quiver(x_edges(1:end-1),y_edges(1:end-1),vx_map',vy_map','LineWidth',2)
+    quiver(x_edges(1:end-1),y_edges(1:end-1),vx_map(:,:,1)',vy_map(:,:,1)','LineWidth',2)
     xlabel(['x position (' position_units{p} ')'])
     ylabel(['y position (' position_units{p} ')'])
-    title([file_name{1} ' // ' v_label ' v (' position_units{p} '/' time_units{t} ')'], 'interpreter', 'none')
+    title([file_name{1} ' // ' map_labels{1} ' v (' position_units{p} '/' time_units{t} ')'], 'interpreter', 'none')
     set(gca,'FontSize',16)
     xlim([-5,35])
     ylim([-2,16])
@@ -672,46 +796,46 @@ end
 %% PLOT velocity line plots
 % *************************************************************************
 % close all
-if min(size(vx_map)) > 3
+if min(size(vx_map(:,:,1))) > 3 && 0
     figures{end+1} = figure('Units','normalized','Position',[0.01 0.07 0.95 0.8]);
     figure_velocity_line = figures{end};
     suptitle([folder_name ': ' file_name{1}])
     subplot(2,2,1)
     legend_cell{1} = {};
     for i = 1:1:size(vx_map,2)
-        h{1}(i) = plot(x_edges(1:end-1),vx_map(:,i), '.-', 'MarkerSize', 8); hold all
+        h{1}(i) = plot(x_edges(1:end-1),vx_map(:,i,1), '.-', 'MarkerSize', 8); hold all
         legend_cell{1}{end+1} = ['y = ' num2str(y_edges(i),'%02.0f') ' ' position_units{p}];
     end
     xlabel(['x position (' position_units{p} ')'])
-    ylabel([v_label ' x velocity (' position_units{p} '/' time_units{t} ')'])
+    ylabel([map_labels{1} ' x velocity (' position_units{p} '/' time_units{t} ')'])
 
     subplot(2,2,2)
     legend_cell{2} = {};
     for i = 1:1:size(vx_map,1)
-        h{2}(i) = plot(y_edges(1:end-1),vx_map(i,:), '.-', 'MarkerSize', 8); hold all
+        h{2}(i) = plot(y_edges(1:end-1),vx_map(i,:,1), '.-', 'MarkerSize', 8); hold all
         legend_cell{2}{end+1} = ['x = ' num2str(x_edges(i),'%02.0f') ' ' position_units{p}];
     end
     xlabel(['y position (' position_units{p} ')'])
-    ylabel([v_label ' x velocity (' position_units{p} '/' time_units{t} ')'])
+    ylabel([map_labels{1} ' x velocity (' position_units{p} '/' time_units{t} ')'])
 
 
     subplot(2,2,3)
     legend_cell{3} = {};
     for i = 1:1:size(vy_map,2)
-        h{3}(i) = plot(x_edges(1:end-1),vy_map(:,i), '.-', 'MarkerSize', 8); hold all
+        h{3}(i) = plot(x_edges(1:end-1),vy_map(:,i,1), '.-', 'MarkerSize', 8); hold all
         legend_cell{3}{end+1} = ['y = ' num2str(y_edges(i),'%02.0f') ' ' position_units{p}];
     end
     xlabel(['x position (' position_units{p} ')'])
-    ylabel([v_label ' y velocity (' position_units{p} '/' time_units{t} ')'])
+    ylabel([map_labels{1} ' y velocity (' position_units{p} '/' time_units{t} ')'])
 
     subplot(2,2,4)
     legend_cell{4} = {};
     for i = 1:1:size(vy_map,1)
-        h{4}(i) = plot(y_edges(1:end-1),vy_map(i,:), '.-', 'MarkerSize', 8); hold all
+        h{4}(i) = plot(y_edges(1:end-1),vy_map(i,:,1), '.-', 'MarkerSize', 8); hold all
         legend_cell{4}{end+1} = ['x = ' num2str(x_edges(i),'%02.0f') ' ' position_units{p}];
     end
     xlabel(['y position (' position_units{p} ')'])
-    ylabel([v_label ' y velocity (' position_units{p} '/' time_units{t} ')'])
+    ylabel([map_labels{1} ' y velocity (' position_units{p} '/' time_units{t} ')'])
 
     % format velocity line plots
     % *************************************************************************
@@ -740,7 +864,7 @@ end
 % *************************************************************************
 % close all
 
-if min(size(vx_map)) > 30
+if min(size(vx_map(:,:,1))) > 30
     figures{end+1} = figure('Units','normalized','Position',[0.01 0.07 0.95 0.8]);
     figure_velocity_line = figures{end};
     suptitle([folder_name ': ' file_name{1}])
