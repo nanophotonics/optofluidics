@@ -12,10 +12,14 @@ figures = {};
 % specify default path
 folder_path = 'R:\aa938\NanoPhotonics\Laboratory\2017.06.13 - Au NR DLS\';
 file_name{1} = '2017.06.13_AuNR_1_diffusions.txt';
+file_name{2} = '2017.06.13_AuNR_2_diffusions.txt';
 
-file_path{1} = [folder_path file_name{1}];
+file_path = cell(size(file_name));
+for i = 1:1:numel(file_name)
+    file_path{i} = [folder_path file_name{i}];
+end
 
-number_of_folders = 1; % if 0 it will not ask for user input
+number_of_folders = 0; % if 0 it will not ask for user input
 % number_of_folders = menu('Where are the files located?', 'SINGLE folder', 'MULTIPLE folders');
 
 if number_of_folders == 1
@@ -117,6 +121,7 @@ for i = 1:1:size(intensities,1)
     p{i,1} = semilogx(diffusions(i,:), intensities(i,:), '.-'); hold all
     subplot(2,1,2)
     p{i,2} = semilogx(sizes(i,:), intensities(i,:), '.-'); hold all
+%     semilogx(kb*T/6/pi/viscosity./diffusions(i,:), intensities(i,:), '.-'); hold all
     
     p_legend{end+1} = ['T = ' num2str(T(i)) '\circC'];
     p_legend{end} = [p_legend{end} ', \eta = ' num2str(viscosity(i)) ' cP'];

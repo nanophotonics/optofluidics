@@ -629,8 +629,8 @@ if min(size(vx_map(:,:,1))) > 5
     %         p_vx = pcolor(x_edges(1:end-1), y_edges(1:end-1), map_variables{j}(:,:,i)');
     %         p_vx.EdgeColor = 'none';
 
-%             colormap(flipud(jet))
-            colormap(jet)
+            colormap(flipud(jet))
+%             colormap(jet)
             c = colorbar;
     %         c.Label.String = [map_labels{i} ' vx (' position_units{p} '/' time_units{t} ')'];
             c.Label.String = [axis_labels{j} ' ' map_labels{i}];
@@ -739,7 +739,7 @@ if min(size(vx_map(:,:,1))) > 10 && 1
     c = colorbar;
     c.Label.String = 'mass';
     c.FontSize = 16;
-    caxis([min(contour_levels), max(contour_levels)])
+    caxis([min(contour_levels), max(contour_levels)]);
     
     set(gca,'FontSize',16)
     xlabel(['x position (' position_units{p} ')'])

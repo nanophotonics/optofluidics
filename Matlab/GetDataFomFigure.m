@@ -2,7 +2,7 @@ clc
 clear
 close all
 
-pathRead = 'R:\aa938\NanoPhotonics\Laboratory\2017.01.18 - Au NR spectra cuvette\';
+pathRead = 'R:\aa938\NanoPhotonics\Matlab\Optical Forces\2017.06.26\';
 [nameRead, pathRead, ~] = uigetfile('.fig',...
     'Select figure:',pathRead,'MultiSelect','off');
 
@@ -17,6 +17,7 @@ i = 1;
 for i = 1:1:size(data,1)
     data{i,1} = get(dataObjs{2}(i), 'XData');
     data{i,2} = get(dataObjs{2}(i), 'YData');
+    data{i,3} = get(dataObjs{2}(i), 'ZData');
 end
 
 menu_save = 1;

@@ -3,12 +3,12 @@
 % Calculates the gradient force and particle vGrad
 % Fits the gradient force to Hooke's law for small displacements
 
-clc
+% clc
 clear 
 % close all
 figures = {};
 
-directory_save = 'R:\aa938\NanoPhotonics\Laboratory\2017.03.23 - gradient force calculations\';
+directory_save = 'R:\aa938\NanoPhotonics\Matlab\Optical Forces\';
 
 %% Initial parameters
 % *************************************************************************
@@ -24,7 +24,7 @@ units = menu('Units:', 'SI', 'CGS');
 % units_SI = units_display * units_conversion
 
 d_hydro.name = 'Hydrodynamic diameter';
-d_hydro.symbol = 'd_h';
+d_hydro.symbol = 'dh';
 d_hydro.units_SI = 'm';
 d_hydro.units_display = 'nm';
 d_hydro.units_conversion = 1e-9;
@@ -36,12 +36,12 @@ d_hydro.size = size(d_hydro.values,2);
 d_hydro.selected = d_hydro.min;
 
 d_physical.name = 'Physical diameter';
-d_physical.symbol = 'd_p';
+d_physical.symbol = 'dp';
 d_physical.units_SI = 'm';
 d_physical.units_display = 'nm';
 d_physical.units_conversion = 1e-9;
-d_physical.min = 11.41e-9; 
-d_physical.max = 11.41e-9; 
+d_physical.min = 22.8e-9; 
+d_physical.max = 22.8e-9; 
 d_physical.step = 1e-9; 
 d_physical.values = d_physical.min : d_physical.step : d_physical.max;
 d_physical.size = size(d_physical.values,2);
@@ -107,7 +107,7 @@ d_physical = parameters(4);
 
 %% READ: refractive index
 % *************************************************************************
-nmed = 1.33; % Refractive index of water
+nmed = 1.324; % Refractive index of water
 material = 1;
 % material = menu('Nanoparticle material', 'Gold', 'Polystyrene');
 if material == 1 % gold
@@ -139,23 +139,25 @@ end
 %% CALCULATE: polarisability
 % *************************************************************************
 
+% d = d_hydro.values;
+% disp('Polarisability calculated with hydrodynamic size')
+
+d = d_physical.values;
+disp('Polarisability calculated with physical size')
+
+% d(m) = 11.4-9*ones(size*d_hydro.values); % m
+% disp(['Polarisability calculated with d(m) = ' num2str(d(m)*1e9) ' nm'])
+
 % standard polarisability
 alpha_0 = zeros(d_hydro.size,lambda.size);
 for m = 1:1:d_hydro.size
-%     d(m) = d_hydro.values(m);
-%     disp('Polarisability calculated with hydrodynamic size')
-    
-    d(m) = d_physical.values(m);
-    disp('Polarisability calculated with physical size')
 
-%     d(m) = 11.4-9; % m
-%     disp(['Polarisability calculated with d(m) = ' num2str(d(m)*1e9) ' nm'])
     
     if units == 1 % SI units: F.m^2
         alpha_0(m,:) = nmed^2*eps0*4*pi*(d(m)/2)^3 .* ...
             (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2); 
     elseif units == 2 % CGS units: m^3
-        alpha_0(m,:) = 4*pi*(df/2)^3 .* ...
+        alpha_0(m,:) = 4*pi*(d(m)/2)^3 .* ...
             (n_particle.^2 - nmed^2) ./ (n_particle.^2 + 2*nmed^2);
     end
     
@@ -182,6 +184,12 @@ z.symbol = 'z';
 z.units_SI = 'm';
 z.units_display = '\mum';
 z.units_conversion = 1e-6;
+
+wz.name = 'Beam Width';
+wz.symbol = 'wz';
+wz.units_SI = 'm';
+wz.units_display = '\mum';
+wz.units_conversion = 1e-6; 
 
 if menu_profile == 1 % Bessel
     R = 9e-6; % m. Radius of the HCPCF core
@@ -225,8 +233,8 @@ elseif menu_profile == 2 % Gaussian
     answer = inputdlg(input_data,input_title,dim,default_values,dlg_options);
     w0 = str2double(answer{1})*1e-6; % m
     
-    r.min = -w0*2; 
-    r.max = w0*2;    
+    r.min = -w0*3; 
+    r.max = w0*3;    
     r.size = 91; % select and odd number, and different than z
     r.values = linspace(r.min,r.max,r.size);
     r.step = r.values(2)-r.values(1);     
@@ -239,7 +247,7 @@ elseif menu_profile == 2 % Gaussian
     z.step = z.values(2)-z.values(1);
     z.selected = z.min;    
     
-    wz = zeros(lambda.size,z.size);
+    wz.values = zeros(lambda.size,z.size);
 end
 
 intensity.name = 'Beam Intensity';
@@ -267,10 +275,13 @@ for i = 1:1:lambda.size;
                     intensity.values(i,j,k,l,:) = ...
                         (power.values(j) / (pi * (R)^2)) / j12 * J02(k);
                 elseif menu_profile == 2 % Gaussian
-                    wz(i,l) = w0 * sqrt(1+ ...
-                        (lambda.values(i)*z.values(l)/pi/w0^2)^2); % m. Beam diameter at distance z 
+                    zr = pi*w0^2/lambda.values(i); % Rayleigh length
+%                     zr = pi*w0^2/lambda.values(i)*nmed; % Rayleigh length corrected for the dispersion of the medium
+%                     zeff = z.values(l); % position
+                    zeff = 25e-6/1.51 + z.values(l)/nmed; % position corrected for the medium interface8
+                    wz.values(i,l) = w0 * sqrt(1+(zeff/zr)^2); % m. Beam diameter at distance z 
                     intensity.values(i,j,k,l,:) = 2*power.values(j) / ...
-                        (pi*wz(i,l)^2) * exp(-2*r.values(k)^2/wz(i,l)^2);
+                        (pi*wz.values(i,l)^2) * exp(-2*r.values(k)^2/wz.values(i,l)^2);
                 end
                 for m = 1:1:d_hydro.size
                     if units == 1 % SI
@@ -406,19 +417,19 @@ Fscat.values = zeros(size(intensity.values));
 
 % d = d_hydro.values;
 d = d_physical.values;
-d(m) = 11.43e-9 * ones(size(d_physical.values)); % metres
+% d = 11.43e-9 * ones(size(d_physical.values)); % metres
     
 disp('---')
 if menu_Cext == 1 % calculate
     disp('Cext calculated from polariability')
     % disp('Qext calculated with hydrodynamic size')
     disp('Qext calculated with physical size')
-    disp(['Qext calculated with d(m) = ' num2str(d(m)*1e9) ' nm'])
+    disp(['Qext calculated with d = ' num2str(d(m)*1e9) ' nm'])
 elseif menu_Cext == 2 % read from file
     disp(['Qext read from file: ' file_name])
     % disp('Cext calculated with hydrodynamic size')
     disp('Cext calculated with physical size')
-    disp(['Qext calculated with d(m) = ' num2str(d(m)*1e9) ' nm'])
+    disp(['Cext calculated with d = ' num2str(d(m)*1e9) ' nm'])
 end
 disp('---')
 
@@ -436,6 +447,7 @@ for i = 1:1:lambda.size
             end
 
             Qext.values(i,m) = Cext.values(i,m) / (pi*(d(m)/2)^2);
+            disp('WARNING!!!!! The calculation of alpha/Cext might not be correct')
                     
         elseif menu_Cext == 2 % read from file
             Cext.values(i,m) = Qext.values(i,m) * (pi*(d(m)/2)^2);
@@ -458,7 +470,6 @@ for i = 1:1:lambda.size
                 
                 Fscat.values(i,j,:,l,m) = ...
                     nmed / c * intensity.values(i,j,:,l,m) * Cext.values(i,m); 
-                    % check that this is correct
                     
             end
         end
@@ -615,10 +626,10 @@ end
 
 %% Default Variables
 % *************************************************************************
-% variables = [potential, intensity, Fgrad, kr, vGrad, time, ...
+% variables = [wz, potential, intensity, Fgrad, kr, vGrad, time, ...
 %     Fscat, vScat, Cext, Qext, Csca, Qsca];
 
-variables = [potential, intensity, ...
+variables = [wz, potential, intensity, ...
     Fscat, vScat, Cext, Qext];
 
 variables_options = cell(size(variables));
@@ -662,7 +673,6 @@ vScat.units_conversion = 1e-6;
 
 %% Plot Options
 % *************************************************************************
-        
 [selected_style, selected_variable] = dialog_two_lists('Select plot options:', ...
                                       'Style', plot_styles, selected_style,...
                                       'Variable', variables_options, selected_variable);
@@ -678,6 +688,8 @@ elseif strcmp(variables(selected_variable).symbol, 'Q_{sca}')
     parameters = [lambda,d_physical];
 elseif strcmp(variables(selected_variable).symbol, 'I')  
     parameters = [lambda,power,r,z];
+elseif strcmp(variables(selected_variable).symbol, 'wz')  
+    parameters = [lambda,z];
 else
     parameters = [lambda,power,r,z,d_hydro,d_physical];
 end
@@ -758,6 +770,9 @@ elseif strcmp(variables(selected_variable).symbol, 'I')
     power = parameters(2);
     r = parameters(3);
     z = parameters(4);
+elseif strcmp(variables(selected_variable).symbol, 'wz')  
+    lambda = parameters(1);
+    z = parameters(2);
 else
     lambda = parameters(1);
     power = parameters(2);
@@ -891,7 +906,7 @@ if menu_save_figures == 2
     end
 end
 
-%% Tijmen's code
+% %% Tijmen's code
 % clc;
 % rNR=6E-9;
 % lNR=50E-9;
