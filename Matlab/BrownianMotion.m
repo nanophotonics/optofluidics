@@ -97,31 +97,31 @@ disp(['D_Stokes = ' num2str(D*1e12,'%.3g') ' um^2/s'])
 % code from: http://uk.mathworks.com/matlabcentral/fileexchange/32067-brownian-motion
 % close all
 
-D = 8e-12; % um^2/s
+D = 8e-12; % diffusion coefficient (um^2/s)
 % tau = 0.00179e-6; % time interval (seconds)
 % tau = 0.132e-6; % time interval (seconds)
 frame_rate = 159.22; % fps
 tau = 1/frame_rate; % time interval (seconds)
 % tau = 1/140; % time interval (seconds)
 % tau = 0.1; % time interval (seconds)
-N = 1e2; % number of samples --> make it less than 1e7!!!!!!!!!
+N = 1e3; % number of samples --> make it less than 1e7!!!!!!!!!
 total_time = tau*N; % total time (seconds)
 % total_time = 1; % total time (seconds)
 % N = round(total_time/tau); % number of collisions
 % h = sqrt(total_time/N); % scaling factor
 h = sqrt(2*D*tau); % scaling factor
 % h = 1; % scaling factor
-np = 1e3; % Number of Particles
-ndim = 2;
+np = 1e3; % number of particles
+ndim = 2; % number of dimensions
 
 title_text = '';
-title_text = [title_text 'tau = ' num2str(tau*1e3,'%.2g') ' ms'];
+title_text = [title_text num2str(ndim) 'D'];
+title_text = [title_text ', tau = ' num2str(tau*1e3,'%.2g') ' ms'];
 % title_text = [title_text ', t = ' num2str(total_time,'%.3g') ' s'];
 title_text = [title_text ', N = ' num2str(N,'%.0f')];
+title_text = [title_text ', np = ' num2str(np,'%.0f')];
 title_text = [title_text ', D = ' num2str(D*1e12,'%.3g') ' \mum^2/s'];
 % title_text = [title_text ', h = ' num2str(h,'%.2g')];
-title_text = [title_text ', np = ' num2str(np,'%.0f')];
-title_text = [title_text ', ' num2str(ndim) 'D'];
    
 
 t_position = tau * (1:N);  % time vector for position (seconds)
@@ -136,8 +136,8 @@ t_velocity = t_position;
 velocity_brownian = h/tau * randn(N,np,ndim);
 
 axis_labels = {'x','y','z'};
-% velocity_axis = [0, 0, 0];
-velocity_axis = [0, 8.4, 0]*1e-6;
+velocity_axis = [0, 0, 0];
+% velocity_axis = [0, 8.4, 0]*1e-6;
 
 % velocity_flow = ones(N,np,ndim);
 % for i = 1:1:ndim
@@ -151,7 +151,7 @@ velocity_axis = [0, 8.4, 0]*1e-6;
 % position = cumsum(displacement);
 
 % read velocity from figure
-menu_vflow = 3;
+menu_vflow = 1;
 % menu_vflow = menu('x-axis non-brownian velocity', 'Calculate', 'Read from line plot', 'Read from contour plot');
 
 if menu_vflow > 1
@@ -193,17 +193,22 @@ velocity = zeros(N,np,ndim);
 displacement = zeros(N,np,ndim);
 position = zeros(N+1,np,ndim);
 % position(1,:,1) = position(1,:,1) + 10e-6;
-position(1,:,1) = position(1,:,1) + rand(size(position(1,:,1)))*10e-6 + 5e-6;
-position(1,:,2) = position(1,:,2) - (0.5-rand(size(position(1,:,2))))*10e-6;
+position(1,:,1) = position(1,:,1) + rand(size(position(1,:,1)))*10e-6 + 30e-6;
+position(1,:,2) = position(1,:,2) - (0.5-rand(size(position(1,:,2))))*20e-6;
 for i = 1:1:N
+    if ndim == 2
+        position_r = position(i,:,1);
+    elseif ndim == 3
+        position_r = sqrt(position(i,:,1).^2 + position(i,:,3).^2);
+    end
     if menu_vflow == 1
         velocity_flow(i,:,1) = velocity_axis(1) * velocity_flow(i,:,1);
 %         velocity_flow(i,:,1) = -30e-2*(80e-6 + position(i,:,1));
     elseif menu_vflow == 2 % line figure
-        velocity_flow(i,:,1) = spline(vflow_x, vflow_v, position(i,:,1));
+        velocity_flow(i,:,1) = spline(vflow_x, vflow_v, position_r);
     elseif menu_vflow == 3 % contour figure
         velocity_flow(i,:,1) = interp2(vflow_x, vflow_y, vflow_v,...
-            position(i,:,1), position(i,:,2));
+            position_r, position(i,:,2));
     end    
     
     if ndim >= 2
@@ -299,7 +304,7 @@ if find(strcmp(plot_options(po), '3D/2D Position'))
     axis square
 %     xlim([-20,110])
 %     ylim([-20,20])
-%     title('Position top view')
+    title('Position top view')
     xlabel([coordenate_labels{1} ' position (' distance.units ')'])
     ylabel([coordenate_labels{2} ' position (' distance.units ')'])
     suptitle(title_text)
@@ -639,124 +644,77 @@ end
 
 %% CALCULATE velocity maps
 % *************************************************************************
-
-x = reshape(position(:,:,1),[numel(position(:,:,1)),1])/distance.conversion;
-y = reshape(position(:,:,2),[numel(position(:,:,2)),1])/distance.conversion;
-
-vx = reshape(velocity(:,:,1),[numel(velocity(:,:,1)),1])/v.conversion;
-vy = reshape(velocity(:,:,2),[numel(velocity(:,:,2)),1])/v.conversion;
-
 clear map_labels
+menu_map = 5;
+menu_map = menu('Velocity:', 'Average', 'Gaussian Fit');
+sections = [29,21,19];
+if menu_map == 1
+    map_data = zeros(sections(1),sections(2),ndim,2);
+elseif menu_map == 2
+    map_data = zeros(sections(1),sections(2),ndim,6);
+else
+    map_data = zeros(sections(1),sections(2),ndim,1);
+end
+k_position = zeros(numel(position(:,:,1)),ndim);
+k_velocity = zeros(numel(position(:,:,1)),ndim);
+k_edges = cell(1,ndim);
+k_centres = cell(1,ndim);
+k_bin = zeros(numel(position(:,:,1)),ndim);
+for k = 1:1:ndim
+    k_position(:,k) = reshape(position(:,:,k)/distance.conversion,[numel(position(:,:,k)),1]);
+    k_velocity(:,k) = reshape(velocity(:,:,k)/v.conversion,[numel(velocity(:,:,k)),1]);
+       
+    k_edges{k}= linspace(min(k_position(:,k)), max(k_position(:,k)), sections(k) + 1);
+    k_centres{k} = (k_edges{k}(1:end-1)+k_edges{k}(2:end))/2;
+    k_bin(:,k) = discretize(k_position(:,k),k_edges{k});
+end
 
-menu_vmap = 5;
-% menu_vmap = menu('Velocity:', 'Average', 'Maximum', 'Minimum', 'Mode', 'Gaussian Fit');
+for k = 1:1:2
+    for i = 1:1:sections(1)
+        x_indices = find(k_bin(:,1) == i);
+        for j = 1:1:sections(2)
+            y_indices = find(k_bin(:,2) == j);
+            xy_indices = intersect(x_indices, y_indices);
+%             disp(numel(xy_indices,k))
 
-x_sections = 19;
-y_sections = 11;
+            if numel(xy_indices,k) < 1
+                map_data(i,j,:,:) = NaN;
+            else
+                if menu_map == 1 % average
+                    map_data(i,j,k,1) = mean(k_velocity(xy_indices,k));
+                    map_labels{1} = ['average v (' distance.units '/' time.units ')'];
 
-% x_sections = 1;
-% y_sections = 3;
+                    map_data(i,j,k,2) = numel(xy_indices); % number of data points
+                    map_labels{2} = 'No. of points';
 
-x_edges = linspace(min(x), max(x), x_sections + 1);
-x_centres = (x_edges(1:end-1)+x_edges(2:end))/2;
-x_bin = discretize(x,x_edges);
-y_edges = linspace(min(y), max(y), y_sections + 1);
-y_centres = (y_edges(1:end-1)+y_edges(2:end))/2;
-y_bin = discretize(y,y_edges);
+                elseif menu_map == 2 % gaussian fit
+                    clc
+                    disp(['Calculating map section: (' num2str(i) ',' num2str(j) ',' num2str(j) ') of (' ...
+                        num2str(numel(k_centres(:,1))) ',' num2str(numel(k_centres(:,2))) ...
+                        ',' num2str(ndim) ')'])
 
-vx_map = zeros(numel(x_centres),numel(y_centres),1);
-vy_map = zeros(numel(x_centres),numel(y_centres),1);
+                    number_of_bins = min(round(numel(xy_indices,k)/10), 100);
 
-for i = 1:1:numel(x_centres)
-    x_indices = find(x_bin == i);
-    for j = 1:1:numel(y_centres)
-        y_indices = find(y_bin == j);
-        xy_indices = intersect(x_indices, y_indices);
-%         disp(numel(xy_indices))
+                    [v_counts,v_edges] = histcounts(k_velocity(xy_indices,k),number_of_bins);
+                    v_centres = (v_edges(1:end-1) + v_edges(2:end)) / 2;
 
-        if numel(xy_indices) < 30
-            vx_map(i,j,:) = NaN;
-            vy_map(i,j,:) = NaN;
-        else
-            if menu_vmap == 1 % average
-                vx_map(i,j,1) = mean(vx(xy_indices));
-                vy_map(i,j,1) = mean(vy(xy_indices));
-                map_labels{1} = ['average v (' distance.units '/' time.units ')'];
+                    fit_parameters = fit(v_centres', v_counts', 'gauss1');
+                    map_data(i,j,k,1) = fit_parameters.b1; % gaussian centre
+                    map_data(i,j,k,2) = fit_parameters.c1; % gaussian width
+                    map_data(i,j,k,3) = fit_parameters.a1; % gaussian height
+                    map_data(i,j,k,4) = 1/frame_rate/4*fit_parameters.c1^2; % D (units of velocity^2/time)
 
-            elseif menu_vmap == 2 % maximum
-                if isempty(vx(xy_indices))
-                    vx_map(i,j,1) = NaN;
-                else           
-                    vx_map(i,j,1) = max(vx(xy_indices));
+                    map_data(i,j,k,5) = numel(xy_indices); % number of data points
+                    map_data(i,j,k,6) = number_of_bins; % number of bins
+
+                    map_labels{1} = ['Gauss. centre v (' distance.units '/' time.units ')'];
+                    map_labels{2} = ['Gauss. width v (' distance.units '/' time.units ')'];
+                    map_labels{3} = 'Gauss. height (counts)';
+                    map_labels{4} = ['D (' distance.units '^2/' time.units ')'];
+                    map_labels{5} = 'No. of points';
+                    map_labels{6} = 'No. of bins';
+
                 end
-                if isempty(vy(xy_indices))
-                    vy_map(i,j,1) = NaN;
-                else           
-                    vy_map(i,j,1) = max(vy(xy_indices));
-                end
-                map_labels{1} = ['max v (' distance.units '/' time.units ')'];
-
-            elseif menu_vmap == 3 % mimimum
-                if isempty(vx(xy_indices))
-                    vx_map(i,j,1) = NaN;
-                else           
-                    vx_map(i,j,1) = min(vx(xy_indices));
-                end
-                if isempty(vy(xy_indices))
-                    vy_map(i,j,1) = NaN;
-                else           
-                    vy_map(i,j,1) = min(vy(xy_indices));
-                end
-                map_labels{1} = ['min v (' distance.units '/' time.units ')'];
-
-            elseif menu_vmap == 4 % mode
-                vx_map(i,j,1) = mode(round(vx(xy_indices),0));
-                vy_map(i,j,1) = mode(round(vy(xy_indices),0));
-                map_labels{1} = ['mode v (' distance.units '/' time.units ')'];
-            
-            elseif menu_vmap == 5 % gaussian fit
-                clc
-                disp(['Calculating map section: (' num2str(i) ',' num2str(j) ') of (' ...
-                    num2str(numel(x_centres)) ',' num2str(numel(y_centres)) ')'])
-                
-                number_of_bins = min(round(numel(xy_indices)/10), 100);
-                
-                [vx_counts,vx_edges] = histcounts(vx(xy_indices),number_of_bins);
-                vx_centres = (vx_edges(1:end-1) + vx_edges(2:end)) / 2;
-                
-                fit_parameters = fit(vx_centres', vx_counts', 'gauss1');
-                vx_map(i,j,1) = fit_parameters.b1; % gaussian centre
-                vx_map(i,j,2) = fit_parameters.c1; % gaussian width
-                vx_map(i,j,3) = fit_parameters.a1; % gaussian height
-                vx_map(i,j,4) = 1/frame_rate/4*fit_parameters.c1^2; % D (units of velocity^2/time)
-                
-                [vy_counts,vy_edges] = histcounts(vy(xy_indices),number_of_bins);
-                vy_centres = (vy_edges(1:end-1) + vy_edges(2:end)) / 2;
-                
-                fit_parameters = fit(vy_centres', vy_counts', 'gauss1');
-                vy_map(i,j,1) = fit_parameters.b1; % gaussian centre
-                vy_map(i,j,2) = fit_parameters.c1; % gaussian width
-                vy_map(i,j,3) = fit_parameters.a1; % gaussian height               
-                vy_map(i,j,4) = 1/frame_rate/4*fit_parameters.c1^2; % D (units of velocity^2/time)
-
-                vx_map(i,j,5) = numel(xy_indices); % number of data points
-                vy_map(i,j,5) = numel(xy_indices); % number of data points
-                
-                vx_map(i,j,6) = number_of_bins; % number of bins
-                vy_map(i,j,6) = number_of_bins; % number of bins
-                
-%                 vx_map(i,j,5) = numel(xy_indices); % number of data points
-%                 vy_map(i,j,5) = number_of_bins; % number of bins
-                
-                map_labels{1} = ['Gauss. centre v (' distance.units '/' time.units ')'];
-                map_labels{2} = ['Gauss. width v (' distance.units '/' time.units ')'];
-                map_labels{3} = 'Gauss. height (counts)';
-                map_labels{4} = ['D (' distance.units '^2/' time.units ')'];
-                map_labels{5} = 'No. of points';
-                map_labels{6} = 'No. of bins';
-                
-%                 plot(vx_centres,vx_counts), hold all
-%                 plot(vy_centres,vy_counts), hold all
             end
         end
     end
@@ -767,70 +725,43 @@ disp('Finished the map calculations.')
 % *************************************************************************
 % close all
 
-axis_labels = {'x','y'};
-menu_vmap_axis = [1,2];
-menu_vmap_plot = 1;
-
-% [menu_vmap_plot, ~] = listdlg('PromptString', 'Velocity colour maps to plot:',...
-%                            'SelectionMode', 'multiple', ...
-%                            'ListString', map_labels,...
-%                            'InitialValue', menu_vmap_plot);
-
-% [menu_vmap_axis, ~] = listdlg('PromptString', 'Axis to plot:',...
-%                            'SelectionMode', 'multiple', ...
-%                            'ListString', axis_labels,...
-%                            'InitialValue', menu_vmap_axis);
+menu_map_axis = [1,2];
+menu_map_plot = [1,2];
+                      
+[menu_map_plot, menu_map_axis] = dialog_two_lists('Select plot options:', ...
+    'Variable:', map_labels, menu_map_plot,...
+    'Axis:', axis_labels(1:ndim), menu_map_axis);
                        
-[menu_vmap_plot, menu_vmap_axis] = dialog_two_lists('Select plot options:', ...
-    'Variable:', map_labels, menu_vmap_plot,...
-    'Axis:', axis_labels, menu_vmap_axis);
-                       
-map_variables = {vx_map,vy_map};
+for i = menu_map_plot
+    figures{end+1} = figure;
+    k = 0;
+    for j = menu_map_axis            
+        k = k + 1;
+        subplot(numel(menu_map_axis),1,k)
 
-if min(size(vx_map(:,:,1))) > 5
-    for i = menu_vmap_plot
-        figures{end+1} = figure;
-        k = 0;
-        for j = menu_vmap_axis            
-            k = k + 1;
-            subplot(numel(menu_vmap_axis),1,k)
+        % set NaN to blank
+        imAlpha=ones(size(map_data(:,:,j,i)'));
+        imAlpha(isnan(map_data(:,:,j,i)'))=0;
 
-            % set NaN to blank
-            imAlpha=ones(size(map_variables{j}(:,:,i)'));
-            imAlpha(isnan(map_variables{j}(:,:,i)'))=0;
+%             contour_levels = linspace(3.8, 12.5, 100);
 
-%             contour_levels = linspace(-36.2922, 22.1115, 100);
-%             contour_levels = linspace(min(min(map_variables{j}(:,:,i))), max(max(map_variables{j}(:,:,i))), 100);
-%             contour_levels = linspace(min(min(min(map_variables{1}(:,:,i))),min(min(map_variables{2}(:,:,i)))), ...
-%                 max(max(max(map_variables{1}(:,:,i))),max(max(map_variables{2}(:,:,i)))), 100);
-            contour_levels = linspace(min(min(min(map_variables{1}(2:end-1,2:end-1,i))), ...
-                min(min(map_variables{2}(2:end-1,2:end-1,i)))), ...
-                max(max(max(map_variables{1}(2:end-1,2:end-1,i))), ...
-                max(max(map_variables{2}(2:end-1,2:end-1,i)))), 100);
-            contour_levels = linspace(3.8, 12.5, 100);
+        p_vx = imagesc(k_centres{i}, k_centres{2}, map_data(:,:,j,i)','AlphaData',imAlpha); 
 
-            p_vx = imagesc(x_centres, y_centres, map_variables{j}(:,:,i)','AlphaData',imAlpha); 
-%             set(gca,'YDir','normal')
-    %         p_vx = pcolor(x_edges(1:end-1), y_edges(1:end-1), map_variables{j}(:,:,i)');
-    %         p_vx.EdgeColor = 'none';
+        colormap(jet)
+        c = colorbar;
+        c.Label.String = [axis_labels{j} ' ' map_labels{i}];
+        c.FontSize = 16;
 
-%             colormap(flipud(jet))
-            colormap(jet)
-            c = colorbar;
-    %         c.Label.String = [map_labels{i} ' vx (' distance.units '/' time.units ')'];
-            c.Label.String = [axis_labels{j} ' ' map_labels{i}];
-            c.FontSize = 16;
+%         caxis([min(contour_levels), max(contour_levels)])
 
-            caxis([min(contour_levels), max(contour_levels)])
-
-            xlabel(['x position (' distance.units ')'])
-            ylabel(['y position (' distance.units ')'])
-            title([title_text ' // average = ' ...
-                num2str(nanmean(nanmean(map_variables{j}(:,:,i))), '%.3g')])
-            set(gca, 'FontSize', 16)
-        end
-        
+        xlabel(['x position (' distance.units ')'])
+        ylabel(['y position (' distance.units ')'])
+        title([title_text ' // average = ' ...
+            num2str(nanmean(nanmean(map_data(:,:,j,i))), '%.3g')])
+        set(gca, 'FontSize', 16)
+        axis tight
     end
+
 end
 
 %% SAVING FIGURES
