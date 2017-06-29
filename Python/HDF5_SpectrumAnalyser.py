@@ -10,8 +10,8 @@ Created on Mon May 09 15:26:26 2016
 from nplab.utils.gui import *
 from nplab.utils.notified_property import DumbNotifiedProperty
 import nplab.ui.hdf5_browser as hdf5_browser
-from PyQt4 import uic
-from PyQt4 import QtGui, QtCore #TODO: I think these should be wrapped by nplab.utils.gui? rwb
+from PyQt5 import uic
+from PyQt5 import QtGui, QtCore #TODO: I think these should be wrapped by nplab.utils.gui? rwb
 
 
 import numpy as np
