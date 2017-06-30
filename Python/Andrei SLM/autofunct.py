@@ -4,6 +4,7 @@ import numpy as np
 import time
 import math
 from scipy.ndimage.interpolation import zoom, rotate
+import scipy.optimize
 import scipy
 import cv2
 
@@ -58,6 +59,7 @@ class LineBuilder:
             
             
 def areainterest(image, ngon):
+    """Allowes user to identify a regular n-gon shape"""
     image=image.astype(float)
     img=image/np.max(image)*255#*2
     fig = plt.figure()
@@ -93,6 +95,72 @@ def areainterest(image, ngon):
     angle=np.arctan((np.mean(roty)-cent[1])/(np.mean(rotx)-cent[0]))
     angle=np.mod(angle,2*np.pi/ngon)
     return cent, dist, angle
+    
+    
+def circleinterest(image, pointNo):
+    """
+    Allow user to identify a circle
+    
+    Inputs
+    image: array - immage to show user
+    pointNo: number of points to be specified (positive int)
+    
+    Outputs
+    cent: vector (x,y) - centre position
+    radius: scalar
+    """
+    image=image.astype(float)
+    img=image/np.max(image)*255#*2
+    fig = plt.figure()
+    axes = fig.gca()
+    axes.set_xlim([0,np.shape(img)[1]])
+    axes.set_ylim([0,np.shape(img)[0]])
+    
+    plt.imshow(img,zorder=0,cmap='gray')
+    plt.clim(0,80)
+    ax = fig.add_subplot(111)
+    ax.set_title('Click on {} points on the circle in clockwise fashion.'.format(str(pointNo)))
+    line, = ax.plot([], [])  # empty line
+    linebuilder = LineBuilder(line, pointNo)
+    plt.show()
+    
+    while linebuilder.counter<pointNo:
+        line.figure.canvas.start_event_loop(linebuilder.cid)
+    fig.canvas.mpl_disconnect(linebuilder.cid)
+    xs=linebuilder.xs
+    ys=linebuilder.ys
+    plt.close() 
+    
+    
+    pointCoords = np.column_stack((xs,ys))
+    #initail guess for least squares
+    cent0=np.mean(pointCoords,axis=1)
+    #rms distance
+    dist0 = np.sum(np.sqrt( np.sum( (pointCoords-cent0)**2, axis=0) ))/pointNo 
+    
+    #fit parameter vector
+    x0=np.append(cent0,dist0)
+    #now implement least squared fit
+    xopt = scipy.optimize.fmin(chisquared, x0, args=(pointCoords))
+    
+    cent=xopt[0:1]
+    radius = xopt[2]
+    
+    return cent, radius
+
+
+def chisquared(param, points):
+    """return sum of square deviation of points from circle
+    
+    Inputs
+    param: vector (centrex, centrey, radius)
+    points: 2D array [x/y, pointIndex]
+    """
+    cent=param[0:1]
+    radius = param[2]
+    return np.sum( np.sum((points-cent)**2 ,axis = 0) -radius**2 )
+
+
 
 '''
 def maskgen(mask,currentimg):
