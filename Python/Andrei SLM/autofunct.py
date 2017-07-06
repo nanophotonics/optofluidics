@@ -97,9 +97,9 @@ def areainterest(image, ngon):
     return cent, dist, angle
     
     
-def circleinterest(image, pointNo):
+def bandgapinterest(image, ngon):
     """
-    Allow user to identify a circle
+    Allow user to identify bandgap fibre
     
     Inputs
     image: array - immage to show user
@@ -119,12 +119,12 @@ def circleinterest(image, pointNo):
     plt.imshow(img,zorder=0,cmap='gray')
     plt.clim(0,80)
     ax = fig.add_subplot(111)
-    ax.set_title('Click on {} points on the circle in clockwise fashion.'.format(str(pointNo)))
+    ax.set_title('Click on the {} smaller corners  in a clockwise fashion.'.format(str(ngon)))
     line, = ax.plot([], [])  # empty line
-    linebuilder = LineBuilder(line, pointNo)
+    linebuilder = LineBuilder(line, ngon)
     plt.show()
     
-    while linebuilder.counter<pointNo:
+    while linebuilder.counter<ngon:
         line.figure.canvas.start_event_loop(linebuilder.cid)
     fig.canvas.mpl_disconnect(linebuilder.cid)
     xs=linebuilder.xs
@@ -136,20 +136,29 @@ def circleinterest(image, pointNo):
     #initail guess for least squares
     cent0=np.mean(pointCoords,axis=1)
     #rms distance
-    dist0 = np.sum(np.sqrt( np.sum( (pointCoords-cent0)**2, axis=0) ))/pointNo 
+    dist0 = np.sum(np.sqrt( np.sum( (pointCoords-cent0)**2, axis=0) ))/ngon 
     
     #fit parameter vector
     x0=np.append(cent0,dist0)
     #now implement least squared fit
-    xopt = scipy.optimize.fmin(chisquared, x0, args=(pointCoords))
+    xopt = scipy.optimize.fmin(chisquaredcircle, x0, args=(pointCoords))
     
     cent=xopt[0:1]
     radius = xopt[2]
     
-    return cent, radius
+    
+    rotx=np.array([xs[0]])
+    roty=np.array([ys[0]])
+    for i in range (1,np.shape(xs)[0]):
+        rotx=np.hstack([rotx, rotatept(cent, np.hstack([xs[i],ys[i]]),2*np.pi/ngon*i)[0]])
+        roty=np.hstack([roty, rotatept(cent, np.hstack([xs[i],ys[i]]),2*np.pi/ngon*i)[1]])
+    angle=np.arctan((np.mean(roty)-cent[1])/(np.mean(rotx)-cent[0]))
+    angle=np.mod(angle,2*np.pi/ngon)
+    
+    return cent, radius, angle
 
 
-def chisquared(param, points):
+def chisquaredcircle(param, points):
     """return sum of square deviation of points from circle
     
     Inputs
@@ -159,6 +168,7 @@ def chisquared(param, points):
     cent=param[0:1]
     radius = param[2]
     return np.sum( np.sum((points-cent)**2 ,axis = 0) -radius**2 )
+
 
 
 
@@ -178,13 +188,14 @@ def maskgen(mask,currentimg):
     return mask    
 '''
 
-def maskgenr(mask,currentimg,n):
+def maskgenr(mask,currentimg,n):#what's going on with n?
     if np.array(np.shape(np.shape(mask)))[0]==3:
         mask=mask[:,:,0]
     mask2=np.zeros(np.shape(mask))
     for i in range(0,n):
         mask2=mask2+rotate(mask,360/n*i,reshape=False)
     mask=mask2    
+    #get zoom factors
     ratio=(np.array(np.shape(currentimg[:,:]))).astype(float)/(np.array(np.shape(mask))).astype(float)
     mask=zoom(mask,np.max(ratio))
     diff=np.array(np.shape(mask))-np.array(np.shape(currentimg[:,:]))
@@ -202,9 +213,41 @@ def cropcurrent(currentimg, cent, dist, angle):
     currentimg=currentimg[int(np.shape(currentimg)[1]/2)-np.int(dist*np.sqrt(3)/2):int(np.shape(currentimg)[1]/2)+np.int(dist*np.sqrt(3)/2), int(np.shape(currentimg)[0]/2)-np.int(dist):int(np.shape(currentimg)[0]/2)+np.int(dist)]
     return currentimg
 
+def cropcurrentbandgap(currentimg, cent, dist):
+    """Crop current image (assume circle)"""
+    currentimg=currentimg[int(cent[1])-np.int(dist):int(cent[1])+np.int(dist),
+                          int(cent[0])-np.int(dist):int(cent[0])+np.int(dist)]
+    #currentimg=rotate(currentimg,angle/(2*np.pi)*360,reshape=False)
+    #currentimg=currentimg[int(np.shape(currentimg)[1]/2)-
+    #    np.int(dist*np.sqrt(3)/2):int(np.shape(currentimg)[1]/2)+np.int(dist*np.sqrt(3)/2),
+    #    int(np.shape(currentimg)[0]/2)-np.int(dist):int(np.shape(currentimg)[0]/2)+np.int(dist)]
+    return currentimg
+
 def optsetup(img, maskfile,cutmaskfile, n):
     cent, dist, angle=areainterest(img,6)
     currentimg=cropcurrent(img, cent, dist, angle)
+    mask=maskgenr(mpimg.imread(maskfile),currentimg, n)
+    cutmask=maskgenr(mpimg.imread(cutmaskfile),currentimg, 6)
+    cutmask=cutmask/np.amax(cutmask)
+    cutmask=((cutmask.astype(float)/(np.amax(cutmask)))>0.5).astype(float)
+    return mask, cutmask, np.array([cent, dist, angle])
+    
+def optsetupbandgap(img, maskfile,cutmaskfile, n):
+    """Recognise fibre
+    
+    Input
+    img: input image array
+    maskfile: string (.png)
+    cutmaskfile: string (.png)
+    n: leave as 1
+    (n is used if the mask file exploits symmetry (only stores nth of mode))
+    
+    Output
+    mask, cutmask, np.array([cent, dist, angle])
+    """
+    cent, dist, angle=bandgapinterest(img,6)
+    #is cropping to circle fine?
+    currentimg=cropcurrentbandgap(img, cent, dist)
     mask=maskgenr(mpimg.imread(maskfile),currentimg, n)
     cutmask=maskgenr(mpimg.imread(cutmaskfile),currentimg, 6)
     cutmask=cutmask/np.amax(cutmask)
@@ -214,9 +257,15 @@ def optsetup(img, maskfile,cutmaskfile, n):
 def compare(img, mask,cutmask, hexcor):
     mincorr=float(99999999)
     bestimg=[]
+    #try different angles
     for angcorr in np.arange(-0.02,0.03,0.01):
+        #hexcor is np.array([cent, dist, angle])
         currentimg=cropcurrent(img, hexcor[0], hexcor[1], hexcor[2]+angcorr)
-        res=cv2.matchTemplate(np.pad(norm(currentimg, cutmask),((50,50),(50,50)),'constant').astype('float32'), norm(mask.astype('float32'), cutmask),cv2.TM_SQDIFF_NORMED) 
+        #cv2.matchTemplate compares mask & image at different positions
+        #amount of padding gives number of shifted positions tried
+        res=cv2.matchTemplate(
+                    np.pad( norm(currentimg, cutmask), ((50,50),(50,50)), 'constant').astype('float32'),
+                            norm(mask.astype('float32'), cutmask),cv2.TM_SQDIFF_NORMED) 
         if (np.amin(res)<mincorr):
             mincorr=np.amin(res)
             bestimg=currentimg

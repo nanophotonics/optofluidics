@@ -15,6 +15,7 @@ from autofunct import cropcurrent
 
 class camera():
     def __init__(self,expos):
+        """Initialises camera and prints current exposure"""
         self.maxexp=19.0
         self.pics=int(1)
         self.exp=float(0)
@@ -27,6 +28,10 @@ class camera():
         return
 
     def closecam(self):
+        """Close camera connetction
+        
+        Only one connetction may be open at a time!        
+        """
         self.cam.stop_live_video()
         self.cam.close()
         return
@@ -52,6 +57,7 @@ class camera():
         '''
         
     def takeimagebw(self):
+        """Take a black & wight image"""
         b=np.empty([1024,1280], dtype=int)
         
         for i in range(0, self.pics):
@@ -76,6 +82,7 @@ class camera():
         
         
     def restartcam(self):
+        """Closes and restartys camera connection"""
         self.counter=0
         self.cam.stop_live_video()
         self.cam.close()
@@ -125,6 +132,9 @@ class camera():
     '''
 
     def autoexposure(self):
+        """Automatically adjust cexposure
+        
+        Returns exposure value"""
         emax=100.0
         emin=0.01
         a=self.takeimagebw()
@@ -143,6 +153,9 @@ class camera():
         return emin
         
     def autoexposurecut(self, cent, dist, angle):
+        """Autoexpose croped section of image?
+        
+        Returns exposure value"""
         emax=300.0
         emin=0.01
         a=self.takeimagebw()
@@ -163,6 +176,9 @@ class camera():
         return emin
     
     def exposure(self, expo):
+        """Sets camera exposure to expo
+        
+        Input: expo (scalar)"""
         self.pics=int(np.ceil(expo/self.maxexp))
         self.exp=expo/self.pics
         self.cam.start_live_video(exposure_time="{} millisecond".format(str(self.exp)))

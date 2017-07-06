@@ -51,6 +51,7 @@ slm.useSLM(distribution)
 time.sleep(1)
 #cam.autoexposure()
 img=cam.takeimagebw()
+#hexcor is np.array([cent, dist, angle])
 mask, cutmask, hexcor=optsetup(img, masker,'cutmask.bmp', maskrot)
 fig=plt.imshow(mask)
 plt.show()
@@ -91,6 +92,7 @@ def tester(posvars):
     time.sleep(0.1)
     img=cam.takeimagebw()
 
+    #hexcor is global variable: np.array([cent, dist, angle])
     a=cropcurrent(img, hexcor[0], hexcor[1], hexcor[2])
     if np.sum(a==255)>10:
         cam.exposure(cam.autoexposurecut(hexcor[0], hexcor[1], hexcor[2])*0.9)
@@ -135,23 +137,27 @@ def tester2(posvars):
     return val
 
 #print(scipy.optimize.minimize(tester, np.array([5,-20]), bounds=[(-50,50),(-50,50)]))
+#get time for runtime calculation
 s=time.time()
 
+#coarse position scan
 x0, fval, grid, Jout= scipy.optimize.brute(tester, ((-25,25),(-25,25)),Ns=5, finish=None, full_output=1)#, bounds=[(-50,50),(-50,50),(-6*np.pi,6*np.pi),(-6*np.pi,6*np.pi)],method='Nelder-Mead'))
 np.savetxt(savefolder+"/bruteposc.csv", Jout, delimiter=",")
 np.savetxt(savefolder+"/poscgrid0.csv", grid[0,:,:], delimiter=",")
 np.savetxt(savefolder+"/poscgrid1.csv", grid[1,:,:], delimiter=",")
+#save results to png (visualise potential of fitness function)
 scipy.misc.imsave(savefolder+'/joutpc.png', Jout)
 yposs=x0[0]
 xposs=x0[1]
 print('Best posn was', x0)
 print(' ')
 
-
+#coarse angle scan
 a0, fval, grid, Jout= scipy.optimize.brute(tester2, ((-10,10),(-10,10)),Ns=6, finish=None, full_output=1)#, bounds=[(-50,50),(-50,50),(-6*np.pi,6*np.pi),(-6*np.pi,6*np.pi)],method='Nelder-Mead'))
 np.savetxt(savefolder+"/bruteangc.csv", Jout, delimiter=",")
 np.savetxt(savefolder+"/angcgrid0.csv", grid[0,:,:], delimiter=",")
 np.savetxt(savefolder+"/angcgrid1.csv", grid[1,:,:], delimiter=",")
+#save results to png (visualise potential of fitness function)
 scipy.misc.imsave(savefolder+'/joutac.png', Jout)
 yangs=a0[0]
 xangs=a0[1]
@@ -159,22 +165,24 @@ print('Best angle was', a0)
 print(' ')
 
 #Ns=5 and 6
-
+#fine position scan
 x0, fval, grid, Jout= scipy.optimize.brute(tester, ((yposs-10,yposs+10),(xposs-10,xposs+10)),Ns=10, finish=None, full_output=1)#, bounds=[(-50,50),(-50,50),(-6*np.pi,6*np.pi),(-6*np.pi,6*np.pi)],method='Nelder-Mead'))
 np.savetxt(savefolder+"/bruteposf.csv", Jout, delimiter=",")
 np.savetxt(savefolder+"/posfgrid0.csv", grid[0,:,:], delimiter=",")
 np.savetxt(savefolder+"/posfgrid1.csv", grid[1,:,:], delimiter=",")
+#save results to png (visualise potential of fitness function)
 scipy.misc.imsave(savefolder+'/joutpf.png', Jout)
 yposs=x0[0]
 xposs=x0[1]
 print('Best posn was', x0)
 print(' ')
 
-
+#fine angle scan
 a0, fval, grid, Jout= scipy.optimize.brute(tester2, ((yangs-4,yangs+4),(xangs-4,xangs+4)),Ns=11, finish=None, full_output=1)#, bounds=[(-50,50),(-50,50),(-6*np.pi,6*np.pi),(-6*np.pi,6*np.pi)],method='Nelder-Mead'))
 np.savetxt(savefolder+"/bruteangf.csv", Jout, delimiter=",")
 np.savetxt(savefolder+"/angfgrid0.csv", grid[0,:,:], delimiter=",")
 np.savetxt(savefolder+"/angfgrid1.csv", grid[1,:,:], delimiter=",")
+#save results to png (visualise potential of fitness function)
 scipy.misc.imsave(savefolder+'/joutaf.png', Jout)
 yangs=a0[0]
 xangs=a0[1]
@@ -191,6 +199,7 @@ img=cam.takeimagebw()
 val, currentimg =compare(img, mask,cutmask, hexcor)
 currentimg=currentimg.astype('float')
 
+#save optimum values
 text_file = open(savefolder+"/paras.txt", "w")
 text_file.write('L: {}\n'.format(l))
 text_file.write('G: {}\n'.format(g))

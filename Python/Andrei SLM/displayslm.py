@@ -15,10 +15,13 @@ spfrq=-0.1
 beamgen=beamshapes(slmpix)
 slm=SLM(slmpix, wavelength, spfrq, 1)
 
+#different distributions below
+
 distribution=np.real(beamgen.LG(0,0,300)*intcalib)
 #distribution=beamgen.rotator(distribution,27)
 
 #distribution=np.real(beamgen.square(500))
 #distribution=np.real(beamgen.nothing())
 
+#pust to SLM
 slm.useSLM(distribution)
