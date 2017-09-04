@@ -104,14 +104,14 @@ frame_rate = 159.22; % fps
 tau = 1/frame_rate; % time interval (seconds)
 % tau = 1/140; % time interval (seconds)
 % tau = 0.1; % time interval (seconds)
-N = 1e3; % number of samples --> make it less than 1e7!!!!!!!!!
+N = 1e2; % number of samples --> make it less than 1e7!!!!!!!!!
 total_time = tau*N; % total time (seconds)
 % total_time = 1; % total time (seconds)
 % N = round(total_time/tau); % number of collisions
 % h = sqrt(total_time/N); % scaling factor
 h = sqrt(2*D*tau); % scaling factor
 % h = 1; % scaling factor
-np = 1e3; % number of particles
+np = 2e3; % number of particles
 ndim = 2; % number of dimensions
 
 title_text = '';
@@ -136,8 +136,8 @@ t_velocity = t_position;
 velocity_brownian = h/tau * randn(N,np,ndim);
 
 axis_labels = {'x','y','z'};
-velocity_axis = [0, 0, 0];
-% velocity_axis = [0, 8.4, 0]*1e-6;
+% velocity_axis = [0, 0, 0];
+velocity_axis = [0, -7.8, 0]*1e-6;
 
 % velocity_flow = ones(N,np,ndim);
 % for i = 1:1:ndim
@@ -152,11 +152,11 @@ velocity_axis = [0, 0, 0];
 
 % read velocity from figure
 menu_vflow = 1;
-% menu_vflow = menu('x-axis non-brownian velocity', 'Calculate', 'Read from line plot', 'Read from contour plot');
+menu_vflow = menu('x-axis non-brownian velocity', 'Calculate', 'Read from line plot', 'Read from contour plot');
 
 if menu_vflow > 1
-    pathRead = 'R:\aa938\NanoPhotonics\Matlab\Optical Forces\2017.06.26\';
-    nameRead = 'vscat-map.fig';
+    pathRead = 'R:\aa938\NanoPhotonics\Matlab\Optical Forces\2017.06.30\';
+    nameRead = 'contour.fig';
 %     [nameRead, pathRead, ~] = uigetfile('.fig',...
 %         'Select figure:',pathRead,'MultiSelect','off');
 
@@ -183,9 +183,10 @@ if menu_vflow > 1
         vflow_x = vflow_x*1e-6; % from um to m
         vflow_y = vflow_y*1e-6; % from um to m
         vflow_v = vflow_v*1e-3; % from mm/s to m/s
-        vflow_v = vflow_v * 0.1; % arbitrary scaling
+        
+        vflow_v = vflow_v / 5; % arbitrary scaling *********************************************************
     end
-    close(figures{end})
+%     close(figures{end})
 end
 
 velocity_flow = ones(N,np,ndim);
@@ -193,7 +194,7 @@ velocity = zeros(N,np,ndim);
 displacement = zeros(N,np,ndim);
 position = zeros(N+1,np,ndim);
 % position(1,:,1) = position(1,:,1) + 10e-6;
-position(1,:,1) = position(1,:,1) + rand(size(position(1,:,1)))*10e-6 + 30e-6;
+position(1,:,1) = position(1,:,1) + rand(size(position(1,:,1)))*10e-6 + 5e-6;
 position(1,:,2) = position(1,:,2) - (0.5-rand(size(position(1,:,2))))*20e-6;
 for i = 1:1:N
     if ndim == 2
@@ -532,8 +533,9 @@ if find(strcmp(plot_options(po), 'Velocity Histogram'))
     for i = 1:ndim
         h_velocity{i} = histogram(velocity(:,:,i)/v.conversion,100); hold all
 
-        h_velocity{i}.Normalization = 'count';
-        % h_velocity{i}.Normalization = 'probability';
+        h_velocity{i}.BinWidth = 5;
+%         h_velocity{i}.Normalization = 'count';
+        h_velocity{i}.Normalization = 'probability';
         h_velocity{i}.FaceColor = cmap_xyz(i,:);
         legend_hv{end+1} = ['v' coordenate_labels{i}];
 
@@ -616,7 +618,8 @@ if find(strcmp(plot_options(po), 'Flow Velocity vs. Position')) % && ndim == 2
         xlabel(['x position (' distance.units ')'])
         set(gca,'FontSize', plot_font_size)
         grid on    
-%         xlim([-20,110])
+        axis tight
+%         xlim([0,50])
 %         ylim([-20,20])
         
 %         subplot(2,1,2)
@@ -635,8 +638,9 @@ if find(strcmp(plot_options(po), 'Flow Velocity vs. Position')) % && ndim == 2
         cb.Label.String = [axis_labels{i} ' v (' v.units ')'];
         cb.FontSize = plot_font_size;
         set(gca,'FontSize', plot_font_size)
-        grid on   
-%         xlim([-20,110])
+        grid on  
+        axis tight
+%         xlim([0,50])
 %         ylim([-20,20])
     end
 %     suptitle(title_text)
@@ -647,7 +651,7 @@ end
 clear map_labels
 menu_map = 5;
 menu_map = menu('Velocity:', 'Average', 'Gaussian Fit');
-sections = [29,21,19];
+sections = [39,31,19];
 if menu_map == 1
     map_data = zeros(sections(1),sections(2),ndim,2);
 elseif menu_map == 2
@@ -675,9 +679,9 @@ for k = 1:1:2
         for j = 1:1:sections(2)
             y_indices = find(k_bin(:,2) == j);
             xy_indices = intersect(x_indices, y_indices);
-%             disp(numel(xy_indices,k))
+%             disp(numel(xy_indices))
 
-            if numel(xy_indices,k) < 1
+            if numel(xy_indices) < 50
                 map_data(i,j,:,:) = NaN;
             else
                 if menu_map == 1 % average
@@ -689,14 +693,17 @@ for k = 1:1:2
 
                 elseif menu_map == 2 % gaussian fit
                     clc
-                    disp(['Calculating map section: (' num2str(i) ',' num2str(j) ',' num2str(j) ') of (' ...
-                        num2str(numel(k_centres(:,1))) ',' num2str(numel(k_centres(:,2))) ...
-                        ',' num2str(ndim) ')'])
+                    disp(['Calculating map section: (' num2str(i) ',' num2str(j) ',' num2str(k) ') of (' ...
+                        num2str(sections(1)) ',' num2str(sections(2)) ',' num2str(2) ')'])
 
-                    number_of_bins = min(round(numel(xy_indices,k)/10), 100);
-
-                    [v_counts,v_edges] = histcounts(k_velocity(xy_indices,k),number_of_bins);
+%                     number_of_bins = min(round(numel(xy_indices)/10), 100);
+%                     [v_counts,v_edges] = histcounts(k_velocity(xy_indices,k),number_of_bins);
+                    
+                    bin_width = 5;
+                    [v_counts,v_edges] = histcounts(k_velocity(xy_indices,k),'BinWidth',bin_width);
+                    
                     v_centres = (v_edges(1:end-1) + v_edges(2:end)) / 2;
+                    number_of_bins = numel(v_edges);
 
                     fit_parameters = fit(v_centres', v_counts', 'gauss1');
                     map_data(i,j,k,1) = fit_parameters.b1; % gaussian centre
@@ -745,7 +752,7 @@ for i = menu_map_plot
 
 %             contour_levels = linspace(3.8, 12.5, 100);
 
-        p_vx = imagesc(k_centres{i}, k_centres{2}, map_data(:,:,j,i)','AlphaData',imAlpha); 
+        p_vx = imagesc(k_centres{1}, k_centres{2}, map_data(:,:,j,i)','AlphaData',imAlpha); 
 
         colormap(jet)
         c = colorbar;
@@ -759,7 +766,9 @@ for i = menu_map_plot
         title([title_text ' // average = ' ...
             num2str(nanmean(nanmean(map_data(:,:,j,i))), '%.3g')])
         set(gca, 'FontSize', 16)
-        axis tight
+%         axis tight
+%         ylim([-16,12])
+%         xlim([0,90])
     end
 
 end
@@ -767,7 +776,7 @@ end
 %% SAVING FIGURES
 % *************************************************************************
 menu_save_figures = 1;
-% menu_save_figures = menu('Save Figures?', 'NO', 'YES');
+menu_save_figures = menu('Save Figures?', 'NO', 'YES');
 folder_path_save = 'R:\aa938\NanoPhotonics\Matlab\Brownian Motion\';
 if menu_save_figures == 2    
     for i = 1:1:max(size(figures))

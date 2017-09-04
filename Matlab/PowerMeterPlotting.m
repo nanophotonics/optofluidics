@@ -10,11 +10,11 @@ figures = {};
 % *************************************************************************
 
 % specify default path
-% folder_path = 'R:\aa938\NanoPhotonics\Laboratory\';
-folder_path = 'R:\3-Temporary\aa938\';
+folder_path = 'R:\aa938\NanoPhotonics\Laboratory\';
+% folder_path = 'R:\3-Temporary\aa938\';
 % folder_path = 'R:\3-Temporary\os354\';
 
-number_of_folders = 2;
+number_of_folders = 1;
 % number_of_folders = menu('Where are the files located?', 'SINGLE folder', 'MULTIPLE folders');
 
 if number_of_folders == 1
@@ -447,8 +447,8 @@ for i = files_to_plot % files
                 legend_A{end} = [legend_A{end} ' // ' num2str(laser_power(i), '%03.0f') ' mW'];
             end
             if find(strcmp(options(selected_options), 'Average & Standard Dev.'))
-                legend_A{end} = [legend_A{end} 'Average = ' num2str(average(i,2), '%03.3f') ' W'];
-                legend_A{end} = [legend_A{end} ' //  Std = ' num2str(stdev(i,2), '%03.6f') ' W'];
+                legend_A{end} = [legend_A{end} 'Average = ' num2str(average(i,2), '%03.5f') ' W'];
+                legend_A{end} = [legend_A{end} ' //  Std = ' num2str(stdev(i,2), '%03.7f') ' W'];
                 legend_A{end} = [legend_A{end} ' = ' num2str(stdev(i,2)/average(i,2)*100, '%03.2f') ' %'];
             end
             legend_A{end} = [legend_A{end} ' // ' file_name{i}];

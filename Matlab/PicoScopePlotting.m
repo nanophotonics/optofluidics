@@ -13,8 +13,8 @@ figures = {};
 % *************************************************************************
 
 % specify default path
-folder_path = 'R:\aa938\NanoPhotonics\Laboratory\';
-% folder_path = 'R:\3-Temporary\aa938\';
+% folder_path = 'R:\aa938\NanoPhotonics\Laboratory\';
+folder_path = 'R:\3-Temporary\aa938\';
 % folder_path = 'R:\3-Temporary\os354\';
 
 number_of_folders = 2;
@@ -283,11 +283,13 @@ dialog_title = {};
 dialog_title{end+1} = 'Waveplate angle (deg)';
 default_values = [default_values; waveplate_angle];
 if find(cell2mat(strfind(channel_name(1,:), 'Channel A')))
-    default_values = [default_values, ND_A'];
+%     default_values = [default_values, ND_A'];
+    default_values = [default_values, ND_A];
     dialog_title{end+1} = 'ND A';
 end
 if find(cell2mat(strfind(channel_name(1,:), 'Channel B')))
-    default_values = [default_values, ND_B'];
+%     default_values = [default_values, ND_B'];
+    default_values = [default_values, ND_B];
     dialog_title{end+1} = 'ND B';
 end
 if find(cell2mat(strfind(channel_name(1,:), 'Channel C')))
@@ -328,11 +330,11 @@ channel_data = period_data;
 % title(title_cell_channels, 'interpreter', 'none')
 % legend(legend_ND, 'Location', 'best', 'interpreter', 'none')
 
-for i = 1:1:number_of_files % files
-    for j = 2:1:size(channel_name,2) % channels
-        channel_data{i}(:,j) = channel_data{i}(:,j)*10^ND(i,j-1);
-    end
-end
+% for i = 1:1:number_of_files % files
+%     for j = 2:1:size(channel_name,2) % channels
+%         channel_data{i}(:,j) = channel_data{i}(:,j)*10^ND(i,j-1);
+%     end
+% end
 plot_data = channel_data;
 
 
@@ -436,11 +438,11 @@ files_to_plot = number_of_files:-1:1;
 % files_to_plot = 3:4;
 
 channels_to_plot = [2,3];
-% [channels_to_plot, ~] = listdlg('PromptString', 'Channels to plot',...
-%                                 'SelectionMode', 'multiple', ...
-%                                 'ListString', channel_name(1,2:end),...
-%                                 'InitialValue', channels_to_plot - 1);
-% channels_to_plot = channels_to_plot + 1;
+[channels_to_plot, ~] = listdlg('PromptString', 'Channels to plot',...
+                                'SelectionMode', 'multiple', ...
+                                'ListString', channel_name(1,2:end),...
+                                'InitialValue', channels_to_plot - 1);
+channels_to_plot = channels_to_plot + 1;
 
 menu_subplots = 1;
 if size(channels_to_plot,2) > 1
