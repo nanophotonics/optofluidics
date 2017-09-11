@@ -9,6 +9,10 @@ import numpy as np
 import slmpy
 import time
 
+#custom exceptions used in this class
+class WavelengthError(Exception):
+    pass
+
 #The purpose of this class is to control an SLM: useful functions are class initialisation, useSLM and closeslm.
 
 class SLM():
@@ -43,7 +47,8 @@ class SLM():
 
     def SLMprocess(self, toset):
         if self.wavelength <500:
-            raise Exception('Wavelength outwith range')
+            raise WavelengthError('Wavelength outside range!\n'+
+            'Got {} but must be in range 480-840 nm.'.format(toset))
         elif self.wavelength <= 550:
             toset=(0.15+toset/(np.pi*22.3))*65535
         elif self.wavelength <= 600:
@@ -57,7 +62,8 @@ class SLM():
         elif self.wavelength <= 800:
             toset=(0.13+toset/(np.pi*13.3))*65535
         else:
-            raise Exception('Wavelength outwith range')
+            raise WavelengthError('Wavelength outside range!\n'+
+            'Got {} nm but must be in range 480-840 nm.'.format(toset))
         toset=toset.astype('uint16')
         toset1= np.bitwise_and(toset,0xff)
         toset2=np.bitwise_and(np.right_shift(toset,8),0xff)
