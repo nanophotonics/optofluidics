@@ -21,7 +21,7 @@ EOT=0x0A
 #special character substitution byte
 SOE=0x5E
 
-#message types
+#message types - list of all message types can be found in the manual
 #acknowlege
 ACK=3
 READ=4
@@ -29,7 +29,7 @@ WRITE=5
 #data response to read
 DATAGRAM=8
 
-#laser registers
+#laser registers - all possible regisers may be found in the manual
 emissionReg =  0x30
 powerLevelReg = 0x37
 pulsePickerRatioReg = 0x34
@@ -126,15 +126,15 @@ class NKTLaserInterface():
             'Unexpected start of telegram!\n Received {}, but expect {}'.
             format(telegram[0], SOT))
         #telegram.append(self.ser.read(1)[0])
-        #start at 1 as preaviously read start byte
+        #start at 1 as previously read start byte
         i=1
         while telegram[-1]!= EOT:
             telegram.append(self.ser.read(1)[0])
             if i >= 248:
                 raise MsgTooLongException(
                         'The recieved message is too long!\n' + 
-                        'Aborted after {} Bytes. '.format(i+1) +
-                        'Maximum permissible length is 248 Bytes.')
+                        'Aborted after {} bytes. '.format(i+1) +
+                        'Maximum permissible length is 248 bytes.')
             i +=1
         #remove start and stop byte
         telegram = telegram[1:-1]
@@ -174,7 +174,7 @@ class NKTLaserInterface():
                 resend = False
             except CorruptionException:
                 #resend remains True if an exception occurs
-                print('re-sending as corrupted')
+                print('re-sending telegam due to corruption')
                 #raise exception after 10 tries
                 if i>10:
                     raise
@@ -222,11 +222,11 @@ class NKTLaserInterface():
             self._send(telegram)
             try:
                 answer = self._receive()
-                #answer=telegram
+                #don't resend if previous step succeded
                 resend = False
             except CorruptionException:
                 #resend remains True if an exception occurs
-                print('re-sending as corrupted')
+                print('re-sending telegam due to corruption')
                 #raise exception after 10 tries
                 if i>10:
                     raise
@@ -254,7 +254,7 @@ class NKTLaserInterface():
             sourceAdd, destAdd, register, DATAGRAM)      
             )
     def isGratingMoving(self):
-        """Returns True if gratings are moving, else False"""
+        """Returns True if filter-box gratings are moving, else False"""
         status = self.readParam('variaStatus')
         if status >>12 & 1 or  status >>13 & 1 or  status >>14 & 1:
             return True

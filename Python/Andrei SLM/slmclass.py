@@ -46,6 +46,7 @@ class SLM():
 
 
     def SLMprocess(self, toset):
+        """Relates target phase-delay to SLM values"""
         if self.wavelength <500:
             raise WavelengthError('Wavelength outside range!\n'+
             'Got {} but must be in range 480-840 nm.'.format(toset))
@@ -77,6 +78,7 @@ class SLM():
         return
 
     def useSLM(self, distribution):
+        """Disply distribution in first order reflection of SLM"""
         separator=self.separate()
         holo=self.genhol(distribution,separator)
         tosend=self.SLMprocess(holo)
