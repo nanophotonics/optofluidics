@@ -356,6 +356,7 @@ class NKTLaserInterface():
                 data = bytearray([0])
             self._write(self.laserAdd, self.sourceAdd, emissionReg, data)
         elif param == 'powerLevel':
+            value = np.uint16(value)
             #16 bit integer (LSB first)
             data = bytearray([np.uint8(value), np.uint8(value>>8)])
             self._write(self.laserAdd, self.sourceAdd, powerLevelReg, data)
@@ -366,10 +367,12 @@ class NKTLaserInterface():
         
         #varia from here
         elif param == 'shortWavelength':
+            value = np.uint16(value)
             #16 bit integer (LSB first)
             data = bytearray([np.uint8(value), np.uint8(value>>8)])
             self._write(self.variaAdd, self.sourceAdd, shortWavelengthReg, data)
         elif param == 'longWavelength':
+            value = np.uint16(value)
             #16 bit integer (LSB first)
             data = bytearray([np.uint8(value), np.uint8(value>>8)])
             self._write(self.variaAdd, self.sourceAdd, longWavelengthReg, data)
