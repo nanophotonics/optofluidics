@@ -51,7 +51,7 @@ class NKTLaserInterface():
         """Initialise class
         
         Addresses default to values encountered when writing the class.
-        SUBJECT TO CHANGE!!!
+        SUBJECT TO CHANGE!!! Verify these are correct for you.
         Current addresses can be determined by looking at values displayed when
         connecting using NKT provided GUI.
         """

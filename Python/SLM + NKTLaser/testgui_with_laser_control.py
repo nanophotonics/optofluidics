@@ -263,6 +263,7 @@ if __name__ == '__main__':              # if we're running file directly and not
     #wait for adjustments to finish
     while laser.isGratingMoving():
         time.sleep(0.1)
+    #delete laser object (automatically closes connection on delete)
     del laser
     main()                              # run the main function
 
