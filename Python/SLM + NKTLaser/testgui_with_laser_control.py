@@ -19,17 +19,25 @@ import numpy as np
 import scipy.misc
 from slmclass import SLM
 from beamclass import beamshapes
-
+# in current implementation the laser is only set to the correct wavelength
+# when the gui is started. Changing wavelength wile the gui is running is not 
+# supported
 from NKTLaserInterface import NKTLaserInterface
 import matplotlib.image as mpimg
 intaim=np.load('calib.npy')
+#central wavelength and FWHM
 wavelength=655
 wavWidth=10
+#format of SLM (don't change)
 slmpix=[512,512]
+#used to select desired spacing between first and zeroth order reflections
 spfrq=0.15
+#instanciate SLM object
 slm=SLM(slmpix, wavelength, spfrq, 1, width=wavWidth)
 beamgen=beamshapes(slmpix)
 
+
+#define devault values when gui launches
 defhorpos=0
 defhorang=4.5
 defverpos=0
@@ -248,9 +256,11 @@ def main():
 
 if __name__ == '__main__':              # if we're running file directly and not importing it    
     #set filerbox to selected wavelength
+    #this does not turn the laser on (though this is supported in the class)
     laser = NKTLaserInterface()
     laser.writeParam('longWavelength', np.uint16( (wavelength+(wavWidth/2.0))*10))
     laser.writeParam('shortWavelength', np.uint16( (wavelength-(wavWidth/2.0))*10))
+    #wait for adjustments to finish
     while laser.isGratingMoving():
         time.sleep(0.1)
     del laser

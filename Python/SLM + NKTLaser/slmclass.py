@@ -31,6 +31,7 @@ class SLM():
         self.slm = slmpy.SLMdisplay(monitor = mtr)
         resX, resY = self.slm.getSize()
         self.slmstate=np.zeros((resY,resX,3))
+        #load calibration data from file
         self.calibData = np.load('SLMCalibrationParam.npy')
         #upper edges of calibration bands
         #this must be ipdated if calibration is updated!!!!!!!
@@ -42,16 +43,21 @@ class SLM():
 
 
     def separate(self):
+        """caluclations for first to zeroth order spacing"""
         x=np.linspace(-(self.slmpix[0]-1)/2,(self.slmpix[0]-1)/2,self.slmpix[0])
         xmat=np.tile(x,(self.slmpix[1],1))
         y=np.linspace(-(self.slmpix[1]-1)/2,(self.slmpix[1]-1)/2,self.slmpix[1])
         ymat=np.tile(y,(self.slmpix[0],1))
         ymat=np.transpose(ymat)  
-        #adjust spfrq based on length
+        # adjust spfrq based on wavelength
+        # this keeps alignment when changing wavelength
         spfrq = self.spfrq / (self.wavelength/655)
         return (2*np.pi*spfrq/np.sqrt(2)*(xmat-ymat))
     
     def genhol(self, distribution, separator):
+        """generate hologram phase values for SLM 
+        
+        (output array values 0 -> 2pi"""
         ampaim=np.absolute(distribution)
         phaseaim=np.angle(distribution)
         ampcorr=1-np.interp(ampaim,self.inverter[:,0],self.inverter[:,1])
