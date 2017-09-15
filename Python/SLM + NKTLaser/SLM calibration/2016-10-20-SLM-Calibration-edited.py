@@ -4,6 +4,7 @@
 @author: Richard
 
 Requires hologram_engine to be running and simple_gratings_and_lenses.py must have been executed
+(found on SLM lab computer desktop in python folder)
 """
 
 import socket
