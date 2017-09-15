@@ -19,7 +19,7 @@ import time
 #setup data
 cam=camera(10)
 slmpix=[512,512]
-spfrq=-0.1
+spfrq=0.15
 wavelength=651
 squant=np.array([500,500])
 slm=SLM(slmpix, wavelength, spfrq, 1)
@@ -46,7 +46,7 @@ mask[(slmpix[0]-squant[0])/2:(slmpix[0]+squant[0])/2,(slmpix[1]-squant[1])/2:(sl
 oldist=np.ones(slmpix)
 
 #iterate 5 times to get flatter distribution
-for i in range(0,5):
+for i in range(0,10):
     #prints exposure value to console
     print(cam.autoexposure())
     image=cam.takeimagebw()
@@ -63,7 +63,7 @@ for i in range(0,5):
     image=(np.flipud(image))
     #flips image horizontally (added as flatening has lr problem, if doesn't work remove this and vertical flip?)
     #flips relate to transpose further down?!
-    image=(np.fliplr(image))
+    #image=(np.fliplr(image))
     #apply gaussian filter to smooth image
     image=scipy.ndimage.filters.gaussian_filter(image.astype(float),(10,10))
     scipy.misc.imsave('{}c.png'.format(i), image)
