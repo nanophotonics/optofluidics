@@ -20,7 +20,7 @@ import scipy.misc
 from slmclass import SLM
 from beamclass import beamshapes
 
-from LaserInterface import NKTLaserInterface
+from NKTLaserInterface import NKTLaserInterface
 import matplotlib.image as mpimg
 intaim=np.load('calib.npy')
 wavelength=655
