@@ -7,8 +7,8 @@ figures = {};
 % *************************************************************************
 
 % specify default path
-folder_path = 'R:\aa938\NanoPhotonics\Laboratory\';
-% folder_path = 'R:\3-Temporary\aa938\';
+% folder_path = 'R:\aa938\NanoPhotonics\Laboratory\';
+folder_path = 'R:\3-Temporary\aa938\';
 % folder_path = 'R:\3-Temporary\pc594\30817\';
 
 
@@ -161,7 +161,7 @@ for ifn = 1:1:number_of_files
     title('Gaussian 2D fit')
 
     step_1 = 1;
-    step_2 = 250;
+    step_2 = 200;
     subplot(1,4,3)
     for i = 1:step_2:size(im,2)
         plot(1:step_1:size(im,1),im(1:step_1:end,round(i))); hold all
