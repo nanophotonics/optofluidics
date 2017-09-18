@@ -307,17 +307,17 @@ if menu_ref || menu_python == 2   % reference corrected
         end
         string_spectra = 'Absorbance';
     end
-     if menu_spectra == 3 % Absorbance/Sample Length
-      input_title = 'Choose Sample length'; 
-    input_data = {'Sample length (cm)'}; 
-    resize = 'on'; dim = [1 80];
-    valdef = {num2str(4.8)};
-    answer = inputdlg(input_data,input_title,dim,valdef,resize);
-        length = str2double(answer{1});
-        for i = 1:1:number_of_spectra
-            data_spectra(i,:) = (-log(data_corrected(i,:))./ length);
-        end
-        string_spectra = 'Absorbance / Sample Length (cm^{-1})';
+    if menu_spectra == 3 % Absorbance/Sample Length
+        input_title = 'Choose Sample length'; 
+        input_data = {'Sample length (cm)'}; 
+        resize = 'on'; dim = [1 80];
+        valdef = {num2str(4.8)};
+        answer = inputdlg(input_data,input_title,dim,valdef,resize);
+            length = str2double(answer{1});
+            for i = 1:1:number_of_spectra
+                data_spectra(i,:) = (-log(data_corrected(i,:))./ length);
+            end
+            string_spectra = 'Absorbance / Sample Length (cm^{-1})';
     end
     if menu_spectra == 4 % molar attenuation coefficient
         input_title = 'Choose Concentration and Sample length'; 
@@ -370,7 +370,7 @@ data_plot = data_norm;
 % *************************************************************************
 
 menu_plot2D = 1;
-% menu_plot2D = menu('Plot 2D Colourmap?', 'NO', 'YES');
+menu_plot2D = menu('Plot 2D Colourmap?', 'NO', 'YES');
 
 title_colourmap{1} = FolderRead;
 title_colourmap{2} = ['DATA: ' FileNameRead ' // ' strrep(TimelapseInfo.Name(2:end), '_', '\_')];
@@ -388,8 +388,8 @@ if menu_plot2D == 2
     contourf(wavelengths(index_wavelengths), ...
         time(index_time),...
         data_plot(index_time,index_wavelengths), ...
-        'LineStyle', 'none');%,...
-%         'LevelStepMode', 'manual', 'LevelStep', 10)
+        'LineStyle', 'none',...
+        'LevelStepMode', 'manual', 'LevelStep', 100)
 %         'LevelListMode', 'manual', 'LevelList', nlevels)
     colormap(jet)
     colorbar
