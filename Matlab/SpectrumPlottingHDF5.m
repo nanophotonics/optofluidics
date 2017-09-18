@@ -1,17 +1,17 @@
 clc
 clear
-close all
+% close all
 
 % default directory
-% DirectoryRead = 'C:\Users\Ana Andres\Documents\NanoPhotonics\Laboratory\';
-% FolderRead = '';
-% FolderPathRead = [DirectoryRead FolderRead];
-% FileNameRead = '';
+DirectoryRead = 'R:\aa938\NanoPhotonics\Laboratory\';
+FolderRead = '';
+FolderPathRead = [DirectoryRead FolderRead];
+FileNameRead = '';
 
 % prompt to choose file
 [FileNameRead, FolderPathRead, ~] = uigetfile('.h5',...
-    'H5 file to read:','MultiSelect','off');
-%     'H5 file to read:',[FolderPathRead FileNameRead],'MultiSelect','off');
+    'H5 file to read:',[FolderPathRead FileNameRead],'MultiSelect','off');
+%     'H5 file to read:','MultiSelect','off');
 slash_index = strfind(FolderPathRead, '\');
 FolderRead = FolderPathRead(slash_index(end-1)+1:end-1);
 FilePathRead = [FolderPathRead FileNameRead];
@@ -140,8 +140,8 @@ index_time = index_time_all(1):time_interval_index:index_time_all(end);
 % *************************************************************************
 
 menu_ref = 1;
-menu_ref = menu('Correct for the System Response?', 'NO', 'YES (data/reference)', ...
-    'YES (data/1st spectra)', 'YES ((data-background)/(reference-background))');
+% menu_ref = menu('Correct for the System Response?', 'NO', 'YES (data/reference)', ...
+%     'YES (data/1st spectra)', 'YES ((data-background)/(reference-background))');
 
 data_corrected = data_python;
 
@@ -403,12 +403,13 @@ end
 
 %% plotting individual spectra
 % *************************************************************************
-
+figure
 menu_evolution = 1;
 menu_evolution = menu('Plot Individual Spectra?', 'NO', 'YES');
 
-if menu_evolution == 2
-menu_irregular_interval = menu('Plot spectra with irregular interval? ','NO','YES');
+if menu_evolution == 2    
+    menu_irregular_interval = 1;
+    menu_irregular_interval = menu('Plot spectra with irregular interval? ','NO','YES');
 
 
 if menu_irregular_interval == 1
