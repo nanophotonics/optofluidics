@@ -52,6 +52,8 @@ enum
   get_cont_signal_readout,
   set_daq_freq,
   get_daq_freq,
+  fast_ADC_read,
+  sweep_delay,
   ret_string,              // returns a string
   ret_int,                 // returns an integer
   ret_char,                // returns a character
@@ -71,6 +73,8 @@ void attachCommands()
   cmd.attach(get_cont_signal_readout, on_get_cont_signal_readout);
   cmd.attach(set_daq_freq, on_set_daq_freq);
   cmd.attach(get_daq_freq, on_get_daq_freq);
+  cmd.attach(sweep_delay, on_sweep_delay);
+  cmd.attach(fast_ADC_read, on_fast_ADC_read);
 }
 
 // ==============================
@@ -109,6 +113,52 @@ void on_get_daq_freq() {
   cmd.sendBinCmd(ret_int, adc_readout_freq);
 }
 
+void on_sweep_delay() {
+  int data_points = cmd.readBinArg<int>();
+  int avg_points = cmd.readBinArg<int>();
+  float delay_increment = cmd.readBinArg<float>();
+
+  for (int i = 0; i < data_points; i++) {
+    float curr_delay = (i + 1) * delay_increment;
+    float curr_sig1 = 0;
+    float curr_sig2 = 0;
+    for (int avg_no = 0; avg_no < avg_points; avg_no++) {
+      // emit trigger signal
+      digitalWrite(trigger_pin, HIGH);
+      // wait for current delay time
+      delayMicroseconds(curr_delay * 1e6);
+      // measure signal 1 and 2
+      int intensity1_level = analogRead(input1_pin);
+      int intensity2_level = analogRead(input2_pin);
+      curr_sig1 += (float(intensity1_level) / (input_res - 1)) * (input_max - input_min) / avg_points;
+      curr_sig2 += (float(intensity2_level) / (input_res - 1)) * (input_max - input_min) / avg_points;
+      digitalWrite(trigger_pin, LOW);
+    }
+    if (cont_signal_readout) {
+      cmd.sendCmdStart(ret_intensity);
+      cmd.sendCmdBinArg(curr_sig1);
+      cmd.sendCmdBinArg(curr_sig2);
+      cmd.sendCmdBinArg(curr_delay);
+      cmd.sendCmdEnd();
+    }
+  }
+}
+/*
+ * reads the ADCs as fast as possible with the
+ * specified number of data points
+ */
+void on_fast_ADC_read() {
+  int data_points = cmd.readBinArg<int>();
+  float signal1[data_points];
+  for(int i=0;i<data_points;i++){
+    while((ADC->ADC_ISR & 0x80)==0); // wait for conversion
+    signal1[i]=ADC->ADC_CDR[7]; //get values
+  }
+  cmd.sendCmdStart(ret_float);
+  cmd.sendCmdBinArg(signal1);
+  cmd.sendCmdEnd();
+}
+
 
 // ======================================
 // sleep functions to pause another timer
@@ -120,19 +170,16 @@ class Sleep {
       Timer4.stop();
       Timer5.attachInterrupt(when_awake).setPeriod(delay_time).start();
     }
-  private:    
+  private:
     static void when_awake() {
       Timer5.stop();
-      Timer4.start();  
+      Timer4.start();
     }
 };
 
 void readADCs()
 {
   /* This method reads the ADCs.
-     It is executed with a frequency 'adc_readout_freq' set by Timer3 and
-     writes the averaged intensity into the global variables 'intensity1'
-     and 'intensity2'.
   */
   int intensity1_level = analogRead(input1_pin);
   int intensity2_level = analogRead(input2_pin);
@@ -167,10 +214,12 @@ void readADCs()
 // ===============
 void setup()
 {
-  // bits for fast ADC readout
-  REG_ADC_MR = (REG_ADC_MR & 0xFFF0FFFF) | 0x00020000; // change ADC mode register
-  REG_ADC_MR = (REG_ADC_MR & 0xFFFFFF0F) | 0x00000080; //enable FREERUN mode and change ADC to continuous mode
-  
+  // changes in microcontroller register to speed up readout of internal ADCs
+  //REG_ADC_MR = (REG_ADC_MR & 0xFFF0FFFF) | 0x00020000; // change prefactor of ADC clock from 16 to 2
+  //REG_ADC_MR = (REG_ADC_MR & 0xFFFFFF0F) | 0x00000080; //enable FREERUN mode and change ADC to continuous mode
+  ADC->ADC_MR |= 0x80;  //set free running mode on ADC
+  ADC->ADC_CHER = 0x80; //enable ADC on pin A0
+
   // setup pins
   analogReadResolution(12);
   // analogReference(DEFAULT); // set ADC reference to 3.3 V
@@ -188,7 +237,7 @@ void setup()
   // run the feedback if activated. The Arduino Due has 9
   // available Timer Couters (TC), with TC3, TC4, and TC5 not
   // beeing mapped to a physical pin. So TC3 is used here.
-  Timer3.attachInterrupt(readADCs).setFrequency(adc_readout_freq).start();
+  // Timer3.attachInterrupt(readADCs).setFrequency(adc_readout_freq).start();
 }
 
 

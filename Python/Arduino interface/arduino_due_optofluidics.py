@@ -15,7 +15,14 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
     # definition of CmdMessenger commands
     commands = [["check_arduino",""],                
                 ["get_intensity",""],
-                ["ret_intensity","ff"],
+                ["ret_intensity","fff"],
+                ["ret_fast_intensity","f*"]
+                ["set_cont_signal_readout","?"],
+                ["get_cont_signal_readout",""],
+                ["set_daq_freq","i"],
+                ["get_daq_freq",""],
+                ["sweep_delay","iif"], # param: number of data points, averaged data points, delay increment in seconds
+                ["fast_ADC_read","i"],
                 ["ret_string","s*"],
                 ["ret_int","i*"],
                 ["ret_char","c*"],
@@ -42,6 +49,8 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
 #        print "msg:", msg
         if cmd_name == 'ret_intensity':  # received intensity values
             self.intensity_signal.emit(msg[0],msg[1])
+        elif cmd_name == 'ret_fast_intensity':
+            self.intensity_signal.emit(msg[0],0)
         else:
             print cmd_name, msg[0]
 
@@ -54,10 +63,10 @@ class ArduinoUI(QtWidgets.QWidget):
             "experiment must be an instance of ArduinoDueOptofluidics"
         super(ArduinoUI, self).__init__()
         self.due =arduino_instance
-        self.intensity1_deque = deque(maxlen=2e3)
-        self.intensity1_deque.append(0.0)
-        self.intensity2_deque = deque(maxlen=2e3)
-        self.intensity2_deque.append(0.0)
+        self.signal1_deque = deque(maxlen=2e3)
+        self.signal1_deque.append(0.0)
+        self.signal2_deque = deque(maxlen=2e3)
+        self.signal2_deque.append(0.0)
         self.init_ui()
         self.update_counter=0
 
@@ -73,20 +82,20 @@ class ArduinoUI(QtWidgets.QWidget):
         self.setLayout(layout)
         layout.addWidget(self.signal1_plot,0,0)
         layout.addWidget(self.signal2_plot,1,0)
-        self.signal1_plot.plot(self.current_deque)
-        self.signal2_plot.plot(self.z_deque)
+        self.signal1_plot.plot(self.signal1_deque)
+        self.signal2_plot.plot(self.signal2_deque)
 
         # event handling
         self.due.intensity_signal.connect(self.update_gui)
 
     def update_gui(self,value1,value2):
-        self.intensity1_deque.append(value1)
-        self.intensity2_deque.append(value2)
+        self.signal1_deque.append(value1)
+        self.signal2_deque.append(value2)
 #        if self.update_counter == 9:
         self.signal1_plot.clear()
-        self.signal1_plot.plot(self.intensity1_deque)
+        self.signal1_plot.plot(self.signal1_deque)
         self.signal2_plot.clear()
-        self.signal2_plot.plot(self.intensity2_deque)
+        self.signal2_plot.plot(self.signal2_deque)
         self.update_counter=0
 
 if __name__ == '__main__':
