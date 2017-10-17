@@ -16,8 +16,8 @@
 
 // pin definition
 // ==============
-const int input1_pin   = A1;
-const int input2_pin   = A2;
+const int input1_pin   = A0;
+const int input2_pin   = A1;
 const int trigger_pin = 2;
 
 // global variables
@@ -29,14 +29,16 @@ float input_max = 3.3;
 float input_min = 0;
 
 bool cont_signal_readout = true;
-int adc_readout_freq = 1e4; 
+int adc_readout_freq = 1e4;
 int signal_avg = 10;     // number data point to average
 int signal_avg_no = 0;
+int sig1_level;
+int sig2_level;
 float signal1_temp = 0;
 float signal2_temp = 0;
 
 // get class instances for serial communication with PC
-CmdMessenger cmd = CmdMessenger(SerialUSB);
+CmdMessenger cmd = CmdMessenger(SerialUSB, xmodem);
 
 // ==========================================================
 // Initialisation of CmdMessenger and definition of commands
@@ -47,13 +49,14 @@ enum
 {
   check_arduino,
   get_intensity,
-  ret_intensity,           // returns a float value of the last intensity measurements
+  ret_intensity,          // returns a float value of the last intensity measurements
+  ret_fast_intensity,
   set_cont_signal_readout,
   get_cont_signal_readout,
   set_daq_freq,
   get_daq_freq,
-  fast_ADC_read,
   sweep_delay,
+  fast_ADC_read,
   ret_string,              // returns a string
   ret_int,                 // returns an integer
   ret_char,                // returns a character
@@ -95,7 +98,7 @@ void on_get_intensity() {
   cmd.sendCmdBinArg(intensity2);
   cmd.sendCmdEnd();
 }
-  
+
 void on_set_cont_signal_readout() {
   cont_signal_readout = cmd.readBinArg<bool>();
 }
@@ -117,47 +120,63 @@ void on_sweep_delay() {
   int data_points = cmd.readBinArg<int>();
   int avg_points = cmd.readBinArg<int>();
   float delay_increment = cmd.readBinArg<float>();
+  int intensity1_level;
+  int intensity2_level;
+  float curr_delay;
+  float curr_sig1;
+  float curr_sig2;  
 
   for (int i = 0; i < data_points; i++) {
-    float curr_delay = (i + 1) * delay_increment;
-    float curr_sig1 = 0;
-    float curr_sig2 = 0;
+    curr_delay = (i + 1) * delay_increment;
+    curr_sig1 = 0;
+    curr_sig2 = 0;
+//    Timer4.attachInterrupt(read_ADC);
+//    Timer4.setPeriod(curr_delay);
     for (int avg_no = 0; avg_no < avg_points; avg_no++) {
       // emit trigger signal
       digitalWrite(trigger_pin, HIGH);
+      
       // wait for current delay time
       delayMicroseconds(curr_delay * 1e6);
-      // measure signal 1 and 2
-      int intensity1_level = analogRead(input1_pin);
-      int intensity2_level = analogRead(input2_pin);
+      // fast ADC read
+      while ((ADC->ADC_ISR & 0x80) == 0); // wait for conversion
+      intensity1_level = ADC->ADC_CDR[7]; //get values
+      
+//      int intensity1_level = analogRead(input1_pin);
+//      int intensity2_level = analogRead(input2_pin);
       curr_sig1 += (float(intensity1_level) / (input_res - 1)) * (input_max - input_min) / avg_points;
-      curr_sig2 += (float(intensity2_level) / (input_res - 1)) * (input_max - input_min) / avg_points;
+//      curr_sig2 += (float(intensity2_level) / (input_res - 1)) * (input_max - input_min) / avg_points;
       digitalWrite(trigger_pin, LOW);
+      delay(5);
     }
-    if (cont_signal_readout) {
-      cmd.sendCmdStart(ret_intensity);
+//    if (cont_signal_readout) {
+      cmd.sendCmdStart(ret_fast_intensity);
       cmd.sendCmdBinArg(curr_sig1);
-      cmd.sendCmdBinArg(curr_sig2);
       cmd.sendCmdBinArg(curr_delay);
+//      cmd.sendCmdBinArg(curr_delay);
       cmd.sendCmdEnd();
-    }
+//    }
   }
 }
+
 /*
- * reads the ADCs as fast as possible with the
- * specified number of data points
- */
+   reads the ADCs as fast as possible with the
+   specified number of data points
+*/
 void on_fast_ADC_read() {
   int data_points = cmd.readBinArg<int>();
   float signal1[data_points];
-  for(int i=0;i<data_points;i++){
-    while((ADC->ADC_ISR & 0x80)==0); // wait for conversion
-    signal1[i]=ADC->ADC_CDR[7]; //get values
+  for (int i = 0; i < data_points; i++) {
+    while ((ADC->ADC_ISR & 0x80) == 0); // wait for conversion
+    signal1[i] = ADC->ADC_CDR[7]; //get values
   }
-  cmd.sendCmdStart(ret_float);
-  cmd.sendCmdBinArg(signal1);
+  cmd.sendCmdStart(ret_fast_intensity);
+  for (int i = 0; i < data_points; i++) {
+    cmd.sendCmdBinArg(signal1[i]);
+  }
   cmd.sendCmdEnd();
 }
+
 
 
 // ======================================
@@ -185,8 +204,8 @@ void readADCs()
   int intensity2_level = analogRead(input2_pin);
   float _intensity1 = (float(intensity1_level) / (input_res - 1)) * (input_max - input_min);
   float _intensity2 = (float(intensity2_level) / (input_res - 1)) * (input_max - input_min);
-  
-  // averaging of ADC signals  
+
+  // averaging of ADC signals
   if (signal_avg_no < signal_avg) {
     signal1_temp += _intensity1 / signal_avg;
     signal2_temp += _intensity2 / signal_avg;
@@ -194,18 +213,18 @@ void readADCs()
   }
   else {
     intensity1 = signal1_temp;
-    intensity2 = signal2_temp;    
+    intensity2 = signal2_temp;
     signal1_temp = _intensity1;
     signal2_temp = _intensity2;
-    signal_avg_no = 1; 
-    
+    signal_avg_no = 1;
+
     if (cont_signal_readout) {
       cmd.sendCmdStart(ret_intensity);
       cmd.sendCmdBinArg(intensity1);
       cmd.sendCmdBinArg(intensity2);
       cmd.sendCmdEnd();
-    }  
-  }  
+    }
+  }
 }
 
 
@@ -222,9 +241,9 @@ void setup()
 
   // setup pins
   analogReadResolution(12);
-  // analogReference(DEFAULT); // set ADC reference to 3.3 V
-  pinMode(input1_pin, INPUT);
-  pinMode(input2_pin, INPUT);
+  // analogReference(DEFAULT); // sets ADC reference to 3.3 V
+  //pinMode(input1_pin, INPUT);
+  //pinMode(input2_pin, INPUT);
   pinMode(trigger_pin, OUTPUT);
   pinMode(13, OUTPUT);
 

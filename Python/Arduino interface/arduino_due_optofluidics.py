@@ -16,7 +16,7 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
     commands = [["check_arduino",""],                
                 ["get_intensity",""],
                 ["ret_intensity","fff"],
-                ["ret_fast_intensity","f*"]
+                ["ret_fast_intensity","ff"],
                 ["set_cont_signal_readout","?"],
                 ["get_cont_signal_readout",""],
                 ["set_daq_freq","i"],
@@ -44,13 +44,14 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
     def __del__(self):
         self.close()
 
-    def analyze_command(self, cmd_name, msg, message_time):
+    def response_to_command(self, cmd_name, msg, message_time):
 #        print "cmd_name:", cmd_name
 #        print "msg:", msg
-        if cmd_name == 'ret_intensity':  # received intensity values
+#      if cmd_name == 'ret_intensity':  # received intensity values
+#            self.intensity_signal.emit(msg[0],msg[1])
+        if cmd_name == 'ret_fast_intensity':
+#            print "msg:",msg
             self.intensity_signal.emit(msg[0],msg[1])
-        elif cmd_name == 'ret_fast_intensity':
-            self.intensity_signal.emit(msg[0],0)
         else:
             print cmd_name, msg[0]
 
@@ -63,16 +64,16 @@ class ArduinoUI(QtWidgets.QWidget):
             "experiment must be an instance of ArduinoDueOptofluidics"
         super(ArduinoUI, self).__init__()
         self.due =arduino_instance
-        self.signal1_deque = deque(maxlen=2e3)
-        self.signal1_deque.append(0.0)
+        self.signal1_deque = deque(maxlen=100)#2e3)
+#        self.signal1_deque.append(0.0)
         self.signal2_deque = deque(maxlen=2e3)
-        self.signal2_deque.append(0.0)
+#        self.signal2_deque.append(0.0)
         self.init_ui()
         self.update_counter=0
 
     def init_ui(self):
         self.setWindowTitle('signal monitor')
-        self.signal1_plot = pg.PlotWidget(labels = {'left':'intensity','bottom':'time'})
+        self.signal1_plot = pg.PlotWidget(labels = {'left':'intensity','bottom':'time'},symbol='o', pen=None)
         self.signal1_plot.enableAutoRange()
         self.signal2_plot = pg.PlotWidget(labels = {'left':'intensity','bottom':'time'})
         self.signal2_plot.enableAutoRange()
@@ -89,19 +90,20 @@ class ArduinoUI(QtWidgets.QWidget):
         self.due.intensity_signal.connect(self.update_gui)
 
     def update_gui(self,value1,value2):
+#        print "value1:", value1, value2
         self.signal1_deque.append(value1)
         self.signal2_deque.append(value2)
 #        if self.update_counter == 9:
         self.signal1_plot.clear()
-        self.signal1_plot.plot(self.signal1_deque)
+        self.signal1_plot.plot(self.signal1_deque,symbol='o')
         self.signal2_plot.clear()
-        self.signal2_plot.plot(self.signal2_deque)
+        self.signal2_plot.plot(self.signal2_deque,symbol='o')
         self.update_counter=0
 
 if __name__ == '__main__':
 
     import sys
     from nplab.utils.gui import get_qt_app 
-    due = ArduinoDueOptofluidics("COM28")
+    due = ArduinoDueOptofluidics("COM11")
     due.show_gui(blocking=False)
     app = get_qt_app()
