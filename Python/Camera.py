@@ -1,22 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Oct 24 12:11:58 2017
+Created on Thu Dec 01 13:55:58 2016
+
+@author: Hera
 """
 
-#The purpose of this class is to control an camera.
 import sys
 import time
+#from PySide.QtGui import *
+from Instrumental import instrument, gui, errors
 import scipy.misc
 import numpy as np
 from autofunct import cropcurrent
-from instrumental import instrument, gui, errors
- 
+
 class camera():
     def __init__(self,expos):
-              #Initialise camera with an exposure: this can be changed later, maxexp is set to 19ms and
-              #is the maximum camera exposure for a single image.
+        """Initialises camera and prints current exposure"""
         self.maxexp=19.0
-        self.pics=int(0)
+        self.pics=int(1)
         self.exp=float(0)
         self.cam = instrument('uc480') #uc480
         self.exposure(float(expos))
@@ -25,18 +26,40 @@ class camera():
         self.countmax=400
         print(self.cam._get_exposure())
         return
- 
+
     def closecam(self):
-              #Close the camera before program ends.
+        """Close camera connetction
+        
+        Only one connetction may be open at a time!        
+        """
         self.cam.stop_live_video()
         self.cam.close()
         return
- 
+
+    '''
+    def takeimagecolour(self):
+        b=np.empty([1024,1280,3], dtype=int)
+        
+        for i in range(0, self.pics):
+            frame_ready = self.cam.wait_for_frame()
+            if frame_ready:
+                a = self.cam.latest_frame()
+                a=a[:,:,0:3]
+            else:
+                a=0
+                raise NameError('Failed to get frame.')
+            b=b+a
+        b[b>255]=255
+        #b=b.astype('float')
+        #b=255*np.power((b/255),1/1.6)
+        #b=b.astype('int')
+        return b
+        '''
+        
     def takeimagebw(self):
-              #Take a black and white image: note that if the exposure is greater than maxexp then
-              #multiple images will be taken and combined.
+        """Take a black & wight image"""
         b=np.empty([1024,1280], dtype=int)
-       
+        
         for i in range(0, self.pics):
             self.counter=self.counter+1
             frame_ready = False
@@ -44,15 +67,22 @@ class camera():
                 frame_ready = self.cam.wait_for_frame()
                 if frame_ready:
                     a = self.cam.latest_frame()
+                    #a=a[:,:,0:3]
+                    #a=np.sum(a,2)
+                    #a=a/3
                 else:
+                    #a=0
+                    #raise NameError('Failed to get frame.')
                     self.restartcam()
+                #if (self.counter>=self.countmax):
+                 #   self.restartcam()
             b=b+a
         b[b>255]=255
-        return b
-       
+        return b#/3
+        
         
     def restartcam(self):
-              #Sometimes the camera freezes, if this is the case then this function will restart it.
+        """Closes and restartys camera connection"""
         self.counter=0
         self.cam.stop_live_video()
         self.cam.close()
@@ -60,11 +90,53 @@ class camera():
         self.exposure(float(self.pics)*self.exp)
         print("Reset Camera")
         return
- 
+        
+    '''
     def autoexposure(self):
-              #Perform an autoexposure: sets the exposure to the result.
-        emax=100.0
+        emax=60.0
         emin=0.0
+        a=self.takeimagecolour()
+        if np.sum(a==255)>10:
+            emax=self.exp*self.pics
+        else:
+            emin=self.exp*self.pics
+        while ((emax-emin)/(emax/2+emin/2)>=0.2):
+            self.exposure((emax+emin)/2)
+            a=self.takeimagecolour()
+            if np.sum(a==255)>10:
+                emax=(emax+emin)/2
+            else:
+                emin=(emax+emin)/2
+        self.exposure(emin)
+        return emin
+        
+    def autoexposurecut(self, cent, dist, angle):
+        emax=60.0
+        emin=0.0
+        a=self.takeimagecolour()
+        a=cropcurrent(a, cent, dist, angle)
+        if np.sum(a==255)>10:
+            emax=self.exp*self.pics
+        else:
+            emin=self.exp*self.pics
+        while ((emax-emin)/(emax/2+emin/2)>=0.2):
+            self.exposure((emax+emin)/2)
+            a=self.takeimagecolour()
+            a=cropcurrent(a, cent, dist, angle)
+            if np.sum(a==255)>10:
+                emax=(emax+emin)/2
+            else:
+                emin=(emax+emin)/2
+        self.exposure(emin)
+        return emin
+    '''
+
+    def autoexposure(self):
+        """Automatically adjust cexposure
+        
+        Returns exposure value"""
+        emax=100.0
+        emin=0.01
         a=self.takeimagebw()
         if np.sum(a==255)>10:
             emax=self.exp*self.pics
@@ -79,12 +151,13 @@ class camera():
                 emin=(emax+emin)/2
         self.exposure(emin)
         return emin
-       
+        
     def autoexposurecut(self, cent, dist, angle):
-              #Performs an autoexposure on a hexagonal region of the image specified by: cent (the centre of the hexagon),
-              #dist (the radius of the hexagon) and angle (it's orientation).
+        """Autoexpose croped section of image?
+        
+        Returns exposure value"""
         emax=300.0
-        emin=0.0
+        emin=0.01
         a=self.takeimagebw()
         a=cropcurrent(a, cent, dist, angle)
         if np.sum(a==255)>10:
@@ -101,10 +174,14 @@ class camera():
                 emin=(emax+emin)/2
         self.exposure(emin)
         return emin
-   
+    
     def exposure(self, expo):
-              #Sets the camera exposure to the given value.
+        """Sets camera exposure to expo
+        
+        Input: expo (scalar)"""
         self.pics=int(np.ceil(expo/self.maxexp))
         self.exp=expo/self.pics
         self.cam.start_live_video(exposure_time="{} millisecond".format(str(self.exp)))
         return
+#print(np.shape(a))
+#print(np.max(np.max(a)))
