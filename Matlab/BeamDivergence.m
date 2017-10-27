@@ -62,7 +62,8 @@ for ifn = 1:1:number_of_files
     % background = h.BinEdges(h.Values==max(h.Values))*0.8;
     % background = 0;
     % im = im-background;
-
+    im = im(:,:,1);
+    im = im - mean(mean(im(1:100,1:100)))*0.9;
     im = im/max(max(im));
 
     %% 2D Gaussian fit
