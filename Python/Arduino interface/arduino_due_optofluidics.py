@@ -15,23 +15,22 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
     # definition of CmdMessenger commands
     commands = [["check_arduino",""],                
                 ["get_intensity",""],
-                ["ret_intensity","fff"],
-                ["ret_fast_intensity","ff"],
+                ["ret_fast_intensity","fff"],
                 ["set_cont_signal_readout","?"],
                 ["get_cont_signal_readout",""],
-                ["set_daq_freq","i"],
-                ["get_daq_freq",""],
                 ["sweep_delay","iif"], # param: number of data points, averaged data points, delay increment in seconds
+                ["set_delay","i"],
+                ["get_delay","i"],                
                 ["fast_ADC_read","i"],
-                ["ret_string","s*"],
-                ["ret_int","i*"],
-                ["ret_char","c*"],
-                ["ret_float","f*"],
-                ["ret_double","d*"],
-                ["ret_bool","?*"],
-                ["ret_byte","b*"]]
+                ["ret_string","s"],
+                ["ret_int","i"],
+                ["ret_char","c"],
+                ["ret_float","f"],
+                ["ret_double","d"],
+                ["ret_bool","?"],
+                ["ret_byte","b"]]
 
-    intensity_signal = QtCore.Signal(float,float)
+    intensity_signal = QtCore.Signal(float,float,float)
 
     def __init__(self, port):
         # get Arduino board/serial instance
@@ -51,9 +50,9 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
 #            self.intensity_signal.emit(msg[0],msg[1])
         if cmd_name == 'ret_fast_intensity':
 #            print "msg:",msg
-            self.intensity_signal.emit(msg[0],msg[1])
+            self.intensity_signal.emit(msg[0],msg[1],msg[2])
         else:
-            print cmd_name, msg[0]
+            print cmd_name, msg
 
     def get_qt_ui(self):
         return ArduinoUI(self)
@@ -64,10 +63,11 @@ class ArduinoUI(QtWidgets.QWidget):
             "experiment must be an instance of ArduinoDueOptofluidics"
         super(ArduinoUI, self).__init__()
         self.due =arduino_instance
-        self.signal1_deque = deque(maxlen=100)#2e3)
+        self.signal1_deque = deque(maxlen=500)#2e3)
 #        self.signal1_deque.append(0.0)
-        self.signal2_deque = deque(maxlen=2e3)
+        self.signal2_deque = deque(maxlen=500)
 #        self.signal2_deque.append(0.0)
+        self.xaxis_deque = deque(maxlen=500)
         self.init_ui()
         self.update_counter=0
 
@@ -83,27 +83,27 @@ class ArduinoUI(QtWidgets.QWidget):
         self.setLayout(layout)
         layout.addWidget(self.signal1_plot,0,0)
         layout.addWidget(self.signal2_plot,1,0)
-        self.signal1_plot.plot(self.signal1_deque)
-        self.signal2_plot.plot(self.signal2_deque)
+#        self.signal1_plot.plot(y=self.signal1_deque, x=self.xaxis_deque)
+#        self.signal2_plot.plot(y=self.signal2_deque, x=self.xaxis_deque)
 
         # event handling
         self.due.intensity_signal.connect(self.update_gui)
 
-    def update_gui(self,value1,value2):
-#        print "value1:", value1, value2
+    def update_gui(self,value1,value2,value3):
         self.signal1_deque.append(value1)
         self.signal2_deque.append(value2)
+        self.xaxis_deque.append(value3)
 #        if self.update_counter == 9:
         self.signal1_plot.clear()
-        self.signal1_plot.plot(self.signal1_deque,symbol='o')
+        self.signal1_plot.plot(self.xaxis_deque, self.signal1_deque, symbol='o')
         self.signal2_plot.clear()
-        self.signal2_plot.plot(self.signal2_deque,symbol='o')
+        self.signal2_plot.plot(self.xaxis_deque, self.signal2_deque, symbol='o')
         self.update_counter=0
 
 if __name__ == '__main__':
 
     import sys
     from nplab.utils.gui import get_qt_app 
-    due = ArduinoDueOptofluidics("COM11")
+    due = ArduinoDueOptofluidics("COM7")
     due.show_gui(blocking=False)
     app = get_qt_app()
