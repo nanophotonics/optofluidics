@@ -16,7 +16,7 @@
 // pin definition
 // ==============
 const int input1_pin   = A0;
-const int input2_pin   = A1;
+const int input2_pin   = A8;
 const int trigger_pin = 2;
 
 // global variables
@@ -27,7 +27,7 @@ int input_res = 4096;
 float input_max = 3.3;
 float input_min = 0;
 
-float read_delay = 40e-6;
+float read_delay = 37e-6;
 bool record_intensity = true;
 bool cont_signal_readout = true;
 int adc_readout_freq = 1e4;
@@ -55,6 +55,7 @@ enum
   sweep_delay,
   set_delay,
   get_delay,
+  get_intensity_trace,
   fast_ADC_read,
   ret_string,              // returns a string
   ret_int,                 // returns an integer
@@ -74,6 +75,7 @@ void attachCommands()
   cmd.attach(get_cont_signal_readout, on_get_cont_signal_readout);
   cmd.attach(sweep_delay, on_sweep_delay);
   cmd.attach(fast_ADC_read, on_fast_ADC_read);
+  cmd.attach(get_intensity_trace, on_get_intensity_trace);
   cmd.attach(set_delay, on_set_delay);
   cmd.attach(get_delay, on_get_delay);
 }
@@ -133,7 +135,7 @@ void on_sweep_delay() {
     TC_SetRA(TC1,0, RA); 
     // set register C to number of clock periods when pulse should be off
     RC = pulse_off/23.8095e-9;
-    TC_SetRC(TC1,0, RC);
+//    TC_SetRC(TC1,0, RC);
     
     for (int avg_no = 0; avg_no < avg_points; avg_no++) {
       // emit trigger by set pin 2 HIGH (port B, pin 25)
@@ -148,13 +150,17 @@ void on_sweep_delay() {
       REG_TC1_CCR0 = 0x5; // reset and enable counter      
       while ((REG_TC1_SR0 & 0x4) == 0); // check TC status register for occurance of RA compare
       // .. when RA compare has occured, start ADC conversion                      
-      ADC->ADC_CR = 0x2;    
+//      ADC->ADC_CR = 0x2;    
 //      while ((ADC->ADC_ISR & 0x80) == 0); // check Interrupts Status Register (ADC_ISC) for channel 7 (A0) and wait for conversion
-      while ((ADC->ADC_ISR & 0x40) == 0); //  wait for conversion by checking Interrupts Status Register (ADC_ISC) for channel 6 (A1), which is converted in second step
+//      while ((ADC->ADC_ISR & 0x40) == 0); //  wait for conversion by checking Interrupts Status Register (ADC_ISC) for channel 6 (A1), which is converted in second step
+//      while ((ADC->ADC_ISR & 0x400) == 0); //  wait for conversion by checking Interrupts Status Register (ADC_ISC) for channel 6 (A1), which is converted in second step
       intensity1_level = ADC->ADC_CDR[7]; //get values from Channel Data Register (ADC_CDR) of channel 7
-      intensity2_level = ADC->ADC_CDR[6]; //get values from Channel Data Register (ADC_CDR) of channel 6 
-      
-//      REG_TC1_CCR0 = 0x2; // disable counter
+//      intensity2_level = ADC->ADC_CDR6; //get values from Channel Data Register (ADC_CDR) of channel 6
+       intensity2_level = ADC->ADC_CDR[10]; //get values from Channel Data Register (ADC_CDR) of channel 10 (correspond to pin A8)  
+//      cmd.sendBinCmd(ret_int, intensity1_level);
+//      cmd.sendBinCmd(ret_int, intensity2_level);
+//      cmd.sendBinCmd(ret_int, 0);
+      REG_TC1_CCR0 = 0x2; // disable counter
       clock_counts = REG_TC1_CV0; // read counter
       curr_delay += clock_counts/avg_points*23.8095e-9;
           
@@ -162,13 +168,13 @@ void on_sweep_delay() {
       curr_sig2 += (float(intensity2_level) / (input_res - 1)) * (input_max - input_min) / avg_points;
 
 //      cmd.sendBinCmd(ret_int, clock_counts);
-//      delay(4);
-      while ((REG_TC1_SR0 & 0x10) == 0); // check TC status register for occurance of RC compare
+      
+//      while ((REG_TC1_SR0 & 0x10) == 0); // check TC status register for occurance of RC compare
       // when RC compare has occured, set trigger pin to LOW and start new measurement
       // set pin 2 LOW (port B, pin 25)
       REG_PIOB_CODR |= (1<<25);
       //digitalWrite(trigger_pin, LOW);
-      
+      delay(4);     
     }
       
 //    if (cont_signal_readout) {
@@ -189,11 +195,11 @@ void on_get_delay() {
   cmd.sendBinCmd(ret_float, read_delay);  
 }
 
-void on_intensity_trace() {
+void on_get_intensity_trace() {
 
   int data_points = cmd.readBinArg<int>();
   int num_pulses = cmd.readBinArg<int>();
-  float delay_increment = cmd.readBinArg<int>();  // in seconds
+  float delay_increment = cmd.readBinArg<float>();  // in seconds
   float curr_sig1;
   float curr_sig2;
   float curr_delay;
@@ -212,15 +218,15 @@ void on_intensity_trace() {
     curr_sig1 = 0;
     curr_sig2 = 0;
     curr_delay = i*delay_increment;
+
+    // set register A to number of clock periods of delay
+    RA = read_delay/23.8095e-9;
+    TC_SetRA(TC1,0, RA); 
+    // set register C to number of clock periods when pulse should be off
+//    RC = 400e-6/23.8095e-9; // minimal time between two pulses to prevent overlap
+//    TC_SetRC(TC1,0, RC);
     
-    for (int j = 0; j < num_pulses; j++) {      
-      // set register A to number of clock periods of delay
-      RA = read_delay/23.8095e-9;
-      TC_SetRA(TC1,0, RA); 
-      // set register C to number of clock periods when pulse should be off
-      RC = 67e-6/23.8095e-9; // minimal time between two pulses (=15 kHz)
-      TC_SetRC(TC1,0, RC);
-    
+    for (int j = 0; j < num_pulses; j++) { 
       // emit trigger by set pin 2 HIGH (port B, pin 25)
       REG_PIOB_SODR |= (1<<25);         
       counter_status = REG_TC1_SR0;
@@ -228,19 +234,22 @@ void on_intensity_trace() {
       REG_TC1_CCR0 = 0x5; // reset and enable counter      
       while ((REG_TC1_SR0 & 0x4) == 0); // check TC status register for occurance of RA compare
       // .. when RA compare has occured, start ADC conversion                      
-      ADC->ADC_CR = 0x2;    
-//    while ((ADC->ADC_ISR & 0x40) == 0); //  wait for conversion by checking Interrupts Status Register (ADC_ISC) for channel 6 (A1), which is converted in second step
+      ADC->ADC_CR = 0x2; 
+
+      while ((ADC->ADC_ISR & 0x40) == 0); //  wait for conversion by checking Interrupts Status Register (ADC_ISC) for channel 6 (A1), which is converted in second step
       intensity1_level = ADC->ADC_CDR[7]; //get values from Channel Data Register (ADC_CDR) of channel 7
       intensity2_level = ADC->ADC_CDR[6]; //get values from Channel Data Register (ADC_CDR) of channel 6 
-      
+      REG_TC1_CCR0 = 0x2; // disable counter
+      cmd.sendBinCmd(ret_int, intensity1_level);      
       curr_sig1 += (float(intensity1_level) / (input_res - 1)) * (input_max - input_min) / num_pulses;
       curr_sig2 += (float(intensity2_level) / (input_res - 1)) * (input_max - input_min) / num_pulses;
-
-      while ((REG_TC1_SR0 & 0x10) == 0); // check TC status register for occurance of RC compare
+      
+//      while ((REG_TC1_SR0 & 0x10) == 0); // check TC status register for occurance of RC compare
       // when RC compare has occured, set trigger pin to LOW and start new measurement
       // set pin 2 LOW (port B, pin 25)
-      REG_PIOB_CODR |= (1<<25); 
-    }
+      REG_PIOB_CODR |= (1<<25);
+      delayMicroseconds(400); 
+   }
     cmd.sendCmdStart(ret_fast_intensity);
     cmd.sendCmdBinArg(curr_sig1);
     cmd.sendCmdBinArg(curr_sig2);
@@ -294,7 +303,8 @@ void setup()
   
   //default settings: ADC->ADC_MR= 0x9038ff00, binary: 0000 0000 1001 0000 0011 1000 1111 1111 0000 0000   
   // set the ADC registers
-  ADC->ADC_CHER = 0xC0;       // enable ADC on pin A0 and A1 and that correspond to Ch7 and Ch6 on Atmel chip (for just A0: 0x80)
+//  ADC->ADC_CHER = 0xC0;       // enable ADC on pin A0 and A1 and that correspond to Ch7 and Ch6 on Atmel chip (for just A0: 0x80)
+  ADC->ADC_CHER = 0x480;       // enable ADC on pin A0 and A8 and that correspond to Ch7 and Ch10 on Atmel chip (for just A0: 0x80)
    
   // set all ADC_MR bits in once:
   //ADC->ADC_MR = 90000200; // binary: 1001 0000 0000 0000 0000 0010 0000 0000
@@ -304,9 +314,10 @@ void setup()
   // startup: 24 ADC clock periods = 1.14 us, settling time: 5 ADC clock cycles = 238 ns,
   // tracking time: 5 ADC clock cycles = 238 ns,
   
-// 0000 0000    1  0    01      0000     0   0    01     0011  0000 0001   1     000 0000
+// 0000 0000    1  0    10      0000     0   0    00     0011  0000 0001   1     000 0000
 //        -- |USEQ|-|transfer|tracking|ANACH|-|settling|startup|prescale|freerun|..  
-   ADC->ADC_MR = 0x90130180;     
+//   ADC->ADC_MR = 0x90330180;
+     ADC->ADC_MR = 0xA0030180;     
    SerialUSB.println(REG_ADC_MR, HEX); 
    
 // if calculated tracking time < 15 ADC clock periods: TRACKTIME = 0 and TRANSFER = 1
@@ -317,14 +328,18 @@ void setup()
 // max. ADC clock frequency: 22 MHz
 // max. sampling frequency: 1 MHz (because conversion time take 20 ADC clock cycles)
    
-  ADC->ADC_SEQR1= 0x67000000; // set the ADC read-out sequence, first measure A0 then A1, equals: (7<<24) | (6<<28) and 0000 0000 0110 0111 0000 0000 0000 0000 0000 0000)
-
+//  ADC->ADC_SEQR1= 0x67000000; // set the ADC read-out sequence, first measure A0 then A1, equals: (7<<24) | (6<<28) and 0000 0000 0110 0111 0000 0000 0000 0000 0000 0000)
+  ADC->ADC_SEQR1= 0x70000000; // set the ADC read-out sequence, first measure A0 then A8, 
+//  ADC->ADC_SEQR2= 0x700;
+  ADC->ADC_SEQR2= 0xA00;
   // setup pins
   //analogReadResolution(12);
   // analogReference(DEFAULT); // sets ADC reference to 3.3 V
-  //pinMode(input1_pin, INPUT);
-  //pinMode(input2_pin, INPUT);
+  pinMode(input1_pin, INPUT);
+  pinMode(input2_pin, INPUT);
   pinMode(trigger_pin, OUTPUT);
+   
+
   pinMode(13, OUTPUT);
 
   // initialise USB port

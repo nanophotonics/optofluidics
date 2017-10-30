@@ -13,14 +13,14 @@ from nplab.utils.gui import QtWidgets, get_qt_app, QtCore
 class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
 
     # definition of CmdMessenger commands
-    commands = [["check_arduino",""],                
-                ["get_intensity",""],
+    commands = [["check_arduino",""],  
                 ["ret_fast_intensity","fff"],
                 ["set_cont_signal_readout","?"],
                 ["get_cont_signal_readout",""],
                 ["sweep_delay","iif"], # param: number of data points, averaged data points, delay increment in seconds
-                ["set_delay","i"],
-                ["get_delay","i"],                
+                ["set_delay","f"],
+                ["get_delay","f"],
+                ["get_intensity_trace","iif"],
                 ["fast_ADC_read","i"],
                 ["ret_string","s"],
                 ["ret_int","i"],
@@ -55,7 +55,8 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
             print cmd_name, msg
 
     def get_qt_ui(self):
-        return ArduinoUI(self)
+        self.gui=ArduinoUI(self)
+        return self.gui
 
 class ArduinoUI(QtWidgets.QWidget):
     def __init__(self, arduino_instance):
@@ -99,11 +100,16 @@ class ArduinoUI(QtWidgets.QWidget):
         self.signal2_plot.clear()
         self.signal2_plot.plot(self.xaxis_deque, self.signal2_deque, symbol='o')
         self.update_counter=0
+        
+    def clear(self):
+        self.signal1_deque=[]
+        self.signal2_deque=[]
+        self.xaxis_deque=[]
 
 if __name__ == '__main__':
 
     import sys
     from nplab.utils.gui import get_qt_app 
-    due = ArduinoDueOptofluidics("COM7")
+    due = ArduinoDueOptofluidics("COM5")
     due.show_gui(blocking=False)
     app = get_qt_app()
