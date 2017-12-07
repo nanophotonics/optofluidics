@@ -1,5 +1,5 @@
 clear
-close all
+% close all
 clc
 
 %% READING FILES
@@ -69,8 +69,9 @@ samples = unique(data_table.sample);
 wavelengths = unique(data_table.lambda_nm);
 legend_location = 'NW';
 
-% fit_column_names = {'p2x','p2y'};
-fit_column_names = {'p1x','p1y'};
+fit_column_names = {'p1x','p1y'}; % slope
+% fit_column_names = {'p2x','p2y'}; % offset
+
 figure
 legend_cell = {};
 for i = 1:size(samples,1)
@@ -83,8 +84,8 @@ for i = 1:size(samples,1)
             '.-', 'MarkerSize', 18), hold all
         grid on
         xlabel('wavelength (nm)')
-%         ylabel('slope (mm/mW)')
-        ylabel('offset (mm)')
+        ylabel('slope (mm/mW)')
+%         ylabel('offset (mm)')
         legend(legend_cell,'Location',legend_location)
     end
 end
