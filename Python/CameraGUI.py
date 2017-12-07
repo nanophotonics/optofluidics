@@ -10,25 +10,30 @@ GUI which controls a Thorlabs camera
 # http://instrumental-lib.readthedocs.io/en/latest/uc480-cameras.html
 
 import sys
-import CameraGUIdesign
-from PyQt4 import QtGui, QtCore
-
+#import CameraGUIdesign
+from qtpy import QtGui, QtCore, QtWidgets, uic
+import pyqtgraph as pg
+import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 from MatplotlibSettings import *
 
+from nplab.ui.ui_tools import UiTools
+
 from instrumental import list_instruments, instrument
 
-
-class ClassCameraGUI(QtGui.QMainWindow, CameraGUIdesign.Ui_CameraGUI):
+#CameraGUIdesign.Ui_CameraGUI,UiTools
+class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
     """
     GUI which controls a Thorlabs camera.
     """
     
     def __init__(self):
         super(self.__class__, self).__init__()
-        self.setupUi(self)
+        ui_file = 'C:\Users\Ana Andres\Documents\GitHub\optofluidics\Python\CameraGUIdesign.ui'
+        uic.loadUi(ui_file, self)
+     #   self.setupUi(self)
         
         # set starting parameters
         self.ExposureTimeNumberBox.setValue(5)
@@ -41,6 +46,7 @@ class ClassCameraGUI(QtGui.QMainWindow, CameraGUIdesign.Ui_CameraGUI):
         self.AutoExposureCheckBox.stateChanged.connect(self.set_auto_exposure)
 #        self.LiveViewCheckBox.stateChanged.connect(self.live_view)
         self.StartLiveViewPushButton.clicked.connect(self.live_view)
+        self.StopLiveViewPushButton.setEnabled(False)
         
 #        self.figure_liveview = Figure()
 #        self.canvas_liveview = FigureCanvas(self.figure_liveview)
@@ -56,7 +62,12 @@ class ClassCameraGUI(QtGui.QMainWindow, CameraGUIdesign.Ui_CameraGUI):
                 
         print list_instruments()
         self.open_camera()
-#        self.take_image()
+        self.imv = pg.ImageView()
+        self.replace_widget(self.verticalLayout,self.LiveViewWidget,self.imv)
+     #   self.imv.layout()
+        
+#        self.imv.show()
+        self.take_image()
         
         # initialise live view thread        
 #        self.LiveView = LiveView(self.camera, self.LiveViewWidgetContainer)
@@ -86,22 +97,27 @@ class ClassCameraGUI(QtGui.QMainWindow, CameraGUIdesign.Ui_CameraGUI):
         self.qimage = self.grab_image()
         self.display_image(self.qimage)
         
-    def display_image(self, qimage):
+    def display_image(self, image):
         """Display the latest captured image."""
-        print qimage
-        self.pixmap = QtGui.QPixmap.fromImage(qimage)
+     #   print image
+        
+        self.imv.setImage(image, autoLevels=True, autoHistogramRange=True)
+     #   self.imv.show()
+        
+        
+#        imv.setImage(pg.imageToArray(qimage))        
+#        self.pixmap = QtGui.QPixmap.fromImage(qimage)
 #        pixmap.detach()
 #        pixmap_image = QtGui.QPixmap(pixmap)
-        self.label = QtGui.QLabel(self.LiveViewWidget)
+#        self.label = QtGui.QLabel(self.LiveViewWidget)
 #        label = QtGui.QLabel()
-        self.label.setPixmap(self.pixmap)
+#        self.label.setPixmap(self.pixmap)
 #        label.setAlignment(QtCore.Qt.AlignCenter)
 #        label.setScaledContents(True)
 #        label.setMinimumSize(1,1)
-        self.label.show()
+#        self.label.show()
 #        label.app.processEvents()
-#        self.LiveViewWidgetContainer.addWidget(label)
-        
+#        self.LiveViewWidgetContainer.addWidget(label)        
 #        if type(images) == tuple:
 #            image = images[-1]
 #        else:
@@ -167,7 +183,7 @@ class ClassCameraGUI(QtGui.QMainWindow, CameraGUIdesign.Ui_CameraGUI):
         """Grab an image with the camera."""
         self.set_capture_parameters()
         image = self.camera.grab_image(**self.capture_params)
-        qimage = QtGui.QImage(image, image.shape[0], image.shape[1], QtGui.QImage.Format_RGB32)
+#        qimage = QtGui.QImage(image, image.shape[0], image.shape[1], QtGui.QImage.Format_RGB32)
         print 'Image(s) grabbed'
 
         self.CurrentWidthLabel.setText(str(self.camera.width))
@@ -177,7 +193,7 @@ class ClassCameraGUI(QtGui.QMainWindow, CameraGUIdesign.Ui_CameraGUI):
         self.MaxFrameRateLabel.setText(str(round(self.camera.framerate.magnitude,3)))
         self.CurrentExposureLabel.setText(str(round(self.camera._get_exposure().magnitude,3)))
         
-        return qimage
+        return image
         
     def set_video_parameters(self):
         """Read video parameters from the GUI."""
@@ -193,10 +209,11 @@ class ClassCameraGUI(QtGui.QMainWindow, CameraGUIdesign.Ui_CameraGUI):
         self.set_video_parameters()       
         
 #        if self.LiveViewCheckBox.checkState():
-        self.LiveView = LiveView(self.camera)
-
-        self.connect(self.LiveView, QtCore.SIGNAL("display_image(QImage)"), self.display_image)
-        self.connect(self.LiveView, QtCore.SIGNAL("finished()"), self.done)
+        self.LiveView = LiveViewThread(self.camera)
+        self.LiveView.display_signal.connect(self.display_image)
+#        self.connect(self.LiveView, QtCore.SIGNAL("display_image(QImage)"), self.display_image)
+        self.LiveView.finished.connect(self.done)
+    #    self.connect(self.LiveView, QtCore.SIGNAL("finished()"), self.done)
         self.StopLiveViewPushButton.setEnabled(True)
         self.StopLiveViewPushButton.clicked.connect(self.LiveView.terminate)
         self.StartLiveViewPushButton.setEnabled(False)
@@ -213,40 +230,53 @@ class ClassCameraGUI(QtGui.QMainWindow, CameraGUIdesign.Ui_CameraGUI):
         self.StartLiveViewPushButton.setEnabled(True)
             
         
-class LiveView(QtCore.QThread):
+class LiveViewThread(QtCore.QThread):
     """
     Thread wich allows live view of the camera.
     """
+    display_signal = QtCore.Signal(np.ndarray)
+    
     def __init__(self, camera):
         QtCore.QThread.__init__(self)
        
         self.camera = camera        
-        self.camera.start_live_video()
+        
         
     def __del__(self):
         self.wait()
         
     def run(self):
         """Live view."""
-
+        # TODO: connect framerate from the GUI
+        # TODO: set exposure time for the live video
+        framerate = "{} hertz".format(str(20))
+        self.camera.start_live_video(framerate=framerate)
         timeout = "{} millisecond".format(str(1000))
 
         i = 0
-        while i < 1:
-#        while not self.isFinished():
-            i += 1
-            print i
+#        while  i < 100 :
+        while not self.isFinished():
+#            i += 1
+#            print i
             if self.camera.wait_for_frame(timeout=timeout):
                 image = self.camera.latest_frame()
-                qimage = QtGui.QImage(image, image.shape[0], image.shape[1], QtGui.QImage.Format_RGB32)
-                self.emit(QtCore.SIGNAL('display_image(QImage)'), qimage)
+#                qimage = QtGui.QImage(image, image.shape[0], image.shape[1], QtGui.QImage.Format_RGB32)
+                self.display_signal.emit(image)
+             #   QtCore.Signal()
         
-        
-def main():        
-    app = QtGui.QApplication(sys.argv)
-    gui = ClassCameraGUI()
-    gui.show()
-    app.exec_()
+#        
+#def main():        #sys.argv
+#    app = QtWidgets.QApplication([])
+#    gui = ClassCameraGUI()
+#    gui.show()
+#    gui.activateWindow()
+#    
+#    app.exec_()
     
 if __name__ == '__main__':
-    main()
+    app = QtWidgets.QApplication([])
+    gui = ClassCameraGUI()
+    gui.show()
+    gui.activateWindow()
+    
+  #  app.exec_()
