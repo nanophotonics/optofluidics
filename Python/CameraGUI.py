@@ -12,6 +12,7 @@ import pyqtgraph as pg
 import numpy as np
 from nplab.ui.ui_tools import UiTools
 from instrumental import list_instruments, instrument
+# make sure you've got the latest version of both instrumental and nicelib
 
 class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
     """
@@ -20,7 +21,7 @@ class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
     
     def __init__(self):
         super(self.__class__, self).__init__()
-        ui_file = 'C:\Users\Ana Andres\Documents\GitHub\optofluidics\Python\CameraGUIdesign.ui'
+        ui_file = 'CameraGUIdesign.ui'
         uic.loadUi(ui_file, self)
         
         # set starting parameters
