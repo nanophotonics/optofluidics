@@ -14,14 +14,14 @@ from nplab.ui.ui_tools import UiTools
 from instrumental import list_instruments, instrument
 # make sure you've got the latest version of both instrumental and nicelib
 
-class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
+class uc480(QtWidgets.QMainWindow,UiTools):
     """
     GUI which controls a Thorlabs camera.
     """
     
     def __init__(self):
         super(self.__class__, self).__init__()
-        ui_file = 'CameraGUIdesign.ui'
+        ui_file = 'uc480_gui_design.ui'
         uic.loadUi(ui_file, self)
         
         # set starting parameters
@@ -58,7 +58,6 @@ class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
         """Connect to a Thorlabs camera.""" 
         self.camera = instrument('uc480')
         print 'Camera connection started.'  
-#        self.camera.start_live_video()
 
         self.ROIWidthNumberBox.setValue(self.camera.max_width)
         self.ROIHeightNumberBox.setValue(self.camera.max_height)
@@ -248,6 +247,6 @@ class LiveViewThread(QtCore.QThread):
     
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
-    gui = ClassCameraGUI()
+    gui = uc480()
     gui.show()
     gui.activateWindow()
