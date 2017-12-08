@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1740</width>
+    <width>2540</width>
     <height>1296</height>
    </rect>
   </property>
@@ -101,7 +101,7 @@
            </widget>
           </item>
           <item row="3" column="2">
-           <widget class="QLabel" name="MaxFrameRateLabel">
+           <widget class="QLabel" name="CurrentFrameRateLabel">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -109,7 +109,7 @@
              </sizepolicy>
             </property>
             <property name="text">
-             <string>MaxFrameRateLabel</string>
+             <string>CurrentFrameRateLabel</string>
             </property>
            </widget>
           </item>
@@ -187,7 +187,7 @@
              </sizepolicy>
             </property>
             <property name="text">
-             <string>MaxFrameRateLabel</string>
+             <string>CurrentExposureLabel</string>
             </property>
            </widget>
           </item>

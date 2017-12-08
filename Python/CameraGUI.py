@@ -39,8 +39,8 @@ class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
         self.LiveViewCheckBox.stateChanged.connect(self.live_view)
         
         # initialise empty dictionary for capture and video parameters
-        self.capture_params = dict()
-        self.video_params = dict()
+        self.capture_parameters = dict()
+        self.video_parameters = dict()
                 
         print list_instruments()
         self.open_camera()
@@ -90,18 +90,18 @@ class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
         # make a copy of the data so it can be accessed when saving an image
         self.image = image
         # set levels to [0,255] because otherwise it autoscales when plotting
-        self.imv.setImage(image, autoDownsample=True, levels=[0,255])        
-
+        self.imv.setImage(image, autoDownsample=True, levels=[0,255])   
             
     def set_capture_parameters(self):
         """Read capture parameters from the GUI."""
         # TODO: fix errors that ocurr when n_frames > 1
-        self.capture_params['n_frames'] = int(self.FramesNumberBox.value())
-        self.capture_params = self.set_exposure_time(self.capture_params)
-        self.capture_params = self.set_ROI(self.capture_params)
-        print self.capture_params
+        self.capture_parameters['n_frames'] = int(self.FramesNumberBox.value())
+        self.capture_parameters = self.set_exposure_time(self.capture_parameters)
+        self.capture_parameters = self.set_ROI(self.capture_parameters)
+        print "Capture parameters:"
+        print self.capture_parameters
     
-    def set_ROI(self, params_dict):
+    def set_ROI(self, parameters_dict):
         """Read ROI coordinates from the GUI."""
         # TODO: not all widths and heights are allowed: why?        
         ROI_dict = {'width':[self.ROIWidthCheckBox, self.ROIWidthNumberBox],
@@ -115,48 +115,40 @@ class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
                     }
         
         for item in ROI_dict.keys():
-            if item in params_dict.keys():
-                del params_dict[item]
+            if item in parameters_dict.keys():
+                del parameters_dict[item]
 
         if self.ROICheckBox.checkState():            
             for item in ROI_dict.keys():
                 if ROI_dict[item][0].checkState():
-                    params_dict[item] = int(ROI_dict[item][1].value())
+                    parameters_dict[item] = int(ROI_dict[item][1].value())
         
-        return params_dict
+        return parameters_dict
         
-    def set_exposure_time(self, params_dict):
+    def set_exposure_time(self, parameters_dict):
         """Read exposure time from the GUI."""
         if self.AutoExposureCheckBox.checkState():
-            if 'exposure_time' in params_dict.keys():
-                del params_dict['exposure_time']
-#            print 'Exposure time = AUTO'          
+            if 'exposure_time' in parameters_dict.keys():
+                del parameters_dict['exposure_time']        
         else:
             exposure_time = "{} millisecond".format(str(self.ExposureTimeNumberBox.value()))
-            params_dict['exposure_time'] = exposure_time
-#            print 'Exposure time = ' + str(exposure_time)
-        return params_dict
+            parameters_dict['exposure_time'] = exposure_time
+        return parameters_dict
             
     def set_auto_exposure(self):
         """Enable or disable the auto exposure shutter."""
         self.camera.set_auto_exposure(self.AutoExposureCheckBox.checkState())
-#        if self.AutoExposureCheckBox.checkState():
-#            print 'Auto exposure is ON'
-#        else:
-#            print 'Auto exposure is OFF'
         
     def grab_image(self):
         """Grab an image with the camera."""
-        self.set_capture_parameters()
-        image = self.camera.grab_image(**self.capture_params)
-        print 'Image(s) grabbed'
-
-        self.CurrentWidthLabel.setText(str(self.camera.width))
-        self.CurrentHeightLabel.setText(str(self.camera.height))
-        self.MaxWidthLabel.setText(str(self.camera.max_width))
-        self.MaxHeightLabel.setText(str(self.camera.max_height))
-        self.display_framerate(self.camera.framerate.magnitude)
-        self.display_exposure_time(self.camera._get_exposure().magnitude)
+        # set the desired capture parameters
+        self.set_capture_parameters() # populate self.capture_parameters
+        # grab the image
+        image = self.camera.grab_image(**self.capture_parameters)
+        print 'Image(s) grabbed.'
+        # get camera parameters and display them on the GUI
+        camera_parameters = self.get_camera_parameters()
+        self.display_camera_parameters(camera_parameters)        
         return image
         
     def save_image(self):
@@ -173,18 +165,31 @@ class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
     def set_video_parameters(self):
         """Read video parameters from the GUI."""
         self.timeout = "{} millisecond".format(str(self.TimeoutNumberBox.value()))
-        self.video_params['framerate'] = "{} hertz".format(str(self.FrameRateNumberBox.value()))
-        self.video_params = self.set_exposure_time(self.video_params)
-        self.video_params = self.set_ROI(self.video_params)
-        print self.video_params
+        self.video_parameters['framerate'] = "{} hertz".format(str(self.FrameRateNumberBox.value()))
+        self.video_parameters = self.set_exposure_time(self.video_parameters)
+        self.video_parameters = self.set_ROI(self.video_parameters)
+        print "Video parameters:"
+        print self.video_parameters
+
+    def get_camera_parameters(self):
+        """Get camera parameters."""
+        camera_parameters = dict()
+        camera_parameters['framerate'] = self.camera.framerate
+        camera_parameters['exposure_time'] = self.camera._get_exposure()
+        camera_parameters['width'] = self.camera.width
+        camera_parameters['max_width'] = self.camera.max_width
+        camera_parameters['height'] = self.camera.height
+        camera_parameters['max_height'] = self.camera.max_height
+        return camera_parameters
     
-    def display_framerate(self, framerate):
-        """Display the current framerate on the GUI."""
-        self.MaxFrameRateLabel.setText(str(round(framerate,3)))
-    
-    def display_exposure_time(self, exposure_time):
-        """Display the current exposure time on the gui."""
-        self.CurrentExposureLabel.setText(str(round(exposure_time,3)))
+    def display_camera_parameters(self, camera_parameters):
+        """Display the current camera parameters on the GUI."""
+        self.CurrentFrameRateLabel.setText(str(round(camera_parameters['framerate'].magnitude,3)))
+        self.CurrentExposureLabel.setText(str(round(camera_parameters['exposure_time'].magnitude,3)))
+        self.CurrentWidthLabel.setText(str(camera_parameters['width']))
+        self.CurrentHeightLabel.setText(str(camera_parameters['height']))
+        self.MaxWidthLabel.setText(str(camera_parameters['max_width']))
+        self.MaxHeightLabel.setText(str(camera_parameters['max_height']))        
         
     def live_view(self):
         """Start/stop the live view."""
@@ -195,17 +200,18 @@ class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
             
             # connect signals
             self.LiveView.display_signal.connect(self.display_image)
-            self.LiveView.framerate_signal.connect(self.display_framerate)
-            self.LiveView.exposure_time_signal.connect(self.display_exposure_time)
+            self.LiveView.camera_parameters_signal.connect(self.display_camera_parameters)
             
             # connect buttons and functions            
             self.LiveViewCheckBox.stateChanged.connect(self.LiveView.terminate)
             self.TakeImagePushButton.setEnabled(False)
             self.LiveView.finished.connect(self.done)
-            
+                        
+            self.set_video_parameters() # populate self.video_parameters and self.timeout
             print "Starting live view."
-            self.set_video_parameters()
-            self.LiveView.set_video_parameters(self.video_params, self.timeout)
+            self.LiveView.start_live_view(self.video_parameters, self.timeout)
+            camera_parameters = self.get_camera_parameters()
+            self.display_camera_parameters(camera_parameters)
             self.LiveView.start()
             
     
@@ -220,8 +226,7 @@ class LiveViewThread(QtCore.QThread):
     Thread wich allows live view of the camera.
     """
     display_signal = QtCore.Signal(np.ndarray)
-    framerate_signal = QtCore.Signal(float)
-    exposure_time_signal = QtCore.Signal(float)
+    camera_parameters_signal = QtCore.Signal(dict)
     
     def __init__(self, camera):
         QtCore.QThread.__init__(self)       
@@ -230,20 +235,23 @@ class LiveViewThread(QtCore.QThread):
     def __del__(self):
         self.wait()
     
-    def set_video_parameters(self, video_params, timeout):
-        """Receive video parameters from main GUI."""
+    def set_video_parameters(self, video_parameters, timeout):
+        """Set video parameters."""
         self.timeout = timeout        
-        self.video_params = video_params
+        self.video_parameters = video_parameters
+            
+    def start_live_view(self, video_parameters, timeout):
+        """Start live view with the video parameters received from the main GUI."""
+        self.set_video_parameters(video_parameters, timeout)
+        self.camera.start_live_video(**self.video_parameters)
         
     def run(self):
-        """Start live view and continuously acquire frames."""
-        self.camera.start_live_video(**self.video_params)
-        self.framerate_signal.emit(self.camera.framerate.magnitude)
-        self.exposure_time_signal.emit(self.camera._get_exposure().magnitude)
-
+        """Continuously acquire frames."""
         while not self.isFinished():
             if self.camera.wait_for_frame(timeout=self.timeout):
+                # capture the latest frame
                 image = self.camera.latest_frame()
+                # send image to the main GUI
                 self.display_signal.emit(image)
 
     
