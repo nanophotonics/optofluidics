@@ -3,9 +3,6 @@
 @author: Ana Andres-Arroyo
 GUI which controls a Thorlabs camera
 """
-# create/update GUI file:
-# pyuic4 CameraGUIdesign.ui -o CameraGUIdesign.py
-
 # documentation:
 # http://instrumental-lib.readthedocs.io/en/latest/uc480-cameras.html
 
@@ -13,7 +10,6 @@ from qtpy import QtCore, QtWidgets, uic
 from scipy.misc import imsave
 import pyqtgraph as pg
 import numpy as np
-from MatplotlibSettings import *
 from nplab.ui.ui_tools import UiTools
 from instrumental import list_instruments, instrument
 
@@ -30,27 +26,19 @@ class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
         # set starting parameters
         self.file_path = ''
         self.ExposureTimeNumberBox.setValue(5)
+        self.FrameRateNumberBox.setValue(20)
       
         # Connect GUI elements
         self.TakeImagePushButton.clicked.connect(self.take_image)
         self.SaveImagePushButton.clicked.connect(self.save_image)
-#        self.ExposureTimeNumberBox.valueChanged.connect(self.take_image)
         self.AutoExposureCheckBox.stateChanged.connect(self.set_auto_exposure)
         self.LiveViewCheckBox.stateChanged.connect(self.live_view)
         
         # initialise empty dictionary for capture and video parameters
         self.capture_parameters = dict()
         self.video_parameters = dict()
-                
-        print list_instruments()
-        self.open_camera()
-        
+                        
         # create live view widget
-#        self.imv = pg.ImageView()        
-#        self.imv.ui.roiBtn.hide()
-#        self.imv.ui.menuBtn.hide()
-#        self.imv.ui.histogram.hide()
-#        self.replace_widget(self.verticalLayout, self.LiveViewWidget, self.imv)
         image_widget = pg.GraphicsLayoutWidget()
         self.replace_widget(self.verticalLayout, self.LiveViewWidget, image_widget)
         view_box = image_widget.addViewBox(row=1,col=1)        
@@ -59,6 +47,9 @@ class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
         view_box.addItem(self.imv)
         view_box.setAspectLocked(True)
 
+        # open camera and take image
+        print list_instruments()
+        self.open_camera()
         self.take_image()
 
     
@@ -66,13 +57,12 @@ class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
         """Connect to a Thorlabs camera.""" 
         self.camera = instrument('uc480')
         print 'Camera connection started.'  
-        self.camera.start_live_video()
+#        self.camera.start_live_video()
 
         self.ROIWidthNumberBox.setValue(self.camera.max_width)
         self.ROIHeightNumberBox.setValue(self.camera.max_height)
         self.CameraWidthLabel.setText(str(self.camera.max_width))
         self.CameraHeightLabel.setText(str(self.camera.max_height))        
-        
         
     def close_camera(self):
         """Close the Thorlabs camera connection.""" 
@@ -80,8 +70,7 @@ class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
         print 'Camera connection closed.'        
     
     def take_image(self):
-        """Grab an image and display it.
-        First check if live view is running and terminate it"""
+        """Grab an image and display it."""
         image = self.grab_image()
         self.display_image(image)
         
@@ -114,10 +103,12 @@ class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
                     'cy':[self.ROICentreYCheckBox, self.ROICentreYNumberBox],
                     }
         
+        # clear all of the old ROI parameters
         for item in ROI_dict.keys():
             if item in parameters_dict.keys():
                 del parameters_dict[item]
 
+        # repopulate ROI parameters with the selected ones
         if self.ROICheckBox.checkState():            
             for item in ROI_dict.keys():
                 if ROI_dict[item][0].checkState():
@@ -154,11 +145,12 @@ class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
     def save_image(self):
         """Save the latest image as a .png file."""
         # make a copy of the image so the saved image is the one that was on the 
-        # screen when the button was pressed, not when the file name was chosen
+        # screen when the save button was pressed, not when the file name was chosen
         image = self.image
         # user input to choose file name
         self.file_path = QtWidgets.QFileDialog.getSaveFileName(self, 'Save image', self.file_path, "PNG files (*.png)")
         # save image
+        # TODO: fix error that appears when the file_path dialog is cancelled and there is no file_path specified
         imsave(self.file_path, np.flip(image, axis=0))
         print "Image saved: " + self.file_path
         
@@ -200,7 +192,6 @@ class ClassCameraGUI(QtWidgets.QMainWindow,UiTools):
             
             # connect signals
             self.LiveView.display_signal.connect(self.display_image)
-            self.LiveView.camera_parameters_signal.connect(self.display_camera_parameters)
             
             # connect buttons and functions            
             self.LiveViewCheckBox.stateChanged.connect(self.LiveView.terminate)
@@ -226,7 +217,6 @@ class LiveViewThread(QtCore.QThread):
     Thread wich allows live view of the camera.
     """
     display_signal = QtCore.Signal(np.ndarray)
-    camera_parameters_signal = QtCore.Signal(dict)
     
     def __init__(self, camera):
         QtCore.QThread.__init__(self)       
