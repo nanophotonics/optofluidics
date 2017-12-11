@@ -15,7 +15,7 @@ int input_res = 4096;
 float input_max = 3.3;
 float input_min = 0;
 
-float read_delay = 37e-6;
+float read_delay = 36e-6;
 bool record_intensity = true;
 
 // get class instances for serial communication with PC
@@ -126,7 +126,7 @@ void on_get_intensity_trace() {
 
   for (int i = 0; i < data_points; i++) {
     curr_sig1 = 0;
-    curr_delay = 0;
+    curr_delay = i*delay_increment;
     
     // set register A of channel 0 of Timer 1 to number of clock periods that correspond to current delay
     RA = read_delay/23.8095e-9;
@@ -153,20 +153,23 @@ void on_get_intensity_trace() {
 
 int delayed_ADC_read() {
 
-  int intensity1_level;
+  int intensity1_level=0;
   uint32_t counter_status; 
 
   REG_PIOB_SODR |= (1<<25);           // emit trigger by set pin 2 HIGH (port B, pin 25)     
   counter_status = REG_TC1_SR0;       // clear status registers by reading them   
   counter_status = REG_TC1_CV0;        
+  
   REG_TC1_CCR0 = 0x5;                 // reset and enable counter of channel 0 of timer 1      
   while ((REG_TC1_SR0 & 0x4) == 0);   // wait until RA compare by checking TC status register
-  ADC->ADC_CR = 0x2;                  // start ADC conversion   
-  while ((ADC->ADC_ISR & 0x80) == 0); // wait until AD conversion of channel 7 finished by checking Interrupts Status Register (ADC_ISC)
-  intensity1_level = ADC->ADC_CDR[7]; //get values from Channel Data Register (ADC_CDR) of channel 7  
+  for (int i = 0; i < 1; i++) {
+    ADC->ADC_CR = 0x2;                  // start ADC conversion   
+    while ((ADC->ADC_ISR & 0x80) == 0); // wait until AD conversion of channel 7 finished by checking Interrupts Status Register (ADC_ISC)
+    intensity1_level += ADC->ADC_CDR[7]; //get values from Channel Data Register (ADC_CDR) of channel 7 
+  } 
   REG_TC1_CCR0 = 0x2;                 // disable counter
   REG_PIOB_CODR |= (1<<25);           // set pin 2 LOW (port B, pin 25)
-  return intensity1_level;  
+  return intensity1_level;    
 }
 
 
@@ -192,7 +195,7 @@ void on_oscilloscope_mode() {
   for (int i = 0; i < data_points; i++) {
     time_delay = clock_counts[i]*23.8095e-9;
     cmd.sendCmdStart(ret_fast_intensity);  
-    cmd.sendCmdBinArg(signal1[i]);
+    cmd.sendCmdBinArg(signal1[i] / (input_res - 1) * (input_max - input_min));
     cmd.sendCmdBinArg(time_delay);
     cmd.sendCmdEnd();
   }  
