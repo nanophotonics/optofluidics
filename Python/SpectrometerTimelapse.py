@@ -104,8 +104,8 @@ class DummySpectrometer():
 # example code:
 if __name__ == "__main__":
     try:
-        spectrometer = DummySpectrometer()
-#        spectrometer = OceanOpticsSpectrometer(0)
+#        spectrometer = DummySpectrometer()
+        spectrometer = OceanOpticsSpectrometer(0)
         timelapse = SpectrometerTimelapse(spectrometer)
         nplab.utils.gui.show_guis([
                     spectrometer, 
