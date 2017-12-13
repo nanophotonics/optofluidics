@@ -162,7 +162,7 @@ int delayed_ADC_read() {
   
   REG_TC1_CCR0 = 0x5;                 // reset and enable counter of channel 0 of timer 1      
   while ((REG_TC1_SR0 & 0x4) == 0);   // wait until RA compare by checking TC status register
-  for (int i = 0; i < 1; i++) {
+  for (int i = 0; i < 20; i++) {		//MESSPUNKTE PRO PULS = 20
     ADC->ADC_CR = 0x2;                  // start ADC conversion   
     while ((ADC->ADC_ISR & 0x80) == 0); // wait until AD conversion of channel 7 finished by checking Interrupts Status Register (ADC_ISC)
     intensity1_level += ADC->ADC_CDR[7]; //get values from Channel Data Register (ADC_CDR) of channel 7 
