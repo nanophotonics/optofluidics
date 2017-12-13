@@ -3,11 +3,13 @@ clear
 clc
 
 %% READING FILES
-folder_path = 'R:\3-Temporary\aa938\';
+% folder_path = 'R:\3-Temporary\aa938\';
+folder_path = 'R:\aa938\NanoPhotonics\Laboratory\';
 [file_names, folder_path, ~] = uigetfile('.csv',...
                                       'Choose file',...
                                       folder_path,...
                                       'MultiSelect','on');
+file_names = cellstr(file_names); % convert to cell array of strings
 %% read data
 data_table = table;
 for i = 1:1:size(file_names,2)

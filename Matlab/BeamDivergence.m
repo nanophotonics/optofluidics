@@ -7,8 +7,8 @@ figures = {};
 % *************************************************************************
 
 % specify default path
-% folder_path = 'R:\aa938\NanoPhotonics\Laboratory\';
-folder_path = 'R:\3-Temporary\aa938\';
+folder_path = 'R:\aa938\NanoPhotonics\Laboratory\';
+% folder_path = 'R:\3-Temporary\aa938\';
 % folder_path = 'R:\3-Temporary\sjd87\';
 % folder_path = 'R:\3-Temporary\pc594\30817\';
 
