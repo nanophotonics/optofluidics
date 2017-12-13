@@ -19,7 +19,7 @@ float read_delay = 36e-6;
 bool record_intensity = true;
 
 // get class instances for serial communication with PC
-CmdMessenger cmd = CmdMessenger(SerialUSB, xmodem);
+CmdMessenger cmd = CmdMessenger(SerialUSB);
 
 // ==========================================================
 // Initialisation of CmdMessenger and definition of commands
