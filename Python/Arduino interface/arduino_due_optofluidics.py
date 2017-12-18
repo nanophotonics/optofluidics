@@ -20,8 +20,10 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
                 ["sweep_delay","iif"], # param: number of data points, averaged data points, delay increment in seconds
                 ["set_delay","f"],
                 ["get_delay","f"],
-                ["get_intensity_trace","iif"],
+                ["get_intensity_trace","iiif"],
                 ["osci_mode","i"],
+                ["set_laser_on","?"],
+                ["get_laser_on","?"],
                 ["ret_string","s"],
                 ["ret_int","i"],
                 ["ret_char","c"],
@@ -73,10 +75,13 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
         self.send("sweep_delay", num_points, num_pulses, time_increment_in_sec)
         self.datafile_group = self.data_file.require_group('delay_traces')
     
-    def pulse_intensity_trace(self, num_points, num_pulses, time_delay_in_sec):
+    def pulse_intensity_trace(self, num_points, num_pulses, points_per_pulse, time_delay_in_sec):
         self.init_scan(num_points)
-        self.send("get_intensity_trace", num_points, num_pulses, time_delay_in_sec)
+        self.send("get_intensity_trace", num_points, num_pulses, points_per_pulse, time_delay_in_sec)
         self.datafile_group = self.data_file.require_group('pulse_intensity_traces')
+        
+    def laser_on(self, status):
+        self.send("set_laser_on",status)
               
 
     def response_to_command(self, cmd_name, msg, message_time):

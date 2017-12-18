@@ -15,8 +15,9 @@ int input_res = 4096;
 float input_max = 3.3;
 float input_min = 0;
 
-float read_delay = 36e-6;
+float read_delay = 38e-6;
 bool record_intensity = true;
+bool laser_is_on = false;
 
 // get class instances for serial communication with PC
 CmdMessenger cmd = CmdMessenger(SerialUSB);
@@ -35,6 +36,8 @@ enum
   get_delay,
   get_intensity_trace,
   oscilloscope_mode,
+  set_laser_on,
+  get_laser_on,
   ret_string,              // returns a string
   ret_int,                 // returns an integer
   ret_char,                // returns a character
@@ -54,6 +57,8 @@ void attachCommands()
   cmd.attach(get_delay, on_get_delay);
   cmd.attach(get_intensity_trace, on_get_intensity_trace);
   cmd.attach(oscilloscope_mode, on_oscilloscope_mode);
+  cmd.attach(set_laser_on, on_set_laser_on);
+  cmd.attach(get_laser_on, on_get_laser_on);
 }
 
 // ==============================
@@ -98,7 +103,7 @@ void on_sweep_delay() {
 //    TC_SetRC(TC1,0, RC);
 
     for (int avg_no = 0; avg_no < num_pulses; avg_no++) {         
-      curr_sig1 += (float(delayed_ADC_read()) / (input_res - 1)) * (input_max - input_min) / num_pulses;
+      curr_sig1 += (float(delayed_ADC_read(1)) / (input_res - 1)) * (input_max - input_min) / num_pulses;
       clock_counts = REG_TC1_CV0;         // read counter (was stopped after ADC conversion finished)
       curr_delay += clock_counts/num_pulses*23.8095e-9;           
 //      while ((REG_TC1_SR0 & 0x10) == 0); // check TC status register for occurance of RC compare
@@ -116,6 +121,7 @@ void on_get_intensity_trace() {
 
   int data_points = cmd.readBinArg<int>();
   int num_pulses = cmd.readBinArg<int>();
+  int points_per_pulse = cmd.readBinArg<int>();
   float delay_increment = cmd.readBinArg<float>();  // in seconds
   
   float curr_sig1;
@@ -136,22 +142,22 @@ void on_get_intensity_trace() {
 //    TC_SetRC(TC1,0, RC);
 
     for (int avg_no = 0; avg_no < num_pulses; avg_no++) {         
-      curr_sig1 += (float(delayed_ADC_read()) / (input_res - 1)) * (input_max - input_min) / num_pulses;
+      curr_sig1 += (float(delayed_ADC_read(points_per_pulse)) / (input_res - 1)) * (input_max - input_min) / num_pulses;
 //      clock_counts = REG_TC1_CV0;         // read counter (was stopped after ADC conversion finished)
 //      curr_delay += clock_counts/avg_points*23.8095e-9;           
 //      while ((REG_TC1_SR0 & 0x10) == 0); // check TC status register for occurance of RC compare
-      delay(4);  
+      delayMicroseconds(100);  
     }    
     // send (averaged) intensity to PC
     cmd.sendCmdStart(ret_fast_intensity);
     cmd.sendCmdBinArg(curr_sig1);
     cmd.sendCmdBinArg(curr_delay);
     cmd.sendCmdEnd();
-    delay(delay_increment*1000);    // wait until next intensity measurement
+    delayMicroseconds(delay_increment*1e6);    // wait until next intensity measurement
   } 
 }
 
-int delayed_ADC_read() {
+int delayed_ADC_read(int num_points) {
 
   int intensity1_level=0;
   uint32_t counter_status; 
@@ -162,7 +168,7 @@ int delayed_ADC_read() {
   
   REG_TC1_CCR0 = 0x5;                 // reset and enable counter of channel 0 of timer 1      
   while ((REG_TC1_SR0 & 0x4) == 0);   // wait until RA compare by checking TC status register
-  for (int i = 0; i < 20; i++) {		//MESSPUNKTE PRO PULS = 20
+  for (int i = 0; i < num_points; i++) {		//MESSPUNKTE PRO PULS = 20
     ADC->ADC_CR = 0x2;                  // start ADC conversion   
     while ((ADC->ADC_ISR & 0x80) == 0); // wait until AD conversion of channel 7 finished by checking Interrupts Status Register (ADC_ISC)
     intensity1_level += ADC->ADC_CDR[7]; //get values from Channel Data Register (ADC_CDR) of channel 7 
@@ -201,6 +207,26 @@ void on_oscilloscope_mode() {
   }  
 }
 
+void on_set_laser_on() {
+  laser_is_on = cmd.readBinArg<bool>();
+}
+void on_get_laser_on() {
+  cmd.sendBinCmd(set_laser_on, laser_is_on);
+}
+
+
+
+void const_laser_trigger() {  
+//  digitalWrite(2,HIGH);
+  REG_PIOB_SODR |= (1<<25);           // emit trigger by set pin 2 HIGH (port B, pin 25)
+  delayMicroseconds(70);
+//  digitalWrite(2,LOW);
+  REG_PIOB_CODR |= (1<<25);           // set pin 2 LOW (port B, pin 25)  
+//  cmd.sendCmd(ret_string, "laser trigger");
+}
+
+
+
 
 void setup()
 {
@@ -236,12 +262,16 @@ void setup()
   
   SerialUSB.begin(115200); // initialise USB port, actual baud rate irrelevant as always USB 2.0 speed
   attachCommands();       // attach CmdMessenger commands
+  laser_is_on = false;
 }
 
 void loop()
 {
   // process incoming serial data from PC and perform callbacks
   cmd.feedinSerialData();
+  if(laser_is_on) {
+    const_laser_trigger();
+  }
 }
 
 
