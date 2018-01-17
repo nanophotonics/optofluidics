@@ -25,3 +25,4 @@ matplotlib.rcParams.update({'ytick.major.width': 2})
 
 matplotlib.rcParams.update({'grid.linewidth': 1.5})
 #matplotlib.rcParams.update({'legend.frameon': False})
+#matplotlib.rcParams.update({'legend.numpoints': 1}) # doesn't work

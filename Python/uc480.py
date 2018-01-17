@@ -5,6 +5,7 @@ GUI which controls a Thorlabs camera
 """
 # documentation:
 # http://instrumental-lib.readthedocs.io/en/latest/uc480-cameras.html
+# https://github.com/blink1073/tifffile
 
 from qtpy import QtCore, QtWidgets, uic
 from scipy.misc import imsave
@@ -24,10 +25,17 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         ui_file = 'uc480_gui_design.ui'
         uic.loadUi(ui_file, self)
         
+        # Maximise GUI window
+#        self.showMaximized()
+        
+        # Set initial tabs to display
+        self.SettingsTabWidget.setCurrentIndex(0) 
+        
+        # Set initial splitter sizes
+        self.splitter.setSizes([50,60000])
+        
         # set starting parameters
         self.file_path = ''
-        self.ExposureTimeNumberBox.setValue(5)
-        self.FrameRateNumberBox.setValue(20)
       
         # Connect GUI elements
         self.TakeImagePushButton.clicked.connect(self.take_image)
@@ -47,6 +55,11 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         self.imv.setOpts(axisOrder='row-major')
         view_box.addItem(self.imv)
         view_box.setAspectLocked(True)
+        
+        self.ImageFormatComboBox.addItem('png',0)
+        self.ImageFormatComboBox.addItem('tiff',0)
+        self.ImageFormatComboBox.addItem('jpg',0)
+        self.ImageFormatComboBox.setCurrentIndex(0)
 
         # open camera and take image
         print list_instruments()
@@ -62,7 +75,26 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         self.ROIWidthNumberBox.setValue(self.camera.max_width)
         self.ROIHeightNumberBox.setValue(self.camera.max_height)
         self.CameraWidthLabel.setText(str(self.camera.max_width))
-        self.CameraHeightLabel.setText(str(self.camera.max_height))        
+        self.CameraHeightLabel.setText(str(self.camera.max_height)) 
+                
+        self.FramerateNumberBox.setValue(20)
+        
+        self.GainNumberBox.setValue(0)
+        self.MinGainLabel.setText('0')
+        self.MaxGainLabel.setText('100')
+        
+        self.MasterGainNumberBox.setValue(1)
+        self.MinMasterGainLabel.setText('1.0')
+        self.MaxMasterGainLabel.setText(str(self.camera.max_master_gain))
+        
+        self.MinBlacklevelLabel.setText(str(self.camera._blacklevel_offset_min))
+        self.MaxBlacklevelLabel.setText(str(self.camera._blacklevel_offset_max))
+        self.IncBlacklevelLabel.setText(str(self.camera._blacklevel_offset_inc))
+        
+        self.ExposureTimeNumberBox.setValue(15)
+        self.MinExposureLabel.setText(str(0.00898))
+        self.MaxExposureLabel.setText('~20')
+        self.IncExposureLabel.setText(str(round(self.camera._get_exposure_inc().magnitude,5)))
         
     def close_camera(self):
         """Close the Thorlabs camera connection.""" 
@@ -80,6 +112,39 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         self.image = image
         # set levels to [0,255] because otherwise it autoscales when plotting
         self.imv.setImage(image, autoDownsample=True, levels=[0,255])   
+        
+    def get_camera_parameters(self):
+        """Get camera parameters."""
+        camera_parameters = dict()
+        camera_parameters['framerate'] = self.camera.framerate
+        camera_parameters['exposure_time'] = self.camera._get_exposure()
+        camera_parameters['width'] = self.camera.width
+        camera_parameters['max_width'] = self.camera.max_width
+        camera_parameters['height'] = self.camera.height
+        camera_parameters['max_height'] = self.camera.max_height
+#        camera_parameters['gain'] = self.camera._get_gain
+        return camera_parameters
+    
+    def display_camera_parameters(self, camera_parameters):
+        """Display the current camera parameters on the GUI."""
+#        self.CurrentFramerateLabel.setText(str(round(camera_parameters['framerate'].magnitude,3)))
+        self.CurrentFramerateLabel.setText(str(camera_parameters['framerate'].magnitude))
+#        self.CurrentExposureLabel.setText(str(round(camera_parameters['exposure_time'].magnitude,3)))
+        self.CurrentExposureLabel.setText(str(camera_parameters['exposure_time'].magnitude))
+        self.CurrentWidthLabel.setText(str(camera_parameters['width']))
+        self.CurrentHeightLabel.setText(str(camera_parameters['height']))
+        self.MaxWidthLabel.setText(str(camera_parameters['max_width']))
+        self.MaxHeightLabel.setText(str(camera_parameters['max_height']))    
+        
+        self.CurrentMasterGainLabel.setText(str(self.camera.master_gain))
+        self.CurrentGainBoostLabel.setText(str(self.camera.gain_boost))    
+        
+        self.CurrentBlacklevelLabel.setText(str(self.camera.blacklevel_offset))
+        self.CurrentAutoBlacklevelLabel.setText(str(self.camera.auto_blacklevel))
+        
+        self.CurrentAutoExposureLabel.setText(str(self.camera.auto_exposure))
+        self.CurrentAutoSensorExposureLabel.setText(str(self.camera.auto_sensor_exposure))
+        self.CurrentAutoFramerateLabel.setText(str(self.camera.auto_framerate))
             
     def set_capture_parameters(self):
         """Read capture parameters from the GUI."""
@@ -87,6 +152,25 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         self.capture_parameters['n_frames'] = int(self.FramesNumberBox.value())
         self.capture_parameters = self.set_exposure_time(self.capture_parameters)
         self.capture_parameters = self.set_ROI(self.capture_parameters)
+        
+        self.camera.set_auto_exposure(self.AutoExposureCheckBox.checkState()) # doesn't seem to do anything
+        self.camera.auto_exposure = self.AutoExposureCheckBox.checkState() # doesn't seem to do anything
+#        self.camera.auto_framerate = self.AutoFramerateCheckBox.checkState() # errors
+#        self.camera.auto_sensor_exposure = self.AutoSensorExposureCheckBox.checkState() # errors, not supported yet        
+        
+        self.camera.auto_blacklevel = self.AutoBlacklevelCheckBox.checkState()
+        self.camera.blacklevel_offset = int(self.BlacklevelNumberBox.value())         
+
+        self.camera.gain_boost = self.GainBoostCheckBox.checkState()
+#        self.camera.master_gain = self.MasterGainNumberBox.value() # seems to be overriden by the gain in the capture/video parameters
+        self.camera._set_gain(self.GainNumberBox.value()) # doesn't seem to do anything
+        self.capture_parameters['gain'] = float(self.GainNumberBox.value())
+        
+        self.capture_parameters['vbin'] = int(self.VBinNumberBox.value())
+        self.capture_parameters['hbin'] = int(self.HBinNumberBox.value())
+        self.capture_parameters['vsub'] = int(self.VSubNumberBox.value())
+        self.capture_parameters['hsub'] = int(self.HSubNumberBox.value())
+        
         print "Capture parameters:"
         print self.capture_parameters
     
@@ -118,12 +202,12 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         
     def set_exposure_time(self, parameters_dict):
         """Read exposure time from the GUI."""
-        if self.AutoExposureCheckBox.checkState():
-            if 'exposure_time' in parameters_dict.keys():
-                del parameters_dict['exposure_time']        
-        else:
-            exposure_time = "{} millisecond".format(str(self.ExposureTimeNumberBox.value()))
-            parameters_dict['exposure_time'] = exposure_time
+#        if self.AutoExposureCheckBox.checkState():
+#            if 'exposure_time' in parameters_dict.keys():
+#                del parameters_dict['exposure_time']        
+#        else:
+        exposure_time = "{} millisecond".format(str(self.ExposureTimeNumberBox.value()))
+        parameters_dict['exposure_time'] = exposure_time
         return parameters_dict
             
     def set_auto_exposure(self):
@@ -136,7 +220,7 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         self.set_capture_parameters() # populate self.capture_parameters
         # grab the image
         image = self.camera.grab_image(**self.capture_parameters)
-        print 'Image(s) grabbed.'
+        print 'Image(s) grabbed.\n'
         # get camera parameters and display them on the GUI
         camera_parameters = self.get_camera_parameters()
         self.display_camera_parameters(camera_parameters)        
@@ -148,40 +232,26 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         # screen when the save button was pressed, not when the file name was chosen
         image = self.image
         # user input to choose file name
-        self.file_path = QtWidgets.QFileDialog.getSaveFileName(self, 'Save image', self.file_path, "PNG files (*.png)")
-        # save image
-        # TODO: fix error that appears when the file_path dialog is cancelled and there is no file_path specified
-        imsave(self.file_path, np.flip(image, axis=0))
-        print "Image saved: " + self.file_path
+#        self.file_path = QtWidgets.QFileDialog.getSaveFileName(self, 'Save image', self.file_path, "PNG files (*.png)")
+        self.file_path = QtWidgets.QFileDialog.getSaveFileName(self, 'Save image', 
+                                                               self.file_path, 
+                                                               "(*."+self.ImageFormatComboBox.currentText()+")")
+        if len(self.file_path):        
+            # save image            
+            imsave(self.file_path, np.flip(image, axis=0))
+            print "Image saved: " + self.file_path
+        else:
+            print "WARNING: Image wasn't saved.\n" 
         
     def set_video_parameters(self):
         """Read video parameters from the GUI."""
         self.timeout = "{} millisecond".format(str(self.TimeoutNumberBox.value()))
-        self.video_parameters['framerate'] = "{} hertz".format(str(self.FrameRateNumberBox.value()))
+        self.video_parameters['framerate'] = "{} hertz".format(str(self.FramerateNumberBox.value()))
         self.video_parameters = self.set_exposure_time(self.video_parameters)
         self.video_parameters = self.set_ROI(self.video_parameters)
+        self.video_parameters['gain'] = float(self.GainNumberBox.value())
         print "Video parameters:"
         print self.video_parameters
-
-    def get_camera_parameters(self):
-        """Get camera parameters."""
-        camera_parameters = dict()
-        camera_parameters['framerate'] = self.camera.framerate
-        camera_parameters['exposure_time'] = self.camera._get_exposure()
-        camera_parameters['width'] = self.camera.width
-        camera_parameters['max_width'] = self.camera.max_width
-        camera_parameters['height'] = self.camera.height
-        camera_parameters['max_height'] = self.camera.max_height
-        return camera_parameters
-    
-    def display_camera_parameters(self, camera_parameters):
-        """Display the current camera parameters on the GUI."""
-        self.CurrentFrameRateLabel.setText(str(round(camera_parameters['framerate'].magnitude,3)))
-        self.CurrentExposureLabel.setText(str(round(camera_parameters['exposure_time'].magnitude,3)))
-        self.CurrentWidthLabel.setText(str(camera_parameters['width']))
-        self.CurrentHeightLabel.setText(str(camera_parameters['height']))
-        self.MaxWidthLabel.setText(str(camera_parameters['max_width']))
-        self.MaxHeightLabel.setText(str(camera_parameters['max_height']))        
         
     def live_view(self):
         """Start/stop the live view."""
