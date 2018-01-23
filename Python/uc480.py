@@ -7,15 +7,17 @@ GUI which controls a Thorlabs camera
 # http://instrumental-lib.readthedocs.io/en/latest/uc480-cameras.html
 # https://github.com/blink1073/tifffile
 
+import datetime
 from qtpy import QtCore, QtWidgets, uic
 from scipy.misc import imsave
 import pyqtgraph as pg
 import numpy as np
+import nplab
 from nplab.ui.ui_tools import UiTools
 from instrumental import list_instruments, instrument
 # make sure you've got the latest version of both instrumental and nicelib
 
-class uc480(QtWidgets.QMainWindow,UiTools):
+class uc480(QtWidgets.QMainWindow, UiTools):
     """
     GUI which controls a Thorlabs camera.
     """
@@ -36,16 +38,21 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         
         # set starting parameters
         self.file_path = ''
+        self.ExposureTimeNumberBox.setValue(3)
+        self.FramerateNumberBox.setValue(20)
+        self.GainNumberBox.setValue(0)        
       
         # Connect GUI elements
         self.TakeImagePushButton.clicked.connect(self.take_image)
         self.SaveImagePushButton.clicked.connect(self.save_image)
-        self.AutoExposureCheckBox.stateChanged.connect(self.set_auto_exposure)
+        self.NewFilePushButton.clicked.connect(self.new_hdf5_file)
         self.LiveViewCheckBox.stateChanged.connect(self.live_view)
         
         # initialise empty dictionary for capture and video parameters
         self.capture_parameters = dict()
         self.video_parameters = dict()
+        self.camera_parameters = dict()
+        self.attributes = dict()
                         
         # create live view widget
         image_widget = pg.GraphicsLayoutWidget()
@@ -56,10 +63,15 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         view_box.addItem(self.imv)
         view_box.setAspectLocked(True)
         
+        self.ImageFormatComboBox.addItem('hdf5',0)
         self.ImageFormatComboBox.addItem('png',0)
         self.ImageFormatComboBox.addItem('tiff',0)
         self.ImageFormatComboBox.addItem('jpg',0)
-        self.ImageFormatComboBox.setCurrentIndex(0)
+        self.ImageFormatComboBox.setCurrentIndex(0)    
+
+        # show hdf5 browser gui
+        df = nplab.current_datafile()
+        df.show_gui(blocking=False)
 
         # open camera and take image
         print list_instruments()
@@ -75,26 +87,8 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         self.ROIWidthNumberBox.setValue(self.camera.max_width)
         self.ROIHeightNumberBox.setValue(self.camera.max_height)
         self.CameraWidthLabel.setText(str(self.camera.max_width))
-        self.CameraHeightLabel.setText(str(self.camera.max_height)) 
-                
-        self.FramerateNumberBox.setValue(20)
-        
-        self.GainNumberBox.setValue(0)
-        self.MinGainLabel.setText('0')
-        self.MaxGainLabel.setText('100')
-        
-        self.MasterGainNumberBox.setValue(1)
-        self.MinMasterGainLabel.setText('1.0')
-        self.MaxMasterGainLabel.setText(str(self.camera.max_master_gain))
-        
-        self.MinBlacklevelLabel.setText(str(self.camera._blacklevel_offset_min))
-        self.MaxBlacklevelLabel.setText(str(self.camera._blacklevel_offset_max))
-        self.IncBlacklevelLabel.setText(str(self.camera._blacklevel_offset_inc))
-        
-        self.ExposureTimeNumberBox.setValue(15)
-        self.MinExposureLabel.setText(str(0.00898))
-        self.MaxExposureLabel.setText('~20')
-        self.IncExposureLabel.setText(str(round(self.camera._get_exposure_inc().magnitude,5)))
+        self.CameraHeightLabel.setText(str(self.camera.max_height))                 
+
         
     def close_camera(self):
         """Close the Thorlabs camera connection.""" 
@@ -121,30 +115,27 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         camera_parameters['width'] = self.camera.width
         camera_parameters['max_width'] = self.camera.max_width
         camera_parameters['height'] = self.camera.height
-        camera_parameters['max_height'] = self.camera.max_height
-#        camera_parameters['gain'] = self.camera._get_gain
+        camera_parameters['max_height'] = self.camera.max_height        
+        camera_parameters['master_gain'] = self.camera.master_gain
+        camera_parameters['gain_boost'] = self.camera.gain_boost
+        camera_parameters['auto_blacklevel'] = self.camera.auto_blacklevel
+        camera_parameters['blacklevel_offset'] = self.camera.blacklevel_offset
+        
         return camera_parameters
     
     def display_camera_parameters(self, camera_parameters):
         """Display the current camera parameters on the GUI."""
-#        self.CurrentFramerateLabel.setText(str(round(camera_parameters['framerate'].magnitude,3)))
-        self.CurrentFramerateLabel.setText(str(camera_parameters['framerate'].magnitude))
-#        self.CurrentExposureLabel.setText(str(round(camera_parameters['exposure_time'].magnitude,3)))
-        self.CurrentExposureLabel.setText(str(camera_parameters['exposure_time'].magnitude))
+        self.CurrentFramerateLabel.setText(str(round(camera_parameters['framerate'].magnitude,5)))
+        self.CurrentExposureLabel.setText(str(round(camera_parameters['exposure_time'].magnitude,5)))
         self.CurrentWidthLabel.setText(str(camera_parameters['width']))
         self.CurrentHeightLabel.setText(str(camera_parameters['height']))
         self.MaxWidthLabel.setText(str(camera_parameters['max_width']))
-        self.MaxHeightLabel.setText(str(camera_parameters['max_height']))    
+        self.MaxHeightLabel.setText(str(camera_parameters['max_height']))  
+        self.CurrentMasterGainLabel.setText(str(camera_parameters['master_gain']))
+        self.CurrentGainBoostLabel.setText(str(camera_parameters['gain_boost']))
+        self.CurrentAutoBlacklevelLabel.setText(str(camera_parameters['auto_blacklevel']))
+        self.CurrentBlacklevelLabel.setText(str(camera_parameters['blacklevel_offset']))
         
-        self.CurrentMasterGainLabel.setText(str(self.camera.master_gain))
-        self.CurrentGainBoostLabel.setText(str(self.camera.gain_boost))    
-        
-        self.CurrentBlacklevelLabel.setText(str(self.camera.blacklevel_offset))
-        self.CurrentAutoBlacklevelLabel.setText(str(self.camera.auto_blacklevel))
-        
-        self.CurrentAutoExposureLabel.setText(str(self.camera.auto_exposure))
-        self.CurrentAutoSensorExposureLabel.setText(str(self.camera.auto_sensor_exposure))
-        self.CurrentAutoFramerateLabel.setText(str(self.camera.auto_framerate))
             
     def set_capture_parameters(self):
         """Read capture parameters from the GUI."""
@@ -152,27 +143,20 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         self.capture_parameters['n_frames'] = int(self.FramesNumberBox.value())
         self.capture_parameters = self.set_exposure_time(self.capture_parameters)
         self.capture_parameters = self.set_ROI(self.capture_parameters)
-        
-        self.camera.set_auto_exposure(self.AutoExposureCheckBox.checkState()) # doesn't seem to do anything
-        self.camera.auto_exposure = self.AutoExposureCheckBox.checkState() # doesn't seem to do anything
-#        self.camera.auto_framerate = self.AutoFramerateCheckBox.checkState() # errors
-#        self.camera.auto_sensor_exposure = self.AutoSensorExposureCheckBox.checkState() # errors, not supported yet        
-        
-        self.camera.auto_blacklevel = self.AutoBlacklevelCheckBox.checkState()
-        self.camera.blacklevel_offset = int(self.BlacklevelNumberBox.value())         
-
-        self.camera.gain_boost = self.GainBoostCheckBox.checkState()
-#        self.camera.master_gain = self.MasterGainNumberBox.value() # seems to be overriden by the gain in the capture/video parameters
-        self.camera._set_gain(self.GainNumberBox.value()) # doesn't seem to do anything
         self.capture_parameters['gain'] = float(self.GainNumberBox.value())
-        
         self.capture_parameters['vbin'] = int(self.VBinNumberBox.value())
         self.capture_parameters['hbin'] = int(self.HBinNumberBox.value())
         self.capture_parameters['vsub'] = int(self.VSubNumberBox.value())
         self.capture_parameters['hsub'] = int(self.HSubNumberBox.value())
-        
-        print "Capture parameters:"
-        print self.capture_parameters
+        self.set_camera_properties()        
+#        print "Capture parameters:"
+#        print self.capture_parameters
+    
+    def set_camera_properties(self):
+        """Read capture parameters from the GUI and set the corresponding camera properties."""
+        self.camera.auto_blacklevel = self.AutoBlacklevelCheckBox.checkState()
+        self.camera.blacklevel_offset = int(self.BlacklevelNumberBox.value())         
+        self.camera.gain_boost = self.GainBoostCheckBox.checkState()
     
     def set_ROI(self, parameters_dict):
         """Read ROI coordinates from the GUI."""
@@ -202,46 +186,73 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         
     def set_exposure_time(self, parameters_dict):
         """Read exposure time from the GUI."""
-#        if self.AutoExposureCheckBox.checkState():
-#            if 'exposure_time' in parameters_dict.keys():
-#                del parameters_dict['exposure_time']        
-#        else:
         exposure_time = "{} millisecond".format(str(self.ExposureTimeNumberBox.value()))
         parameters_dict['exposure_time'] = exposure_time
-        return parameters_dict
-            
-    def set_auto_exposure(self):
-        """Enable or disable the auto exposure shutter."""
-        self.camera.set_auto_exposure(self.AutoExposureCheckBox.checkState())
+        return parameters_dict            
         
     def grab_image(self):
         """Grab an image with the camera."""
         # set the desired capture parameters
         self.set_capture_parameters() # populate self.capture_parameters
+        # get the capture_timestamp
+        # insert a T to match the creation_timestamp formatting
+        self.attributes['capture_timestamp'] = str(datetime.datetime.now()).replace(' ', 'T')
         # grab the image
         image = self.camera.grab_image(**self.capture_parameters)
-        print 'Image(s) grabbed.\n'
+        print 'Image grabbed.'
         # get camera parameters and display them on the GUI
-        camera_parameters = self.get_camera_parameters()
-        self.display_camera_parameters(camera_parameters)        
+        self.camera_parameters = self.get_camera_parameters()
+        # update the attributes dictionary
+        self.attributes.update(self.capture_parameters)
+        self.attributes.update(self.camera_parameters)
+        self.display_camera_parameters(self.camera_parameters)        
         return image
         
+    def get_info(self):
+        """Get info from the GUI."""
+        info = dict()
+        info['wavelength'] = self.WavelengthLineEdit.text()
+        info['power'] = self.PowerLineEdit.text()
+        info['sample'] = self.SampleLineEdit.text()
+        info['info'] = self.InfoLineEdit.text()
+        return info
+        
     def save_image(self):
-        """Save the latest image as a .png file."""
+        """Save the latest image."""
         # make a copy of the image so the saved image is the one that was on the 
         # screen when the save button was pressed, not when the file name was chosen
         image = self.image
-        # user input to choose file name
-#        self.file_path = QtWidgets.QFileDialog.getSaveFileName(self, 'Save image', self.file_path, "PNG files (*.png)")
-        self.file_path = QtWidgets.QFileDialog.getSaveFileName(self, 'Save image', 
-                                                               self.file_path, 
-                                                               "(*."+self.ImageFormatComboBox.currentText()+")")
-        if len(self.file_path):        
-            # save image            
-            imsave(self.file_path, np.flip(image, axis=0))
-            print "Image saved: " + self.file_path
+        image_format = self.ImageFormatComboBox.currentText()
+        
+        if image_format == 'hdf5':
+            # update the attributes dictionary
+            self.attributes.update(self.get_info())
+            # get the datafile
+            df = nplab.current_datafile()
+            # write data in the "images" group within the datafile
+            dg = df.require_group("images")
+            # write data to the file
+            dg.create_dataset("image_%d", data=image, attrs=self.attributes)
+            dg.file.flush()
+            print "Image saved to the hdf5 file."
+            
         else:
-            print "WARNING: Image wasn't saved.\n" 
+            # user input to choose file name
+            self.file_path = QtWidgets.QFileDialog.getSaveFileName(self, 'Save image', 
+                                                                   self.file_path, 
+                                                                   "(*."+self.ImageFormatComboBox.currentText()+")")
+            if len(self.file_path):        
+                # save image            
+                imsave(self.file_path, np.flip(image, axis=0))
+                print "Image saved: " + self.file_path + "\n"
+            else:
+                print "WARNING: Image wasn't saved.\n" 
+
+        
+    def new_hdf5_file(self):
+        df = nplab.current_datafile()
+        df.close()
+        df = nplab.current_datafile()
         
     def set_video_parameters(self):
         """Read video parameters from the GUI."""
@@ -250,8 +261,13 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         self.video_parameters = self.set_exposure_time(self.video_parameters)
         self.video_parameters = self.set_ROI(self.video_parameters)
         self.video_parameters['gain'] = float(self.GainNumberBox.value())
-        print "Video parameters:"
-        print self.video_parameters
+        self.video_parameters['vbin'] = int(self.VBinNumberBox.value())
+        self.video_parameters['hbin'] = int(self.HBinNumberBox.value())
+        self.video_parameters['vsub'] = int(self.VSubNumberBox.value())
+        self.video_parameters['hsub'] = int(self.HSubNumberBox.value())
+        self.set_camera_properties()        
+#        print "Video parameters:"
+#        print self.video_parameters
         
     def live_view(self):
         """Start/stop the live view."""
@@ -272,6 +288,9 @@ class uc480(QtWidgets.QMainWindow,UiTools):
             print "Starting live view."
             self.LiveView.start_live_view(self.video_parameters, self.timeout)
             camera_parameters = self.get_camera_parameters()
+            self.LiveView.attributes.update(self.video_parameters)
+            self.LiveView.attributes.update(self.camera_parameters)
+            self.LiveView.attributes.update(self.get_info())
             self.display_camera_parameters(camera_parameters)
             self.LiveView.start()
             
@@ -280,6 +299,9 @@ class uc480(QtWidgets.QMainWindow,UiTools):
         print "Terminated live view."
         self.LiveViewCheckBox.setChecked(False)
         self.TakeImagePushButton.setEnabled(True)
+        # take a new image to update the capture_timestamp
+        self.take_image()
+        print 'new image'
             
         
 class LiveViewThread(QtCore.QThread):
@@ -290,7 +312,8 @@ class LiveViewThread(QtCore.QThread):
     
     def __init__(self, camera):
         QtCore.QThread.__init__(self)       
-        self.camera = camera                
+        self.camera = camera
+        self.attributes = dict()               
         
     def __del__(self):
         self.wait()
@@ -304,19 +327,36 @@ class LiveViewThread(QtCore.QThread):
         """Start live view with the video parameters received from the main GUI."""
         self.set_video_parameters(video_parameters, timeout)
         self.camera.start_live_video(**self.video_parameters)
+        # get the datafile
+        df = nplab.current_datafile()
+        # write data in the "videos" group within the datafile
+        dg = df.require_group("videos")
+        # create a new unique group for this video
+        self.datagroup = dg.require_group("video_%d")
         
     def run(self):
         """Continuously acquire frames."""
         while not self.isFinished():
             if self.camera.wait_for_frame(timeout=self.timeout):
+                # get the capture_timestamp
+                # insert a T to match the creation_timestamp formatting
+                self.attributes['capture_timestamp'] = str(datetime.datetime.now()).replace(' ', 'T')
                 # capture the latest frame
                 image = self.camera.latest_frame()
+                self.save_frame(image)
                 # send image to the main GUI
                 self.display_signal.emit(image)
+        
+    def save_frame(self, image):
+        """Save the frame to the hdf5 file."""
+        # write data to the file
+        self.datagroup.create_dataset("image_%d", data=image, attrs=self.attributes)
+        self.datagroup.file.flush()       
+#        print "Image saved to the hdf5 file."
 
     
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
-    gui = uc480()
-    gui.show()
-    gui.activateWindow()
+    camera = uc480()
+    camera.show()
+    camera.activateWindow()
