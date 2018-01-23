@@ -47,7 +47,8 @@ class SolsTiS(QtCore.QObject): #instrument.instrument):
         self.socket.settimeout(TIMEOUT)
         self.socket.connect(address)
         #self.computerIP = socket.gethostbyname(socket.gethostname()) # if connected to one network
-        self.computerIP = '192.168.1.100' # if connected to several networks
+#        self.computerIP = '192.168.1.100' # if connected to several networks
+        self.computerIP = '192.168.1.1' # if connected to several networks
         print self.computerIP
         self.verbosity = verbosity
         self.laser_status = {}
@@ -191,7 +192,7 @@ class SolsTiS(QtCore.QObject): #instrument.instrument):
         self.send_command("poll_wave_m")
 
         if self.message_in_history[-1]['message']['parameters']['status'][0] == 0:
-            self.laser_status['wave_lock_status'] = self.message_in_history[-1]['message']['parameters']['lock_status']
+            self.laser_status['wave_lock'] = self.message_in_history[-1]['message']['parameters']['c']
 
     def cavity_lock(self, val):
         if val not in ['off', 'on']:
@@ -404,7 +405,8 @@ class SolsTiSStatusThread(QtCore.QThread):
 
 
 def test_all():
-    laser = SolsTiS(('192.168.1.222', 39933))
+#    laser = SolsTiS(('192.168.1.222', 39933))
+    laser = SolsTiS(('192.168.1.120', 39933))
     print laser.laser_status
 
     print laser.ping('CheckIt')
@@ -434,7 +436,8 @@ def test_GUI():
     from PyQt4 import QtGui
     import sys
 
-    laser = SolsTiS(('192.168.1.222', 39933))
+#    laser = SolsTiS(('192.168.1.222', 39933))
+    laser = SolsTiS(('192.168.1.1', 39933))
 
     app = QtGui.QApplication([])
     ui = laser.get_qt_ui()
@@ -456,7 +459,8 @@ def download_logs():
     # import numpy as np
     from datetime import date, timedelta
 
-    url_name = 'http://172.24.37.153/FS/FLASH0/M_Squared/Logs/log_%d_%d_%d_%d.txt'
+#    url_name = 'http://172.24.37.153/FS/FLASH0/M_Squared/Logs/log_%d_%d_%d_%d.txt'
+    url_name = 'http://172.24.60.15/FS/FLASH0/M_Squared/Logs/log_%d_%d_%d_%d.txt'
 
     # nums1 = [153, 222]
     # days = np.linspace(1, 32) #[1,2,3,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29]

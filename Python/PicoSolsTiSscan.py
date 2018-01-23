@@ -33,6 +33,7 @@ if __name__ == "__main__":
     
     """Instantiate the laser object"""
     laser = SolsTiS.SolsTiS(('192.168.1.222', 39933))
+#    SolsTiS.test_GUI() # needs to be threaded
     
     """Make sure all the wavelength locking mechanisms are off"""
     laser.cavity_lock('off')
@@ -106,7 +107,7 @@ if __name__ == "__main__":
     
     """Specify the wavelength parameters in nm"""
     wavelength_start = 725.0
-    wavelength_end = 975.0
+    wavelength_end = 735.0
     wavelength_step = 5.0    
     wavelength_precision = 0.001 
     wavelength_accuracy = 2.0
@@ -331,11 +332,11 @@ if __name__ == "__main__":
     plt.tick_params(axis='both', which='major', 
                     length = 20, width = 2, labelsize = plot_font_size)    
     plt.show()
-    figManager = plt.get_current_fig_manager()
-    figManager.window.showMaximized()
+#    figManager = plt.get_current_fig_manager()
+#    figManager.window.showMaximized()
         
     """Write data to files"""
-    save_data = True
+    save_data = False
     
     if save_data:
         directory = 'R:\\3-Temporary\\aa938\\'
