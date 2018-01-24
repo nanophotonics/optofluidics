@@ -45,9 +45,10 @@ class SolsTiS(QtCore.QObject): #instrument.instrument):
         #self.id = idn
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(TIMEOUT)
+        print address
         self.socket.connect(address)
-        #self.computerIP = socket.gethostbyname(socket.gethostname()) # if connected to one network
-        self.computerIP = '192.168.1.100' # if connected to several networks
+        self.computerIP = socket.gethostbyname(socket.gethostname()) # if connected to one network
+#        self.computerIP = '192.168.1.120' # if connected to several networks
         print self.computerIP
         self.verbosity = verbosity
         self.laser_status = {}
@@ -404,7 +405,7 @@ class SolsTiSStatusThread(QtCore.QThread):
 
 
 def test_all():
-    laser = SolsTiS(('192.168.1.222', 39933))
+    laser = SolsTiS(('192.168.1.120', 39933))
     print laser.laser_status
 
     print laser.ping('CheckIt')
@@ -456,7 +457,7 @@ def download_logs():
     # import numpy as np
     from datetime import date, timedelta
 
-    url_name = 'http://172.24.37.153/FS/FLASH0/M_Squared/Logs/log_%d_%d_%d_%d.txt'
+    url_name = 'http://172.24.60.15/FS/FLASH0/M_Squared/Logs/log_%d_%d_%d_%d.txt'
 
     # nums1 = [153, 222]
     # days = np.linspace(1, 32) #[1,2,3,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29]

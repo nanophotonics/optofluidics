@@ -13,6 +13,8 @@ import wlm
 import time
 from nplab.instrument.stage import PyAPT
 from nplab.instrument.camera import uc480
+import pandas as pd
+import numpy as np
 
 
 
@@ -24,9 +26,14 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         uic.loadUi(ui_file, self)
         
         # connect gui buttons
-        self.SetWavelengthPushButton.clicked.connect(self.set_laser_wavelength)
+        self.SetWavelengthPushButton.clicked.connect(self.button_set_laser_wavelength)
+        self.ReadWavelengthPushButton.clicked.connect(self.read_laser_wavelength)        
         self.ReadPowerPushButton.clicked.connect(self.read_power)
-        self.SetWaveplateAnglePushButton.clicked.connect(self.set_waveplate_angle)
+        self.SetWaveplateAnglePushButton.clicked.connect(self.button_set_waveplate_angle)
+        self.ReadWaveplateAnglePushButton.clicked.connect(self.read_waveplate_angle)
+        self.WavelengthSweepPushButton.clicked.connect(self.button_wavelength_sweep)
+        self.WaveplateAngleSweepPushButton.clicked.connect(self.button_waveplate_sweep)
+        
         
         # set up waveplate
         print "Connecting to waveplate..."
@@ -39,7 +46,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.power_meter.system.beeper.immediate()
         
         # set up wavemeter
-        self.wavemeter = wlm.Wavemeter()
+        self.wavemeter = wlm.Wavemeter(verbosity=True)
         self.wavemeter.active = 1
         time.sleep(1)
         
@@ -57,11 +64,21 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         waveplate_angle = self.read_waveplate_angle()
         self.WaveplateAngleDoubleSpinBox.setValue(waveplate_angle)
         
+        # set gui parameters
+        self.min_angle_step = 0.01
+        self.min_wavelength_step = 0.01
         
-    
-    def set_laser_wavelength(self):
-        self.wavelength = self.WavelengthDoubleSpinBox.value()
-        self.read_laser_wavelength()
+        
+    def button_set_laser_wavelength(self):
+        wavelength = self.WavelengthDoubleSpinBox.value()
+        self.set_laser_wavelength(wavelength)
+        self.read_power()
+        
+    def set_laser_wavelength(self, wavelength = 800):
+        # TODO: tell laser to go to wavelength
+        print wavelength
+        wavelength = self.read_laser_wavelength()
+        return wavelength
         
     def read_laser_wavelength(self):
         wavelength = self.wavemeter.wavelength # get wavelength from power meter
@@ -83,22 +100,80 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         powermeter_wavelength = self.power_meter.sense.correction.wavelength # read powermeter wavelength
         self.PowermeterWavelengthLabel.setText(str(powermeter_wavelength)) # update gui
         return powermeter_wavelength
-        
-    def set_waveplate_angle(self):
+
+    def button_set_waveplate_angle(self):
         waveplate_angle = self.WaveplateAngleDoubleSpinBox.value()
-        self.waveplate.mAbs(waveplate_angle)
-        self.read_waveplate_angle()
+        self.set_waveplate_angle(waveplate_angle)
+        self.read_power()
+
+    def set_waveplate_angle(self, waveplate_angle):
+        self.waveplate.mbAbs(waveplate_angle)
+        waveplate_angle = self.read_waveplate_angle()
+        return waveplate_angle
         
     def read_waveplate_angle(self):    
-        # TODO: make button for this
         waveplate_angle = self.waveplate.getPos()
         self.WaveplateAngleLabel.setText(str(waveplate_angle))
         return waveplate_angle
+
+    def button_wavelength_sweep(self):
+        start = self.WavelengthStartDoubleSpinBox.value()
+        end = self.WavelengthEndDoubleSpinBox.value()
+        step = self.WavelengthStepDoubleSpinBox.value()
+        self.wavelength_sweep(start, end, step)
+        
+    def wavelength_sweep(self, start, end, step):
+        wavelength_range = np.arange(start, end + self.min_wavelength_step, step)
+        sweep_dict = {'wavelength_nm':[], 'waveplate_angle_deg':[], 'power_w':[]}
+        for target_wavelength in wavelength_range:
+            # set laser wavelength
+            wavelength = self.set_laser_wavelength(target_wavelength)
+            # read waveplate angle
+            waveplate_angle = self.read_waveplate_angle()
+            # read power from power meter
+            power = self.read_power()
+            # take image
+            self.camera_gui.take_image()
+            # TODO: save image with associated metadata
+            # write data to dictionary
+            sweep_dict['wavelength_nm'].append(wavelength)
+            sweep_dict['waveplate_angle_deg'].append(waveplate_angle)
+            sweep_dict['power_w'].append(power)
+        sweep_df = pd.DataFrame(data=sweep_dict)
+        print sweep_df
+        
+    def button_waveplate_sweep(self):
+        start = self.WaveplateStartDoubleSpinBox.value()
+        end = self.WaveplateEndDoubleSpinBox.value()
+        step = self.WaveplateStepDoubleSpinBox.value()
+        self.waveplate_sweep(start, end, step)
+        
+    def waveplate_sweep(self, start, end, step):
+        waveplate_range = np.arange(start, end + self.min_angle_step, step)
+        sweep_dict = {'wavelength_nm':[], 'waveplate_angle_deg':[], 'power_w':[]}
+        for target_angle in waveplate_range:
+            # set waveplate angle
+            waveplate_angle = self.set_waveplate_angle(target_angle)
+            # read wavelength
+            wavelength = self.read_laser_wavelength()
+            # read power from power meter
+            power = self.read_power()
+            # take image
+            self.camera_gui.take_image()
+            # TODO: save image with associated metadata
+            # write data to dictionary
+            sweep_dict['wavelength_nm'].append(wavelength)
+            sweep_dict['waveplate_angle_deg'].append(waveplate_angle)
+            sweep_dict['power_w'].append(power)
+        sweep_df = pd.DataFrame(data=sweep_dict)
+        print sweep_df
+            
         
     def closeEvent(self, event):
-        print 'Closing GUIs'
+        print "Closing GUIs..."
         self.waveplate.cleanUpAPT()
-        self.camera.close()
+        self.camera_gui.close()
+        print "Done!"
     
 if __name__=='__main__':
     app = QtWidgets.QApplication([])

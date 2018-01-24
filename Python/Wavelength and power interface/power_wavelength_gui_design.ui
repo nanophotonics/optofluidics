@@ -17,7 +17,7 @@
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="3" column="2">
+      <item row="5" column="3">
        <widget class="QDoubleSpinBox" name="WaveplateAngleDoubleSpinBox">
         <property name="decimals">
          <number>2</number>
@@ -36,7 +36,7 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="2">
+      <item row="1" column="3">
        <widget class="QDoubleSpinBox" name="WavelengthDoubleSpinBox">
         <property name="sizePolicy">
          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
@@ -58,7 +58,7 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="2">
+      <item row="0" column="3">
        <widget class="QLabel" name="label">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -71,7 +71,7 @@
         </property>
        </widget>
       </item>
-      <item row="3" column="1">
+      <item row="5" column="2">
        <widget class="QLabel" name="label_18">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
@@ -84,7 +84,7 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
+      <item row="1" column="2">
        <widget class="QLabel" name="label_7">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
@@ -97,7 +97,7 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="3">
+      <item row="1" column="4">
        <widget class="QLabel" name="LaserWavelengthLabel">
         <property name="sizePolicy">
          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
@@ -110,7 +110,7 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="1">
+      <item row="6" column="2">
        <widget class="QLabel" name="label_19">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -123,7 +123,7 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="3">
+      <item row="4" column="4">
        <widget class="QLabel" name="PowermeterWavelengthLabel">
         <property name="sizePolicy">
          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
@@ -136,28 +136,28 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="3">
+      <item row="6" column="4">
        <widget class="QLabel" name="PowerLabel">
         <property name="text">
          <string>Power</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="3">
+      <item row="0" column="4">
        <widget class="QLabel" name="label_3">
         <property name="text">
          <string>Current: </string>
         </property>
        </widget>
       </item>
-      <item row="3" column="3">
+      <item row="5" column="4">
        <widget class="QLabel" name="WaveplateAngleLabel">
         <property name="text">
          <string>WaveplateAngle</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="1">
+      <item row="4" column="2">
        <widget class="QLabel" name="label_15">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -170,24 +170,195 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="0">
-       <widget class="QPushButton" name="SetWavelengthPushButton">
+      <item row="6" column="1">
+       <widget class="QPushButton" name="ReadPowerPushButton">
         <property name="text">
-         <string>Set Laser Wavelength</string>
+         <string>Read Power</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="0">
+      <item row="7" column="0" colspan="6">
+       <widget class="Line" name="line">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="1">
+       <widget class="QPushButton" name="WavelengthSweepPushButton">
+        <property name="text">
+         <string>Wavelength Sweep</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
        <widget class="QPushButton" name="SetWaveplateAnglePushButton">
         <property name="text">
          <string>Set Waveplate Angle</string>
         </property>
        </widget>
       </item>
-      <item row="4" column="0">
-       <widget class="QPushButton" name="ReadPowerPushButton">
+      <item row="1" column="0">
+       <widget class="QPushButton" name="ReadWavelengthPushButton">
         <property name="text">
-         <string>Read Power</string>
+         <string>Read Laser Wavelength</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QPushButton" name="ReadWaveplateAnglePushButton">
+        <property name="text">
+         <string>Read Waveplate Angle</string>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="2">
+       <widget class="QLabel" name="label_4">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>Start (nm)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QPushButton" name="SetWavelengthPushButton">
+        <property name="text">
+         <string>Set Laser Wavelength</string>
+        </property>
+       </widget>
+      </item>
+      <item row="12" column="5">
+       <widget class="QDoubleSpinBox" name="WaveplateStepDoubleSpinBox">
+        <property name="maximum">
+         <double>360.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.100000000000000</double>
+        </property>
+        <property name="value">
+         <double>1.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="10" column="3">
+       <widget class="QDoubleSpinBox" name="WavelengthEndDoubleSpinBox">
+        <property name="minimum">
+         <double>725.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>975.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>850.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="12" column="3">
+       <widget class="QDoubleSpinBox" name="WaveplateStartDoubleSpinBox">
+        <property name="maximum">
+         <double>360.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.010000000000000</double>
+        </property>
+        <property name="value">
+         <double>40.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="11" column="0" colspan="6">
+       <widget class="Line" name="line_2">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="12" column="4">
+       <widget class="QLabel" name="label_8">
+        <property name="text">
+         <string>Step (deg)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="4">
+       <widget class="QLabel" name="label_6">
+        <property name="text">
+         <string>Step (nm)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="3">
+       <widget class="QDoubleSpinBox" name="WavelengthStartDoubleSpinBox">
+        <property name="minimum">
+         <double>725.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>975.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>800.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="9" column="5">
+       <widget class="QDoubleSpinBox" name="WavelengthStepDoubleSpinBox">
+        <property name="minimum">
+         <double>1.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>250.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>1.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>10.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="10" column="2">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>End (nm)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="12" column="2">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Start (deg)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="13" column="2">
+       <widget class="QLabel" name="label_9">
+        <property name="text">
+         <string>End (deg)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="13" column="3">
+       <widget class="QDoubleSpinBox" name="WaveplateEndDoubleSpinBox">
+        <property name="maximum">
+         <double>360.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.010000000000000</double>
+        </property>
+        <property name="value">
+         <double>45.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="12" column="1">
+       <widget class="QPushButton" name="WaveplateAngleSweepPushButton">
+        <property name="text">
+         <string>Waveplate Angle Sweep</string>
         </property>
        </widget>
       </item>
