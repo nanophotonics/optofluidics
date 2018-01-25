@@ -15,8 +15,7 @@ from nplab.instrument.stage import PyAPT
 from nplab.instrument.camera import uc480
 import pandas as pd
 import numpy as np
-
-
+import pyqtgraph as pg
 
 class wavelength_controller(QtWidgets.QMainWindow, UiTools):
     
@@ -34,6 +33,14 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.WavelengthSweepPushButton.clicked.connect(self.button_wavelength_sweep)
         self.WaveplateAngleSweepPushButton.clicked.connect(self.button_waveplate_sweep)
         
+
+        # set gui parameters
+        self.min_angle_step = 0.01
+        self.min_wavelength_step = 0.01
+
+        # set hdf5 parameters
+        self.wavelength_scan_no = 0
+        self.waveplate_scan_no = 0
         
         # set up waveplate
         print "Connecting to waveplate..."
@@ -50,7 +57,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.wavemeter.active = 1
         time.sleep(1)
         
-        # start camer        
+        # start camera        
         self.camera_gui = uc480.uc480()
         self.camera_gui.show()
         self.camera_gui.activateWindow() 
@@ -64,9 +71,10 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         waveplate_angle = self.read_waveplate_angle()
         self.WaveplateAngleDoubleSpinBox.setValue(waveplate_angle)
         
-        # set gui parameters
-        self.min_angle_step = 0.01
-        self.min_wavelength_step = 0.01
+
+        
+        
+    
         
         
     def button_set_laser_wavelength(self):
@@ -83,11 +91,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
     def read_laser_wavelength(self):
         wavelength = self.wavemeter.wavelength # get wavelength from power meter
         self.LaserWavelengthLabel.setText(str(wavelength)) # update gui
-        self.set_powermeter_wavelength(wavelength) # set powermeter_wavelength
-        
-        # TODO: update with latest camera gui
-        self.camera_gui.CurrentExposureLabel.setText(str(wavelength)) 
-        
+        self.set_powermeter_wavelength(wavelength) # set powermeter_wavelength        
         return wavelength        
         
     def read_power(self):
@@ -120,53 +124,74 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         start = self.WavelengthStartDoubleSpinBox.value()
         end = self.WavelengthEndDoubleSpinBox.value()
         step = self.WavelengthStepDoubleSpinBox.value()
-        self.wavelength_sweep(start, end, step)
+        sample_description = self.SampleDescriptionLineEdit.text()
+        self.wavelength_sweep(start, end, step, sample_description)
         
-    def wavelength_sweep(self, start, end, step):
+    def wavelength_sweep(self, start, end, step, sample_description):
         wavelength_range = np.arange(start, end + self.min_wavelength_step, step)
         sweep_dict = {'wavelength_nm':[], 'waveplate_angle_deg':[], 'power_w':[]}
+        group_name = 'wavelength_scan_%d' % self.wavelength_scan_no
         for target_wavelength in wavelength_range:
-            # set laser wavelength
-            wavelength = self.set_laser_wavelength(target_wavelength)
-            # read waveplate angle
-            waveplate_angle = self.read_waveplate_angle()
-            # read power from power meter
-            power = self.read_power()
-            # take image
-            self.camera_gui.take_image()
-            # TODO: save image with associated metadata
+            
+            wavelength = self.set_laser_wavelength(target_wavelength) # set laser wavelength
+            waveplate_angle = self.read_waveplate_angle() # read waveplate angle
+            # TODO: the current waveplate angle label is not being updated in the gui during the sweep: fix it
+            power = self.read_power() # read power from power meter
+            
+            # set camera attributes
+            self.camera_gui.attributes['wavelength_nm'] = wavelength
+            self.camera_gui.attributes['waveplate_angle_deg'] = waveplate_angle
+            self.camera_gui.attributes['power_w'] = power
+            self.camera_gui.attributes['sample_description'] = sample_description
+            
+            self.camera_gui.take_image() # take image
+            self.camera_gui.save_image(group_name=group_name) # save image
+            
             # write data to dictionary
             sweep_dict['wavelength_nm'].append(wavelength)
             sweep_dict['waveplate_angle_deg'].append(waveplate_angle)
             sweep_dict['power_w'].append(power)
+            
         sweep_df = pd.DataFrame(data=sweep_dict)
         print sweep_df
+        
+        self.wavelength_scan_no += 1
         
     def button_waveplate_sweep(self):
         start = self.WaveplateStartDoubleSpinBox.value()
         end = self.WaveplateEndDoubleSpinBox.value()
         step = self.WaveplateStepDoubleSpinBox.value()
-        self.waveplate_sweep(start, end, step)
+        sample_description = self.SampleDescriptionLineEdit.text()
+        self.waveplate_sweep(start, end, step, sample_description)
         
-    def waveplate_sweep(self, start, end, step):
-        waveplate_range = np.arange(start, end + self.min_angle_step, step)
+    def waveplate_sweep(self, start, end, step, sample_description):
+        waveplate_range = np.arange(start, end + self.min_angle_step, step) # range includes end value
         sweep_dict = {'wavelength_nm':[], 'waveplate_angle_deg':[], 'power_w':[]}
+        group_name = 'waveplate_scan_%d' % self.waveplate_scan_no
         for target_angle in waveplate_range:
-            # set waveplate angle
-            waveplate_angle = self.set_waveplate_angle(target_angle)
-            # read wavelength
-            wavelength = self.read_laser_wavelength()
-            # read power from power meter
-            power = self.read_power()
-            # take image
-            self.camera_gui.take_image()
-            # TODO: save image with associated metadata
+            
+            waveplate_angle = self.set_waveplate_angle(target_angle) # set waveplate angle
+            wavelength = self.read_laser_wavelength() # read wavelength
+            power = self.read_power() # read power from power meter
+            
+            # set camera attributes
+            self.camera_gui.attributes['wavelength_nm'] = wavelength
+            self.camera_gui.attributes['waveplate_angle_deg'] = waveplate_angle
+            self.camera_gui.attributes['power_w'] = power
+            self.camera_gui.attributes['sample_description'] = sample_description
+            
+            self.camera_gui.take_image() # take image
+            self.camera_gui.save_image(group_name=group_name) # save image
+            
             # write data to dictionary
             sweep_dict['wavelength_nm'].append(wavelength)
             sweep_dict['waveplate_angle_deg'].append(waveplate_angle)
             sweep_dict['power_w'].append(power)
+            
         sweep_df = pd.DataFrame(data=sweep_dict)
         print sweep_df
+        
+        self.waveplate_scan_no += 1
             
         
     def closeEvent(self, event):
