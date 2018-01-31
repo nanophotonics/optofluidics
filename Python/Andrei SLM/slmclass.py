@@ -89,8 +89,10 @@ class SLM():
         Calibration data was obtained for 10 nm wide bands
         Other bands are approximated using weighted averages of calibration data
         """
-        minWav = self.wav - self.width/2
-        maxWav = self.wav + self.width/2
+#        minWav = self.wav - self.width/2
+#        maxWav = self.wav + self.width/2
+        minWav = self.wavelength - self.width/2
+        maxWav = self.wavelength + self.width/2
         #break up in to relevant calibration bands
         minInd, maxInd = np.searchsorted(self.calibBands, [minWav, maxWav])
         wholeBands = self.calibBands[minInd+1,maxInd]

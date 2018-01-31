@@ -17,7 +17,7 @@ from PyQt4 import QtGui, QtCore, uic
 
 
 BUFFER_SIZE = 1000
-TIMEOUT = 5
+TIMEOUT = 10.
 MAX_MESSAGE_HISTORY = 10
 
 
@@ -45,10 +45,11 @@ class SolsTiS(QtCore.QObject): #instrument.instrument):
         #self.id = idn
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(TIMEOUT)
-        print address
         self.socket.connect(address)
-#        self.computerIP = socket.gethostbyname(socket.gethostname()) # if connected to one network
-        self.computerIP = '172.24.60.15' # if connected to several networks
+#        self.socket.create_connection(address)
+        self.computerIP = socket.gethostbyname(socket.gethostname()) # if connected to one network
+#        self.computerIP = '192.168.1.100' # if connected to several networks
+#        self.computerIP = '192.168.1.1' # if connected to several networks
         print self.computerIP
         self.verbosity = verbosity
         self.laser_status = {}
@@ -192,7 +193,7 @@ class SolsTiS(QtCore.QObject): #instrument.instrument):
         self.send_command("poll_wave_m")
 
         if self.message_in_history[-1]['message']['parameters']['status'][0] == 0:
-            self.laser_status['wave_lock_status'] = self.message_in_history[-1]['message']['parameters']['lock_status']
+            self.laser_status['wave_lock'] = self.message_in_history[-1]['message']['parameters']['c']
 
     def cavity_lock(self, val):
         if val not in ['off', 'on']:
@@ -405,6 +406,7 @@ class SolsTiSStatusThread(QtCore.QThread):
 
 
 def test_all():
+#    laser = SolsTiS(('192.168.1.222', 39933))
     laser = SolsTiS(('192.168.1.120', 39933))
     print laser.laser_status
 
@@ -435,7 +437,7 @@ def test_GUI():
     from PyQt4 import QtGui
     import sys
 
-    laser = SolsTiS(('172.24.60.7', 39933))
+    laser = SolsTiS(('172.24.60.15', 39933))
 
     app = QtGui.QApplication([])
     ui = laser.get_qt_ui()
@@ -457,6 +459,7 @@ def download_logs():
     # import numpy as np
     from datetime import date, timedelta
 
+#    url_name = 'http://172.24.37.153/FS/FLASH0/M_Squared/Logs/log_%d_%d_%d_%d.txt'
     url_name = 'http://172.24.60.15/FS/FLASH0/M_Squared/Logs/log_%d_%d_%d_%d.txt'
 
     # nums1 = [153, 222]
@@ -538,7 +541,8 @@ id_dictionary = {'move_wave_t': {'status': {0: 'Successful', 1: 'Failed', 2: 'Ou
 if __name__ == '__main__':
 #    laser = test_all()
 
-#    test_GUI()
-    laser = SolsTiS(('172.24.60.254', 39933))
+    test_GUI()
 
 #    all_logs = download_logs()
+
+#    laser = SolsTiS(('172.24.60.15', 39933))

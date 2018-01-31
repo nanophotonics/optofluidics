@@ -16,6 +16,7 @@ from nplab.instrument.camera import uc480
 import pandas as pd
 import numpy as np
 import pyqtgraph as pg
+import SolsTiS
 
 class wavelength_controller(QtWidgets.QMainWindow, UiTools):
     
@@ -38,9 +39,6 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.min_angle_step = 0.01
         self.min_wavelength_step = 0.01
 
-        # set hdf5 parameters
-        self.wavelength_scan_no = 0
-        self.waveplate_scan_no = 0
         
         # set up waveplate
         print "Connecting to waveplate..."
@@ -53,7 +51,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.power_meter.system.beeper.immediate()
         
         # set up wavemeter
-        self.wavemeter = wlm.Wavemeter(verbosity=True)
+        self.wavemeter = wlm.Wavemeter(verbosity=False)
         self.wavemeter.active = 1
         time.sleep(1)
         
@@ -62,6 +60,9 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.camera_gui.show()
         self.camera_gui.activateWindow() 
         
+        # start laser        
+        self.laser = SolsTiS.SolsTiS(('172.24.60.15', 39933))
+        
         # read wavelength
         wavelength = self.read_laser_wavelength()
         self.WavelengthDoubleSpinBox.setValue(wavelength)
@@ -69,12 +70,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.read_power()
         # read waveplate angle
         waveplate_angle = self.read_waveplate_angle()
-        self.WaveplateAngleDoubleSpinBox.setValue(waveplate_angle)
-        
-
-        
-        
-    
+        self.WaveplateAngleDoubleSpinBox.setValue(waveplate_angle)      
         
         
     def button_set_laser_wavelength(self):
@@ -82,11 +78,31 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.set_laser_wavelength(wavelength)
         self.read_power()
         
-    def set_laser_wavelength(self, wavelength = 800):
-        # TODO: tell laser to go to wavelength
-        print wavelength
-        wavelength = self.read_laser_wavelength()
+    def wait_for_wavelength(self, std=0.001, length=5, sleep=0.1):
+        wavelength_std = std*10
+        wavelength_list = []        
+        while wavelength_std > std:
+            time.sleep(sleep)
+            wavelength = self.read_laser_wavelength()
+            wavelength_list.append(wavelength)
+            if len(wavelength_list) > length:
+                wavelength_list.pop(0)
+                wavelength_std = np.std(wavelength_list)  
         return wavelength
+        
+    def set_laser_wavelength(self, wavelength=800, precision=1, max_attempts = 5):
+        # NOTE: if the wavemeter is linked to the laser the change_wavelength will fail
+        self.laser.change_wavelength(wavelength)
+        current_wavelength = self.wait_for_wavelength()
+        offset = wavelength - current_wavelength
+        attempt = 1
+        while np.abs(offset) > precision and attempt < max_attempts:  
+            attempt += 1            
+            self.laser.change_wavelength(wavelength + offset)
+            current_wavelength = self.wait_for_wavelength()
+            offset = wavelength - current_wavelength
+        print attempt
+        return current_wavelength
         
     def read_laser_wavelength(self):
         wavelength = self.wavemeter.wavelength # get wavelength from power meter
@@ -95,6 +111,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         return wavelength        
         
     def read_power(self):
+        # TODO: sometimes the value is of the order of e-37. figure out why
         power = self.power_meter.read
         self.PowerLabel.setText(str(power))
         return power
@@ -128,17 +145,16 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.wavelength_sweep(start, end, step, sample_description)
         
     def wavelength_sweep(self, start, end, step, sample_description):
-        # NOTE: if the wavelength sweep fails half way through the next sweep #
-        # will save with the same number instead of with a new number
-        # TODO: fix it
         wavelength_range = np.arange(start, end + self.min_wavelength_step, step)
         sweep_dict = {'wavelength_nm':[], 'waveplate_angle_deg':[], 'power_w':[]}
-        group_name = 'wavelength_scan_%d' % self.wavelength_scan_no
+        group_name = 'wavelength_scan_%d
+        dg = self.camera_gui.df.require_group(group_name)
+        group_name = dg.name
         for target_wavelength in wavelength_range:
             
             wavelength = self.set_laser_wavelength(target_wavelength) # set laser wavelength
             waveplate_angle = self.read_waveplate_angle() # read waveplate angle
-            # TODO: the current waveplate angle label is not being updated in the gui during the sweep: fix it
+            
             power = self.read_power() # read power from power meter
             
             # set camera attributes
@@ -158,7 +174,6 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         sweep_df = pd.DataFrame(data=sweep_dict)
         print sweep_df
         
-        self.wavelength_scan_no += 1
         
     def button_waveplate_sweep(self):
         start = self.WaveplateStartDoubleSpinBox.value()
@@ -168,9 +183,12 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.waveplate_sweep(start, end, step, sample_description)
         
     def waveplate_sweep(self, start, end, step, sample_description):
+        # TODO: the current waveplate angle label is not being updated in the gui during the sweep: fix it
         waveplate_range = np.arange(start, end + self.min_angle_step, step) # range includes end value
         sweep_dict = {'wavelength_nm':[], 'waveplate_angle_deg':[], 'power_w':[]}
-        group_name = 'waveplate_scan_%d' % self.waveplate_scan_no
+        group_name = 'waveplate_scan_%d
+        dg = self.camera_gui.df.require_group(group_name)
+        group_name = dg.name
         for target_angle in waveplate_range:
             
             waveplate_angle = self.set_waveplate_angle(target_angle) # set waveplate angle
@@ -194,7 +212,6 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         sweep_df = pd.DataFrame(data=sweep_dict)
         print sweep_df
         
-        self.waveplate_scan_no += 1
             
         
     def closeEvent(self, event):
