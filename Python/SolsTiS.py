@@ -17,7 +17,7 @@ from PyQt4 import QtGui, QtCore, uic
 
 
 BUFFER_SIZE = 1000
-TIMEOUT = 10.
+TIMEOUT = 5
 MAX_MESSAGE_HISTORY = 10
 
 
@@ -47,8 +47,8 @@ class SolsTiS(QtCore.QObject): #instrument.instrument):
         self.socket.settimeout(TIMEOUT)
         print address
         self.socket.connect(address)
-        self.computerIP = socket.gethostbyname(socket.gethostname()) # if connected to one network
-#        self.computerIP = '192.168.1.120' # if connected to several networks
+#        self.computerIP = socket.gethostbyname(socket.gethostname()) # if connected to one network
+        self.computerIP = '172.24.60.15' # if connected to several networks
         print self.computerIP
         self.verbosity = verbosity
         self.laser_status = {}
@@ -435,7 +435,7 @@ def test_GUI():
     from PyQt4 import QtGui
     import sys
 
-    laser = SolsTiS(('192.168.1.222', 39933))
+    laser = SolsTiS(('172.24.60.7', 39933))
 
     app = QtGui.QApplication([])
     ui = laser.get_qt_ui()
@@ -538,6 +538,7 @@ id_dictionary = {'move_wave_t': {'status': {0: 'Successful', 1: 'Failed', 2: 'Ou
 if __name__ == '__main__':
 #    laser = test_all()
 
-    test_GUI()
+#    test_GUI()
+    laser = SolsTiS(('172.24.60.254', 39933))
 
 #    all_logs = download_logs()

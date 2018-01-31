@@ -128,6 +128,9 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.wavelength_sweep(start, end, step, sample_description)
         
     def wavelength_sweep(self, start, end, step, sample_description):
+        # NOTE: if the wavelength sweep fails half way through the next sweep #
+        # will save with the same number instead of with a new number
+        # TODO: fix it
         wavelength_range = np.arange(start, end + self.min_wavelength_step, step)
         sweep_dict = {'wavelength_nm':[], 'waveplate_angle_deg':[], 'power_w':[]}
         group_name = 'wavelength_scan_%d' % self.wavelength_scan_no
@@ -198,6 +201,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         print "Closing GUIs..."
         self.waveplate.cleanUpAPT()
         self.camera_gui.close()
+        # NOTE: should we close the wavemeter here or not?
         print "Done!"
     
 if __name__=='__main__':
