@@ -8,6 +8,7 @@ GUI which controls a Thorlabs camera
 
 import os
 import datetime
+import time
 from qtpy import QtCore, QtWidgets, uic
 from scipy.misc import imsave
 import pyqtgraph as pg
@@ -59,9 +60,10 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         # Set starting parameters
         self.file_path = ''
         self.ExposureTimeNumberBox.setValue(3)
-        self.FramerateNumberBox.setValue(10)
-        self.GainNumberBox.setValue(0)
+        self.FramerateNumberBox.setValue(120)
+        self.GainNumberBox.setValue(100)
         self.BlacklevelNumberBox.setValue(255)
+
       
         # Connect GUI elements
         self.TakeImagePushButton.clicked.connect(self.take_image)
@@ -105,6 +107,12 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         print list_instruments()
         self.open_camera()
         self.take_image()
+        
+        self.ROICheckBox.setChecked(True)
+        self.ROIWidthCheckBox.setChecked(True)
+        self.ROIHeightCheckBox.setChecked(True)
+        self.ROIWidthNumberBox.setValue(700)
+        self.ROIHeightNumberBox.setValue(50)
 
     
     def open_camera(self):
@@ -332,7 +340,6 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         self.StopVideoPushButton.clicked.connect(self.LiveView.terminate)
         self.LiveView.finished.connect(self.terminated_live_view)
         # live view
-        print "Saving video..."
         self.live_view(save=True)
         
     def live_view(self, save=False):                
@@ -359,6 +366,8 @@ class uc480(QtWidgets.QMainWindow, UiTools):
     
     def terminated_live_view(self):
         print "Terminated live view."
+        if self.LiveView.save:
+            self.LiveView.datagroup.file.flush() # flushing at the end
         self.LiveViewCheckBox.setEnabled(True)
         self.LiveViewCheckBox.setChecked(False)
         self.TakeImagePushButton.setEnabled(True)
@@ -392,6 +401,8 @@ class LiveViewThread(QtCore.QThread):
         self.set_video_parameters(video_parameters, timeout)
         self.camera.start_live_video(**self.video_parameters)
         
+        self.high_precision_time = HighPrecisionWallTime()
+        
         self.save = save
         if save:
             print "Saving video..."
@@ -408,26 +419,44 @@ class LiveViewThread(QtCore.QThread):
             if self.camera.wait_for_frame(timeout=self.timeout):
                 # get the capture_timestamp
                 # insert a T to match the creation_timestamp formatting
-                self.attributes['capture_timestamp'] = str(datetime.datetime.now()).replace(' ', 'T')
+                self.attributes['pre_capture_timestamp'] = str(datetime.datetime.now()).replace(' ', 'T')
+                self.attributes['pre_capture_time'] = self.high_precision_time.sample()
                 # capture the latest frame
                 image = self.camera.latest_frame()
+                self.attributes['post_capture_timestamp'] = str(datetime.datetime.now()).replace(' ', 'T')
+                self.attributes['post_capture_time'] = self.high_precision_time.sample()
                 if self.save:
+                    # save frame
                     self.save_frame(image)
-                    
-                # emit signals to the main gui
-                self.attributes_signal.emit(self.attributes)
-                self.display_signal.emit(image)
+                else:
+                    # emit signals to the main gui
+                    self.attributes_signal.emit(self.attributes)
+                    self.display_signal.emit(image) # crashes more often
         
     def save_frame(self, image):
         """Save the frame to the hdf5 file."""
         # write data to the file
         self.datagroup.create_dataset("image_%d", data=image, attrs=self.attributes)
-        self.datagroup.file.flush()       
+#        self.datagroup.file.flush() # if we flush here the file gets corrupted more easily when the gui stops responding
 #        print "Image saved to the hdf5 file."
 
+class HighPrecisionWallTime():
+    def __init__(self,):
+        self._wall_time_0 = time.time()
+        self._clock_0 = time.clock()
+
+    def sample(self,):
+        dc = time.clock()-self._clock_0
+        return self._wall_time_0 + dc
     
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
     camera = uc480()
     camera.show()
     camera.activateWindow()
+#    high_precision_time = HighPrecisionWallTime()
+
+    # TODO: set gamma factor (1-10) to be off (=1)
+    # roi: w=700, h=300
+    # create loop to set desired power with the waveplate
+    # 

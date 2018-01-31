@@ -46,9 +46,10 @@ class SolsTiS(QtCore.QObject): #instrument.instrument):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(TIMEOUT)
         self.socket.connect(address)
-        #self.computerIP = socket.gethostbyname(socket.gethostname()) # if connected to one network
+#        self.socket.create_connection(address)
+        self.computerIP = socket.gethostbyname(socket.gethostname()) # if connected to one network
 #        self.computerIP = '192.168.1.100' # if connected to several networks
-        self.computerIP = '192.168.1.1' # if connected to several networks
+#        self.computerIP = '192.168.1.1' # if connected to several networks
         print self.computerIP
         self.verbosity = verbosity
         self.laser_status = {}
@@ -436,8 +437,7 @@ def test_GUI():
     from PyQt4 import QtGui
     import sys
 
-#    laser = SolsTiS(('192.168.1.222', 39933))
-    laser = SolsTiS(('192.168.1.1', 39933))
+    laser = SolsTiS(('172.24.60.15', 39933))
 
     app = QtGui.QApplication([])
     ui = laser.get_qt_ui()
@@ -544,3 +544,5 @@ if __name__ == '__main__':
     test_GUI()
 
 #    all_logs = download_logs()
+
+#    laser = SolsTiS(('172.24.60.15', 39933))
