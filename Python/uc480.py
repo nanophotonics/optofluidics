@@ -31,10 +31,9 @@ def get_camera_parameters(camera):
     camera_parameters['auto_blacklevel'] = camera.auto_blacklevel
     camera_parameters['blacklevel_offset'] = camera.blacklevel_offset
     try:
-        camera_parameters['gamma'] = camera.blacklevel_gamma
+        camera_parameters['gamma'] = camera.gamma
     except:
-#        print "WARNING: Can't read gamma value from the camera!!!"
-        pass
+        print "WARNING: Can't read gamma value from the camera!!!"
     
     return camera_parameters
 
@@ -110,7 +109,7 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         self.ExposureTimeNumberBox.setValue(3)
         self.FramerateNumberBox.setValue(10)
         self.GainNumberBox.setValue(0)
-        self.GammaNumberBox.setValue(0)
+        self.GammaNumberBox.setValue(1)
         self.BlacklevelNumberBox.setValue(255)       
 #        self.ROICheckBox.setChecked(True)
 #        self.ROIWidthCheckBox.setChecked(True)
@@ -207,8 +206,7 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         try:
             self.CurrentGammaLabel.setText(str(camera_parameters['gamma']))
         except:
-#            print "WARNING: Gamma not in camera parameters dictionary!!!"
-            pass
+            print "WARNING: Gamma not in camera parameters dictionary!!!"
         
             
     def set_capture_parameters(self):
@@ -234,8 +232,7 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         try:
             self.camera.gamma = int(self.GammaNumberBox.value())         
         except:
-#            print "WARNING: Can't set gamma!!!"
-            pass
+            print "WARNING: Can't set gamma!!!"
     
     def set_ROI(self, parameters_dict):
         """Read ROI coordinates from the GUI."""
@@ -315,7 +312,7 @@ class uc480(QtWidgets.QMainWindow, UiTools):
             # write data to the file
             dg.create_dataset("image_%d", data=image, attrs=self.attributes)
             dg.file.flush()
-            print "Image saved to the hdf5 file."
+            print "Image saved to the hdf5 file.\n"
             
         else:
             # user input to choose file name
@@ -420,7 +417,7 @@ class uc480(QtWidgets.QMainWindow, UiTools):
 #        self.display_camera_parameters(self.attributes)                             
     
     def terminated_live_view(self):
-        print "Terminated live view."
+        print "Terminated live view.\n"
         if self.LiveView.save:
             self.LiveView.datagroup.file.flush() # flushing at the end
         self.LiveViewCheckBox.setEnabled(True)
@@ -475,6 +472,10 @@ class LiveViewThread(QtCore.QThread):
             if self.camera.wait_for_frame(timeout=self.timeout):
                 # get the capture_time with microsecond precision
                 self.attributes['capture_time_sec'] = self.high_precision_time.sample()
+                
+                # TODO: both images and videos have both capture_timestamp and 
+                # capture_time_sec make sure they've only got the relevant one
+                
                 # capture the latest frame
                 image = self.camera.latest_frame()
                 if self.save:
