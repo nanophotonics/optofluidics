@@ -49,6 +49,8 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         inst = rm.open_resource('USB0::0x1313::0x8078::P0011774::INSTR',timeout=1)
         self.power_meter=ThorlabsPM100(inst=inst)
         self.power_meter.system.beeper.immediate()
+        # self.power_meter.sense.power.dc.range.auto = 0
+        # self.power_meter.sense.power.dc.range.upper = 2.0
         
         # set up wavemeter
         self.wavemeter = wlm.Wavemeter(verbosity=False)
@@ -76,7 +78,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
     def button_set_laser_wavelength(self):
         wavelength = self.WavelengthDoubleSpinBox.value()
         self.set_laser_wavelength(wavelength)
-        self.read_power()
+        self.wait_for_power()
         
     def wait_for_wavelength(self, std=0.001, length=5, sleep=0.1):
         wavelength_std = std*10
@@ -104,6 +106,29 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         print attempt
         return current_wavelength
         
+    def wait_for_power(self, std=0.01, length=5, sleep=0.1, timeout=10):
+        power_std = std*10
+        power_list = []
+        attempt_no = 0
+        while power_std > std:
+            attempt_no += 1
+            if attempt_no > np.ceil(timeout / sleep):
+                print "WARNING: power meter timed out"
+                break
+            try:
+                power = self.power_meter.read
+            except:
+                print "WARNING: issues with reading the power, trying again..."
+                power = 0
+            if power > 1e-10 and power < 100:
+                power_list.append(power)
+            if len(power_list) > length:
+                power_list.pop(0)
+                power_std = np.std(power_list)
+            time.sleep(sleep)
+        self.PowerLabel.setText(str(power))
+        return power
+        
     def read_laser_wavelength(self):
         wavelength = self.wavemeter.wavelength # get wavelength from power meter
         self.LaserWavelengthLabel.setText(str(wavelength)) # update gui
@@ -125,7 +150,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
     def button_set_waveplate_angle(self):
         waveplate_angle = self.WaveplateAngleDoubleSpinBox.value()
         self.set_waveplate_angle(waveplate_angle)
-        self.read_power()
+        self.wait_for_power()
 
     def set_waveplate_angle(self, waveplate_angle):
         self.waveplate.mbAbs(waveplate_angle)
@@ -147,7 +172,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
     def wavelength_sweep(self, start, end, step, sample_description):
         wavelength_range = np.arange(start, end + self.min_wavelength_step, step)
         sweep_dict = {'wavelength_nm':[], 'waveplate_angle_deg':[], 'power_w':[]}
-        group_name = 'wavelength_scan_%d
+        group_name = 'wavelength_scan_%d'
         dg = self.camera_gui.df.require_group(group_name)
         group_name = dg.name
         for target_wavelength in wavelength_range:
@@ -155,7 +180,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
             wavelength = self.set_laser_wavelength(target_wavelength) # set laser wavelength
             waveplate_angle = self.read_waveplate_angle() # read waveplate angle
             
-            power = self.read_power() # read power from power meter
+            power = self.wait_for_power() # read power from power meter
             
             # set camera attributes
             self.camera_gui.attributes['wavelength_nm'] = wavelength
@@ -186,14 +211,14 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         # TODO: the current waveplate angle label is not being updated in the gui during the sweep: fix it
         waveplate_range = np.arange(start, end + self.min_angle_step, step) # range includes end value
         sweep_dict = {'wavelength_nm':[], 'waveplate_angle_deg':[], 'power_w':[]}
-        group_name = 'waveplate_scan_%d
+        group_name = 'waveplate_scan_%d'
         dg = self.camera_gui.df.require_group(group_name)
         group_name = dg.name
         for target_angle in waveplate_range:
             
             waveplate_angle = self.set_waveplate_angle(target_angle) # set waveplate angle
             wavelength = self.read_laser_wavelength() # read wavelength
-            power = self.read_power() # read power from power meter
+            power = self.wait_for_power() # read power from power meter
             
             # set camera attributes
             self.camera_gui.attributes['wavelength_nm'] = wavelength
