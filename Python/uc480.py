@@ -452,7 +452,7 @@ class uc480(QtWidgets.QMainWindow, UiTools):
             # save video to the datafile
             # TODO: check wether this works with RGB camera too
             datagroup.create_dataset("video_%d", 
-                                     data=self.LiveView.image_array.astype(int), 
+                                     data=self.LiveView.image_array,#.astype(int), 
                                      attrs=self.LiveView.attributes)
             
             del self.LiveView.image_array
@@ -465,6 +465,7 @@ class uc480(QtWidgets.QMainWindow, UiTools):
             
             # remove capture_time_sec so it doesn't get recorded in still images
             del self.attributes['capture_time_sec']            
+            del self.attributes['total_frames']    
         
         self.StopVideoPushButton.setEnabled(False)
         self.LiveViewCheckBox.setEnabled(True)
@@ -511,11 +512,12 @@ class LiveViewThread(QtCore.QThread):
             self.image_array = np.empty([self.total_frames,
                                          self.video_parameters['height'],
                                          self.video_parameters['width']], 
-                                         dtype=np.ndarray)
+                                         dtype='uint8')
         
         # get the capture_timestamp with millisecond precision
         # insert a T to match the creation_timestamp formatting
         self.attributes['capture_timestamp'] = str(datetime.datetime.now()).replace(' ', 'T')
+        self.attributes['total_frames'] = total_frames
         
         # start timer with microsecond precision
         self.high_precision_time = HighPrecisionWallTime()     
@@ -531,6 +533,7 @@ class LiveViewThread(QtCore.QThread):
         if self.frame_multiple < 1:
             self.frame_multiple = 1
         
+        print "Framerate = %d" %capture_framerate
         print "Total frames = %d" %self.total_frames
         print "Frame multiple = %d\n" %self.frame_multiple
         

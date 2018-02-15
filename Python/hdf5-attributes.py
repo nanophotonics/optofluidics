@@ -243,9 +243,9 @@ if __name__ == "__main__":
 #    data_file = h5py.File('R:/3-Temporary/aa938/2018.01.26 - sweep tests/2018-01-26.h5', 'r')
 #    data_file = h5py.File('R:/3-Temporary/aa938/2018.01.26 - camera framerate tests/2018-01-26.h5', 'r')
 #    data_file = h5py.File('R:/3-Temporary/aa938/2018-01-31-new.h5', 'r')
-#    data_file = h5py.File('R:/3-Temporary/aa938/6000.h5', 'r')
-    data_file = h5py.File('C:/Users/Ana Andres/Desktop/2018-02-15.h5', 'r')
-    
+    data_file = h5py.File('R:/3-Temporary/aa938/2018.02.15 - camera framerate tests/2018-02-15-4.h5', 'r')
+#    data_file = h5py.File('C:/Users/Ana Andres/Desktop/2018-02-15.h5', 'r')
+#    data_file = h5py.File('C:/Users/Hera/Desktop/2018-02-15-2.h5', 'r')
 
     group_names = get_item_names(data_file)
     
@@ -264,15 +264,19 @@ if __name__ == "__main__":
             print video_name
             video = data_group[video_name]
             attributes = video.attrs
-            print "framerate = %f\n" %attributes['framerate']
+            framerate = attributes['framerate']
+            total_frames = attributes['total_frames']
+            print "framerate = %f\n" %framerate
+            print "total frames = %f\n" %total_frames
+            label = "%d @ %.2f fps" % (total_frames, framerate)
             capture_time_sec = attributes['capture_time_sec']
             delta = np.ediff1d(capture_time_sec)
             framerate = 1/delta
             ax.plot(capture_time_sec[1:]-capture_time_sec[0], framerate,
-                     label=attributes['framerate'])
+                     label=label)
             ax.set_xlabel('time (s)')
             ax.set_ylabel('framerate (fps)')
-            ax.legend()            
+            ax.legend(loc='best')            
             
     
     # plot data from waveplate scans
