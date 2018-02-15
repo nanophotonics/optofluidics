@@ -46,7 +46,8 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         
         # set up powermeter
         rm = visa.ResourceManager()
-        inst = rm.open_resource('USB0::0x1313::0x8078::P0011774::INSTR',timeout=1)
+        # NOTE: check if this string is correct
+        inst = rm.open_resource('USB0::0x1313::0x8078::P0011777::INSTR',timeout=1)
         self.power_meter=ThorlabsPM100(inst=inst)
         self.power_meter.system.beeper.immediate()
         # self.power_meter.sense.power.dc.range.auto = 0
@@ -113,7 +114,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         while power_std > std:
             attempt_no += 1
             if attempt_no > np.ceil(timeout / sleep):
-                print "WARNING: power meter timed out"
+                print "WARNING: power meter maximum attempts reached"
                 break
             try:
                 power = self.power_meter.read
@@ -188,6 +189,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
             self.camera_gui.attributes['power_w'] = power
             self.camera_gui.attributes['sample_description'] = sample_description
             
+            self.camera_gui.auto_exposure() # set auto-exposure
             self.camera_gui.take_image() # take image
             self.camera_gui.save_image(group_name=group_name) # save image
             
@@ -195,6 +197,8 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
             sweep_dict['wavelength_nm'].append(wavelength)
             sweep_dict['waveplate_angle_deg'].append(waveplate_angle)
             sweep_dict['power_w'].append(power)
+            
+            QtWidgets.qApp.processEvents()
             
         sweep_df = pd.DataFrame(data=sweep_dict)
         print sweep_df
@@ -226,6 +230,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
             self.camera_gui.attributes['power_w'] = power
             self.camera_gui.attributes['sample_description'] = sample_description
             
+            self.camera_gui.auto_exposure() # set auto-exposure
             self.camera_gui.take_image() # take image
             self.camera_gui.save_image(group_name=group_name) # save image
             
@@ -233,6 +238,8 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
             sweep_dict['wavelength_nm'].append(wavelength)
             sweep_dict['waveplate_angle_deg'].append(waveplate_angle)
             sweep_dict['power_w'].append(power)
+            
+            QtWidgets.qApp.processEvents()
             
         sweep_df = pd.DataFrame(data=sweep_dict)
         print sweep_df
