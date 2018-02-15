@@ -20,8 +20,8 @@ from instrumental import list_instruments, instrument
 def get_camera_parameters(camera):
     """Get camera parameters."""
     camera_parameters = dict()
-    camera_parameters['framerate'] = camera.framerate
-    camera_parameters['exposure_time'] = camera._get_exposure()
+    camera_parameters['framerate'] = camera.framerate.magnitude
+    camera_parameters['exposure_time'] = camera._get_exposure().magnitude
     camera_parameters['width'] = camera.width
     camera_parameters['max_width'] = camera.max_width
     camera_parameters['height'] = camera.height
@@ -33,7 +33,8 @@ def get_camera_parameters(camera):
     try:
         camera_parameters['gamma'] = camera.gamma
     except:
-        print "WARNING: Can't read gamma value from the camera!!!"
+#        print "WARNING: Can't read gamma value from the camera!!!"
+        pass
     
     return camera_parameters
 
@@ -107,7 +108,8 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         # Set initial parameters
         self.file_path = ''
         self.ExposureTimeNumberBox.setValue(3)
-        self.FramerateNumberBox.setValue(10)
+        self.FramerateNumberBox.setValue(30)
+        self.DisplayFramerateNumberBox.setValue(10)
         self.GainNumberBox.setValue(0)
         self.GammaNumberBox.setValue(1)
         self.BlacklevelNumberBox.setValue(255)       
@@ -117,8 +119,8 @@ class uc480(QtWidgets.QMainWindow, UiTools):
 #        self.ROIWidthNumberBox.setValue(700)
 #        self.ROIHeightNumberBox.setValue(50)
         
-        # take image
-        self.take_image()
+        # take image and calculate the best exposure time
+        self.auto_exposure()
 
     
     def open_camera(self):
@@ -159,12 +161,14 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         precision = self.ExposureTimePrecisionNumberBox.value()
         self.set_auto_exposure(min_gray=min_gray, max_gray=max_gray, precision=precision)
     
-    def set_auto_exposure(self, min_gray=200, max_gray=250, precision=1):
+    def set_auto_exposure(self, min_gray=200, max_gray=250, precision=1, max_attempts=10):
         image = self.take_image()
         max_image = self.get_max_grayscale(image)
         okay = True
+        attempt = 0
         
-        while (max_image > max_gray or max_image < min_gray) and okay:            
+        while (max_image > max_gray or max_image < min_gray) and okay:
+            attempt += 1
             current_exposure = float(self.CurrentExposureLabel.text())
             
             if max_image > max_gray:
@@ -176,12 +180,19 @@ class uc480(QtWidgets.QMainWindow, UiTools):
                 
             self.ExposureTimeNumberBox.setValue(new_exposure)
             image = self.take_image()
-            max_image = self.get_max_grayscale(image)
-            
+            max_image = self.get_max_grayscale(image)            
+                        
             previous_exposure = current_exposure
             current_exposure = float(self.CurrentExposureLabel.text())
+            print "Exposure time = %f ms" %current_exposure
+            print "Brightest pix = %d\n" %max_image
             if np.abs(previous_exposure - current_exposure) < precision:
+                okay = False 
+            if attempt > max_attempts:
                 okay = False # make sure we're not trying forever
+
+            # make sure the GUI is updated            
+            QtWidgets.qApp.processEvents()
 
         
     def display_image(self, image):
@@ -193,8 +204,8 @@ class uc480(QtWidgets.QMainWindow, UiTools):
     
     def display_camera_parameters(self, camera_parameters):
         """Display the current camera parameters on the GUI."""
-        self.CurrentFramerateLabel.setText(str(round(camera_parameters['framerate'].magnitude,5)))
-        self.CurrentExposureLabel.setText(str(round(camera_parameters['exposure_time'].magnitude,5)))
+        self.CurrentFramerateLabel.setText(str(camera_parameters['framerate']))
+        self.CurrentExposureLabel.setText(str(camera_parameters['exposure_time']))
         self.CurrentWidthLabel.setText(str(camera_parameters['width']))
         self.CurrentHeightLabel.setText(str(camera_parameters['height']))
         self.MaxWidthLabel.setText(str(camera_parameters['max_width']))
@@ -206,13 +217,12 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         try:
             self.CurrentGammaLabel.setText(str(camera_parameters['gamma']))
         except:
-            print "WARNING: Gamma not in camera parameters dictionary!!!"
+#            print "WARNING: Gamma not in camera parameters dictionary!!!"
+            pass
         
             
     def set_capture_parameters(self):
         """Read capture parameters from the GUI."""
-        # TODO: fix errors that ocurr when n_frames > 1
-        self.capture_parameters['n_frames'] = int(self.FramesNumberBox.value())
         self.capture_parameters = self.set_exposure_time(self.capture_parameters)
         self.capture_parameters = self.set_ROI(self.capture_parameters)
         self.capture_parameters['gain'] = float(self.GainNumberBox.value())
@@ -221,8 +231,6 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         self.capture_parameters['vsub'] = int(self.VSubNumberBox.value())
         self.capture_parameters['hsub'] = int(self.HSubNumberBox.value())
         self.set_camera_properties()        
-#        print "Capture parameters:"
-#        print self.capture_parameters
     
     def set_camera_properties(self):
         """Read capture parameters from the GUI and set the corresponding camera properties."""
@@ -230,9 +238,11 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         self.camera.blacklevel_offset = int(self.BlacklevelNumberBox.value())         
         self.camera.gain_boost = self.GainBoostCheckBox.checkState()
         try:
-            self.camera.gamma = int(self.GammaNumberBox.value())         
+            self.camera.gamma = int(self.GammaNumberBox.value())
+            # TODO: some camera models don't have a gamma. account for this in a neater way than try/except
         except:
-            print "WARNING: Can't set gamma!!!"
+#            print "WARNING: Can't set gamma!!!"
+            pass
     
     def set_ROI(self, parameters_dict):
         """Read ROI coordinates from the GUI."""
@@ -250,7 +260,11 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         for item in ROI_dict.keys():
             if item in parameters_dict.keys():
                 del parameters_dict[item]
-
+        
+        # use maximum width and height available
+        parameters_dict['width'] = self.camera.max_width
+        parameters_dict['height'] = self.camera.max_height
+        
         # repopulate ROI parameters with the selected ones
         if self.ROICheckBox.checkState():            
             for item in ROI_dict.keys():
@@ -356,8 +370,6 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         self.video_parameters['vsub'] = int(self.VSubNumberBox.value())
         self.video_parameters['hsub'] = int(self.HSubNumberBox.value())
         self.set_camera_properties()        
-#        print "Video parameters:"
-#        print self.video_parameters
         
     def start_live_view(self):
         """Start/stop the live view."""
@@ -365,6 +377,7 @@ class uc480(QtWidgets.QMainWindow, UiTools):
                         
             # enable/disable gui buttons
             self.TakeImagePushButton.setEnabled(False)
+            self.AutoExposurePushButton.setEnabled(False)
             self.StartVideoPushButton.setEnabled(False)
             self.StopVideoPushButton.setEnabled(False)
             
@@ -382,7 +395,8 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         """Save a video."""            
         # connect buttons and functions              
         self.LiveViewCheckBox.setEnabled(False)
-        self.TakeImagePushButton.setEnabled(False)        
+        self.TakeImagePushButton.setEnabled(False)
+        self.AutoExposurePushButton.setEnabled(False)
         self.StartVideoPushButton.setEnabled(False)
         self.StopVideoPushButton.setEnabled(True)
         
@@ -392,7 +406,7 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         self.StopVideoPushButton.clicked.connect(self.LiveView.terminate)
         self.LiveView.finished.connect(self.terminated_live_view)
         # live view
-        self.live_view(save=True)
+        self.live_view(save=True)        
         
     def live_view(self, save=False):                
         # connect signals
@@ -401,9 +415,14 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         
         # populate self.video_parameters and self.timeout
         self.set_video_parameters() 
-        
+                
         # starting live view
-        self.LiveView.start_live_view(self.video_parameters, self.timeout, save=save)
+        self.LiveView.start_live_view(self.video_parameters, 
+                                      self.timeout, 
+                                      save=save,
+                                      total_frames=self.TotalFramesNumberBox.value(),
+                                      display_framerate=self.DisplayFramerateNumberBox.value(),
+                                      )
         
         self.LiveView.attributes.update(self.video_parameters)
         self.camera_parameters = get_camera_parameters(self.camera)    
@@ -414,17 +433,46 @@ class uc480(QtWidgets.QMainWindow, UiTools):
     
     def update_attributes(self, attributes):
         self.attributes.update(attributes)   
-#        self.display_camera_parameters(self.attributes)                             
+        self.display_camera_parameters(self.attributes)                             
     
     def terminated_live_view(self):
         print "Terminated live view.\n"
+        
         if self.LiveView.save:
-            self.LiveView.datagroup.file.flush() # flushing at the end
+            print "Saving video, please wait for a while..."
+            
+            # disable the GUI whilst the data is saved
+            self.setEnabled(False)
+            
+            QtWidgets.qApp.processEvents()
+            # get the datafile
+            df = nplab.current_datafile()
+            # get the "videos" group within the datafile
+            datagroup = df.require_group("videos")
+            # save video to the datafile
+            # TODO: check wether this works with RGB camera too
+            datagroup.create_dataset("video_%d", 
+                                     data=self.LiveView.image_array.astype(int), 
+                                     attrs=self.LiveView.attributes)
+            
+            del self.LiveView.image_array
+            # flushing at the end
+            datagroup.file.flush() 
+            print "Done!\n"
+            
+            # enable the GUI again
+            self.setEnabled(True)
+            
+            # remove capture_time_sec so it doesn't get recorded in still images
+            del self.attributes['capture_time_sec']            
+        
+        self.StopVideoPushButton.setEnabled(False)
         self.LiveViewCheckBox.setEnabled(True)
         self.LiveViewCheckBox.setChecked(False)
         self.TakeImagePushButton.setEnabled(True)
+        self.AutoExposurePushButton.setEnabled(True)
         self.StartVideoPushButton.setEnabled(True)
-        self.StopVideoPushButton.setEnabled(False)
+        
             
         
 class LiveViewThread(QtCore.QThread):
@@ -447,49 +495,71 @@ class LiveViewThread(QtCore.QThread):
         self.timeout = timeout        
         self.video_parameters = video_parameters
             
-    def start_live_view(self, video_parameters, timeout, save=False):
+    def start_live_view(self, video_parameters, timeout, 
+                        save=False, total_frames=2000,
+                        display_framerate = 20):
         """Start live view with the video parameters received from the main GUI."""
 
-        self.set_video_parameters(video_parameters, timeout)
-        self.camera.start_live_video(**self.video_parameters)
+        self.timeout = timeout        
+        self.video_parameters = video_parameters
+        self.save = save
+        self.total_frames = total_frames
+               
+        if save:
+            print "Recording video..."            
+            self.capture_timestamp_array = np.empty(self.total_frames)
+            self.image_array = np.empty([self.total_frames,
+                                         self.video_parameters['height'],
+                                         self.video_parameters['width']], 
+                                         dtype=np.ndarray)
+        
+        # get the capture_timestamp with millisecond precision
+        # insert a T to match the creation_timestamp formatting
+        self.attributes['capture_timestamp'] = str(datetime.datetime.now()).replace(' ', 'T')
         
         # start timer with microsecond precision
-        self.high_precision_time = HighPrecisionWallTime()
+        self.high_precision_time = HighPrecisionWallTime()     
         
-        self.save = save
-        if save:
-            print "Saving video..."
-            # get the datafile
-            df = nplab.current_datafile()
-            # write data in the "videos" group within the datafile
-            dg = df.require_group("videos")
-            # create a new unique group for this video
-            self.datagroup = dg.require_group("video_%d")
+        # start live video
+        self.camera.start_live_video(**self.video_parameters)       
+        
+        # calculate when we need to emit the image to the gui        
+        capture_framerate = self.camera.framerate.magnitude
+        self.frame_multiple = int(capture_framerate / display_framerate)
+        # if display_framerate > capture_framerate then frame_multiple < 1
+        # since we cannot emit each image more than once, frame_multiple must be >= 1
+        if self.frame_multiple < 1:
+            self.frame_multiple = 1
+        
+        print "Total frames = %d" %self.total_frames
+        print "Frame multiple = %d\n" %self.frame_multiple
         
     def run(self):
         """Continuously acquire frames."""
-        while not self.isFinished():
+        frame_number = 0
+        while not self.isFinished() and frame_number < self.total_frames:
             if self.camera.wait_for_frame(timeout=self.timeout):
                 # get the capture_time with microsecond precision
-                self.attributes['capture_time_sec'] = self.high_precision_time.sample()
-                
-                # TODO: both images and videos have both capture_timestamp and 
-                # capture_time_sec make sure they've only got the relevant one
+                capture_time_sec = self.high_precision_time.sample()                
                 
                 # capture the latest frame
                 image = self.camera.latest_frame()
                 if self.save:
-                    # save frame
-                    self.save_frame(image)
-                else:
+                    self.save_frame(image, capture_time_sec, frame_number)
+                
+                if frame_number % self.frame_multiple == 0:
                     # emit signals to the main gui
                     self.attributes_signal.emit(self.attributes)
-                    self.display_signal.emit(image) # crashes more often - maybe?
+                    self.display_signal.emit(image) # crashes more often - maybe?               
+                frame_number += 1
+                
         
-    def save_frame(self, image):
-        """Save the frame to the hdf5 file."""
-        # write data to the file
-        self.datagroup.create_dataset("image_%d", data=image, attrs=self.attributes)
+    def save_frame(self, image, capture_time_sec, frame_number):
+        """Save the frame to memory."""
+        self.capture_timestamp_array[frame_number] = capture_time_sec
+        self.attributes['capture_time_sec'] = self.capture_timestamp_array        
+        self.image_array[frame_number,:,:] = image
+        
 
 class HighPrecisionWallTime():
     def __init__(self,):

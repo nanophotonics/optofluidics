@@ -132,8 +132,8 @@ def plot_video(data_group):
                          ]
     
 #    fig1 = plt.figure()
-    fig2 = plt.figure()
-    ax2 = fig2.add_subplot(111)
+#    fig2 = plt.figure()
+#    ax2 = fig2.add_subplot(111)
     
     for i, video_name in enumerate(video_names):
         print video_name
@@ -143,7 +143,8 @@ def plot_video(data_group):
         data_frame = get_attributes_dataframe(frames)
 #        data_frame.sort_values(by='capture_timestamp', inplace=True)
 #        data_frame.sort_values(by='pre_capture_timestamp', inplace=True)
-        data_frame.sort_values(by='pre_capture_time', inplace=True)
+#        data_frame.sort_values(by='pre_capture_time', inplace=True)
+        data_frame.sort_values(by='capture_time_sec', inplace=True)
         data_frame['i'] = range(len(data_frame))
         
         fig1 = plt.figure()
@@ -172,19 +173,26 @@ def plot_video(data_group):
 #        a = data_frame['pre_capture_time']
 #        delta = [x - a[i - 1] for i, x in enumerate(a) if i > 0]
 #        data_frame.loc[1:,'pre_capture_framerate'] = 1/np.array(delta)
-        delta = np.ediff1d(data_frame['pre_capture_time'])
-        data_frame.loc[1:,'pre_capture_framerate'] = 1/delta
+#        delta = np.ediff1d(data_frame['pre_capture_time'])
+#        data_frame.loc[1:,'pre_capture_framerate'] = 1/delta
+        delta = np.ediff1d(data_frame['capture_time_sec'])
+        data_frame.loc[1:,'capture_framerate'] = 1/delta
+        
         plot_options = populate_plot_options(ax=ax,
 #                                             x='capture_timestamp_elapsed_time', 
 #                                             x='pre_capture_timestamp_elapsed_time', 
-                                             x='pre_capture_time', 
-                                             y='pre_capture_framerate')
+#                                             x='pre_capture_time', 
+#                                             y='pre_capture_framerate',
+                                             x='capture_time_sec', 
+                                             y='capture_framerate',
+                                             )
         data_frame.plot(**plot_options)
         
         plot_options = populate_plot_options(ax=ax,
 #                                             x='capture_timestamp_elapsed_time', 
 #                                             x='pre_capture_timestamp_elapsed_time', 
-                                             x='pre_capture_time', 
+#                                             x='pre_capture_time', 
+                                             x='capture_time_sec', 
                                              y='framerate')
         data_frame.plot(**plot_options)
 #        ax.set_xlabel('timestamp')       
@@ -196,20 +204,20 @@ def plot_video(data_group):
 #        difference = data_frame['creation_timestamp'] - data_frame['capture_timestamp']
 #        difference = data_frame['post_capture_timestamp'] - data_frame['pre_capture_timestamp']
 #        difference = data_frame['creation_timestamp'] - data_frame['pre_capture_timestamp']
-        difference = data_frame['post_capture_time'] - data_frame['pre_capture_time']
-        data_frame['time_difference_sec'] = difference # in seconds
+#        difference = data_frame['post_capture_time'] - data_frame['pre_capture_time']
+#        data_frame['time_difference_sec'] = difference # in seconds
 #        data_frame['time_difference_sec'] = difference.dt.microseconds/1e6 # in seconds
         
-        plot_options = populate_plot_options(ax=ax2,
-#                                             x='capture_timestamp_elapsed_time', 
-#                                             x='pre_capture_timestamp_elapsed_time',
-                                             x='pre_capture_time',
-                                             y='time_difference_sec',
-                                             label=video_name)                
-        data_frame.plot(**plot_options)
+#        plot_options = populate_plot_options(ax=ax2,
+##                                             x='capture_timestamp_elapsed_time', 
+##                                             x='pre_capture_timestamp_elapsed_time',
+#                                             x='pre_capture_time',
+#                                             y='time_difference_sec',
+#                                             label=video_name)                
+#        data_frame.plot(**plot_options)
 #        ax2.set_ylabel('time difference (sec): creation - capture')
-        ax2.set_ylabel('capture time diff (sec): post - pre')
-        ax2.set_xlabel('time (s)')
+#        ax2.set_ylabel('capture time diff (sec): post - pre')
+#        ax2.set_xlabel('time (s)')
 #        ax2.set_xlim(0,1)        
     
     return data_frame
@@ -234,14 +242,38 @@ def plot_waveplate_scan(data_group, ax):
 if __name__ == "__main__":
 #    data_file = h5py.File('R:/3-Temporary/aa938/2018.01.26 - sweep tests/2018-01-26.h5', 'r')
 #    data_file = h5py.File('R:/3-Temporary/aa938/2018.01.26 - camera framerate tests/2018-01-26.h5', 'r')
-    data_file = h5py.File('R:/3-Temporary/aa938/2018-01-31-new.h5', 'r')
+#    data_file = h5py.File('R:/3-Temporary/aa938/2018-01-31-new.h5', 'r')
+#    data_file = h5py.File('R:/3-Temporary/aa938/6000.h5', 'r')
+    data_file = h5py.File('C:/Users/Ana Andres/Desktop/2018-02-15.h5', 'r')
+    
 
     group_names = get_item_names(data_file)
     
     # plot data from videos
     if 'videos' in group_names:
         data_group = data_file['videos']
-        video_df = plot_video(data_group)
+#        video_df = plot_video(data_group)
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        
+        all_video_names = get_item_names(data_group)
+        desired_video_names = all_video_names
+#        desired_video_names = ['video_1'] 
+        for video_name in desired_video_names:
+            print video_name
+            video = data_group[video_name]
+            attributes = video.attrs
+            print "framerate = %f\n" %attributes['framerate']
+            capture_time_sec = attributes['capture_time_sec']
+            delta = np.ediff1d(capture_time_sec)
+            framerate = 1/delta
+            ax.plot(capture_time_sec[1:]-capture_time_sec[0], framerate,
+                     label=attributes['framerate'])
+            ax.set_xlabel('time (s)')
+            ax.set_ylabel('framerate (fps)')
+            ax.legend()            
+            
     
     # plot data from waveplate scans
     all_waveplate_scans = [name for name in group_names if 'waveplate_scan' in name]
