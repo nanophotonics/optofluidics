@@ -9,7 +9,7 @@ import h5py
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-#from MatplotlibSettings import *
+from MatplotlibSettings import *
 
 #from 'C:\Users\Ana Andres\Documents\GitHub\Python-GarminDataAnalyser\DatabaseRead.py' import ElapsedTime
 #from Python-GarminDataAnalyser.DatabaseRead import ElapsedTime
@@ -240,12 +240,12 @@ def plot_waveplate_scan(data_group, ax):
     
 
 if __name__ == "__main__":
-#    data_file = h5py.File('R:/3-Temporary/aa938/2018.01.26 - sweep tests/2018-01-26.h5', 'r')
-#    data_file = h5py.File('R:/3-Temporary/aa938/2018.01.26 - camera framerate tests/2018-01-26.h5', 'r')
-#    data_file = h5py.File('R:/3-Temporary/aa938/2018-01-31-new.h5', 'r')
-    data_file = h5py.File('R:/3-Temporary/aa938/2018.02.15 - camera framerate tests/2018-02-15-4.h5', 'r')
-#    data_file = h5py.File('C:/Users/Ana Andres/Desktop/2018-02-15.h5', 'r')
-#    data_file = h5py.File('C:/Users/Hera/Desktop/2018-02-15-2.h5', 'r')
+#    folder_path = 'R:/3-Temporary/aa938/2018.02.16 - camera framerate tests/'
+#    folder_path = 'C:/Users/Hera/Desktop'
+    folder_path = 'C:/Users/Ana Andres/Desktop/'
+    file_name = '2018-02-19.h5'
+    file_path = folder_path + file_name
+    data_file = h5py.File(file_path, 'r')
 
     group_names = get_item_names(data_file)
     
@@ -259,24 +259,53 @@ if __name__ == "__main__":
         
         all_video_names = get_item_names(data_group)
         desired_video_names = all_video_names
-#        desired_video_names = ['video_1'] 
-        for video_name in desired_video_names:
+        desired_video_names = [
+                               'video_0', 
+                               'video_1',
+                               'video_2',
+                               'video_3',
+#                               'video_4',
+#                               'video_5',
+##                               'video_6',
+##                               'video_7',
+#                               'video_8',
+#                               'video_9',
+#                               'video_10',
+                               ] 
+        video_names = np.sort(list(set(all_video_names) & set(desired_video_names)))
+        
+        for video_name in video_names:
             print video_name
             video = data_group[video_name]
+            
             attributes = video.attrs
             framerate = attributes['framerate']
-            total_frames = attributes['total_frames']
-            print "framerate = %f\n" %framerate
-            print "total frames = %f\n" %total_frames
-            label = "%d @ %.2f fps" % (total_frames, framerate)
+            max_frames = attributes['max_frames']
+            description = attributes['description']
+#            timeout = attributes['timeout']
             capture_time_sec = attributes['capture_time_sec']
+            
+            # create label
+#            label = "%d @ %.2f fps" % (max_frames, framerate)
+            label = video_name
+#            label = timeout
+            
+
+            # calculate framerate            
             delta = np.ediff1d(capture_time_sec)
             framerate = 1/delta
+            
+            # plot framerate
             ax.plot(capture_time_sec[1:]-capture_time_sec[0], framerate,
                      label=label)
+#            ax.hist(framerate, bins=100, label=label, alpha = 0.4, normed=False)
             ax.set_xlabel('time (s)')
             ax.set_ylabel('framerate (fps)')
-            ax.legend(loc='best')            
+#            ax.set_xlabel('framerate (fps)')
+#            ax.set_ylabel('counts')
+            ax.set_title('total counts = 1000 / video')
+#            ax.legend(loc='best')       
+#            ax.set_ylim(0,500)
             
     
     # plot data from waveplate scans
