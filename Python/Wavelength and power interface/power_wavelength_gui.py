@@ -33,6 +33,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.ReadWaveplateAnglePushButton.clicked.connect(self.read_waveplate_angle)
         self.WavelengthSweepPushButton.clicked.connect(self.button_wavelength_sweep)
         self.WaveplateAngleSweepPushButton.clicked.connect(self.button_waveplate_sweep)
+        self.WaveplateWavelengthSweepPushButton.clicked.connect(self.button_waveplate_wavelength_sweep)
         
 
         # set gui parameters
@@ -73,7 +74,9 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.read_power()
         # read waveplate angle
         waveplate_angle = self.read_waveplate_angle()
-        self.WaveplateAngleDoubleSpinBox.setValue(waveplate_angle)      
+        self.WaveplateAngleDoubleSpinBox.setValue(waveplate_angle)  
+        
+        self.camera_gui.new_hdf5_file()
         
         
     def button_set_laser_wavelength(self):
@@ -244,6 +247,36 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         sweep_df = pd.DataFrame(data=sweep_dict)
         print sweep_df
         
+    def button_waveplate_wavelength_sweep(self):
+        start_waveplate = self.WaveplateStartDoubleSpinBox.value()
+        end_waveplate = self.WaveplateEndDoubleSpinBox.value()
+        step_waveplate = self.WaveplateStepDoubleSpinBox.value()
+        start_wavelength = self.WavelengthStartDoubleSpinBox.value()
+        end_wavelength = self.WavelengthEndDoubleSpinBox.value()
+        step_wavelength = self.WavelengthStepDoubleSpinBox.value()
+        sample_description = self.SampleDescriptionLineEdit.text()
+        self.waveplate_wavelength_sweep(start_waveplate, end_waveplate,
+                                        step_waveplate, start_wavelength,
+                                        end_wavelength, step_wavelength,
+                                        sample_description)
+        
+        
+    def waveplate_wavelength_sweep(self, start_waveplate, end_waveplate, 
+                                   step_waveplate, start_wavelength, 
+                                   end_wavelength, step_wavelength, 
+                                   sample_description):
+        print start_wavelength
+        print end_wavelength
+        print step_wavelength
+        wavelength_range = np.arange(start_wavelength, end_wavelength + 
+        self.min_wavelength_step, step_wavelength)
+        for target_wavelength in wavelength_range:
+            self.set_laser_wavelength(target_wavelength)
+            print "Starting waveplate scan at %f nm" % target_wavelength
+            self.waveplate_sweep(start_waveplate, end_waveplate, 
+                                 step_waveplate, sample_description)
+        print "Completed waveplate / wavelength sweep!"
+        print "%d waveplate scans saved" % len(wavelength_range)
             
         
     def closeEvent(self, event):
