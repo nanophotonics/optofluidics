@@ -35,6 +35,9 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.WaveplateAngleSweepPushButton.clicked.connect(self.button_waveplate_sweep)
         self.WaveplateWavelengthSweepPushButton.clicked.connect(self.button_waveplate_wavelength_sweep)
         
+        # set default parameters
+        self.WaveplateStartDoubleSpinBox.setValue(80)
+        self.WaveplateEndDoubleSpinBox.setValue(90)
 
         # set gui parameters
         self.min_angle_step = 0.01
@@ -42,15 +45,17 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
 
         
         # set up waveplate
-        print "Connecting to waveplate..."
+        print "\nConnecting to waveplate..."
         self.waveplate = PyAPT.APTMotor(SerialNum=27500609)  
         
         # set up powermeter
+        print "\nConnecting to power meter..."
         rm = visa.ResourceManager()
         # NOTE: check if this string is correct
-        inst = rm.open_resource('USB0::0x1313::0x8078::P0011777::INSTR',timeout=1)
+        inst = rm.open_resource('USB0::0x1313::0x8078::P0011774::INSTR',timeout=1)
         self.power_meter=ThorlabsPM100(inst=inst)
         self.power_meter.system.beeper.immediate()
+        print "Power meter connection successful.\n"
         # self.power_meter.sense.power.dc.range.auto = 0
         # self.power_meter.sense.power.dc.range.upper = 2.0
         
@@ -58,14 +63,22 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         self.wavemeter = wlm.Wavemeter(verbosity=False)
         self.wavemeter.active = 1
         time.sleep(1)
+        print "Wavemeter connection successful.\n"
         
         # start camera        
-        self.camera_gui = uc480.uc480()
+        self.camera_gui = uc480.uc480(serial='4103185097')
         self.camera_gui.show()
-        self.camera_gui.activateWindow() 
+        self.camera_gui.activateWindow()
         
-        # start laser        
+        # start secondary camera
+        self.secondary_camera_gui = False
+        self.secondary_camera_gui = uc480.uc480(serial='4103185785')
+        self.secondary_camera_gui.show()
+        self.secondary_camera_gui.activateWindow()
+        
+        # start laser
         self.laser = SolsTiS.SolsTiS(('172.24.60.15', 39933))
+        print "SolsTiS laser connection successful.\n"
         
         # read wavelength
         wavelength = self.read_laser_wavelength()
@@ -96,7 +109,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
                 wavelength_std = np.std(wavelength_list)  
         return wavelength
         
-    def set_laser_wavelength(self, wavelength=800, precision=1, max_attempts = 5):
+    def set_laser_wavelength(self, wavelength=800, precision=0.5, max_attempts = 5):
         # NOTE: if the wavemeter is linked to the laser the change_wavelength will fail
         self.laser.change_wavelength(wavelength)
         current_wavelength = self.wait_for_wavelength()
@@ -107,7 +120,6 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
             self.laser.change_wavelength(wavelength + offset)
             current_wavelength = self.wait_for_wavelength()
             offset = wavelength - current_wavelength
-        print attempt
         return current_wavelength
         
     def wait_for_power(self, std=0.01, length=5, sleep=0.1, timeout=10):
@@ -136,7 +148,8 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
     def read_laser_wavelength(self):
         wavelength = self.wavemeter.wavelength # get wavelength from power meter
         self.LaserWavelengthLabel.setText(str(wavelength)) # update gui
-        self.set_powermeter_wavelength(wavelength) # set powermeter_wavelength        
+        self.set_powermeter_wavelength(wavelength) # set powermeter_wavelength
+        QtWidgets.qApp.processEvents()
         return wavelength        
         
     def read_power(self):
@@ -244,7 +257,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
             
             QtWidgets.qApp.processEvents()
             
-        sweep_df = pd.DataFrame(data=sweep_dict)
+        sweep_df = pd.DataFrame(data=sweep_dict)                   
         print sweep_df
         
     def button_waveplate_wavelength_sweep(self):
@@ -265,9 +278,7 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
                                    step_waveplate, start_wavelength, 
                                    end_wavelength, step_wavelength, 
                                    sample_description):
-        print start_wavelength
-        print end_wavelength
-        print step_wavelength
+                                       
         wavelength_range = np.arange(start_wavelength, end_wavelength + 
         self.min_wavelength_step, step_wavelength)
         for target_wavelength in wavelength_range:
@@ -283,6 +294,8 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         print "Closing GUIs..."
         self.waveplate.cleanUpAPT()
         self.camera_gui.close()
+        if self.secondary_camera_gui:
+            self.secondary_camera_gui.close()
         # NOTE: should we close the wavemeter here or not?
         print "Done!"
     
