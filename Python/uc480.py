@@ -55,12 +55,27 @@ class uc480(QtWidgets.QMainWindow, UiTools):
                         
         # create live view widget
         image_widget = pg.GraphicsLayoutWidget()
-        self.replace_widget(self.verticalLayout, self.LiveViewWidget, image_widget)
-        view_box = image_widget.addViewBox(row=1,col=1)        
-        self.imv = pg.ImageItem()
+        image_widget.scene().sigMouseClicked.connect(self.mouse_click)
+        
+        self.imv = pg.ImageItem(row=0, col=0)
         self.imv.setOpts(axisOrder='row-major')
+        
+        view_box = image_widget.addViewBox(row=0, col=0, lockAspect=True)
         view_box.addItem(self.imv)
-        view_box.setAspectLocked(True)
+        
+        self.line_vertical = image_widget.addPlot(row=0, col=1)
+        self.line_horizontal = image_widget.addPlot(row=1, col=0)
+        self.line_vertical.showGrid(x=True, y=True)
+        self.line_horizontal.showGrid(x=True, y=True)
+        self.line_vertical.hideAxis('left')
+        self.line_vertical.showAxis('right')
+        self.line_vertical.invertX(True)
+        
+        qGraphicsGridLayout = image_widget.ci.layout
+        qGraphicsGridLayout.setColumnStretchFactor(0, 3)
+        qGraphicsGridLayout.setRowStretchFactor(0, 3)   
+        
+        self.replace_widget(self.verticalLayout, self.LiveViewWidget, image_widget)
         
         # populate image format combobox
         self.ImageFormatComboBox.addItem('hdf5',0)
@@ -98,6 +113,9 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         
         # take image with the initial parameters and calculate the best exposure
         self.auto_exposure()
+    
+    def mouse_click(event):
+        print event.pos()
     
     def open_camera_button(self):
         """Read serial number from GUI and connect to the camera."""
@@ -154,6 +172,8 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         
     def closeEvent(self, event):
         """This will happen when the GUI is closed."""
+        # stop live view
+        self.LiveViewCheckBox.setCheckState(False)
         # close the camera connection
         if self.camera: self.close_camera()
         # close the datafile
@@ -189,10 +209,21 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         
     def auto_exposure(self):
         """Get parameters from the gui and set auto exposure."""
+        
+        # get parameters from the gui
         min_gray = self.MinGrayNumberBox.value()
         max_gray = self.MaxGrayNumberBox.value()
         precision = self.ExposureTimePrecisionNumberBox.value()
+        
+        # disable live view
+        live_view_state = self.LiveViewCheckBox.checkState()
+        self.LiveViewCheckBox.setCheckState(False)
+        
+        # set auto exposure
         self.set_auto_exposure(min_gray=min_gray, max_gray=max_gray, precision=precision)
+    
+        # enable live view
+        self.LiveViewCheckBox.setCheckState(live_view_state)
     
     def set_auto_exposure(self, min_gray=200, max_gray=250, precision=1, max_attempts=10):
         """Determine the optimal exposure time."""
@@ -235,7 +266,19 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         # make a copy of the data so it can be accessed when saving an image
         self.image = image
         # set levels to [0,255] because otherwise it autoscales when plotting
-        self.imv.setImage(image, autoDownsample=True, levels=[0,255])   
+        self.imv.setImage(image, autoDownsample=True, levels=[0,255], border=5)   
+        
+        x_position = 200
+        y_position = 100
+        
+        self.line_horizontal.clear()
+        self.line_vertical.clear()
+        
+        self.line_horizontal.plot(x=range(image.shape[1]), y=image[x_position,:])
+        self.line_vertical.plot(x=image[:,y_position], y=range(image.shape[0]))
+        
+        self.line_horizontal.setYRange(0,255)
+        self.line_vertical.setXRange(0,255)
     
     def display_camera_parameters(self, camera_parameters):
         """Display the current camera parameters on the GUI."""
@@ -405,7 +448,7 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         """Continous image acquisition."""
         if self.LiveViewCheckBox.isChecked():                      
             # enable/disable gui buttons
-            self.StopVideoPushButton.setEnabled(False)          
+            self.StopVideoPushButton.setEnabled(False)
             # create thread
             self.LiveView = LiveViewThread(self.camera)
             # connect thread
@@ -421,7 +464,8 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         # enable/disable gui buttons          
         self.LiveViewCheckBox.setEnabled(False)
         self.StopVideoPushButton.setEnabled(True)
-        self.SaveImagePushButton.setEnabled(False)    
+        self.SaveImagePushButton.setEnabled(False)
+        self.AutoExposurePushButton.setEnabled(False)
         # create thread
         self.LiveView = LiveViewThread(self.camera)
         # connect thread
@@ -435,7 +479,6 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         """Start continuous image acquisition."""
         # enable/disable gui buttons
         self.TakeImagePushButton.setEnabled(False)
-        self.AutoExposurePushButton.setEnabled(False)
         self.StartVideoPushButton.setEnabled(False)
         self.OpenCameraPushButton.setEnabled(False)
         self.CloseCameraPushButton.setEnabled(False)
