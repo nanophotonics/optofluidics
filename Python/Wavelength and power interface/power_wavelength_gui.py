@@ -72,9 +72,9 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         
         # start secondary camera
         self.secondary_camera_gui = False
-        self.secondary_camera_gui = uc480.uc480(serial='4103185785')
-        self.secondary_camera_gui.show()
-        self.secondary_camera_gui.activateWindow()
+#        self.secondary_camera_gui = uc480.uc480(serial='4103185785')
+#        self.secondary_camera_gui.show()
+#        self.secondary_camera_gui.activateWindow()
         
         # start laser
         self.laser = SolsTiS.SolsTiS(('172.24.60.15', 39933))
@@ -257,6 +257,9 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
             
             QtWidgets.qApp.processEvents()
             
+        self.set_waveplate_angle(waveplate_range[0])
+        self.camera_gui.auto_exposure()
+            
         sweep_df = pd.DataFrame(data=sweep_dict)                   
         print sweep_df
         
@@ -294,8 +297,8 @@ class wavelength_controller(QtWidgets.QMainWindow, UiTools):
         print "Closing GUIs..."
         self.waveplate.cleanUpAPT()
         self.camera_gui.close()
-        if self.secondary_camera_gui:
-            self.secondary_camera_gui.close()
+#        if self.secondary_camera_gui:
+#            self.secondary_camera_gui.close()
         # NOTE: should we close the wavemeter here or not?
         print "Done!"
     
