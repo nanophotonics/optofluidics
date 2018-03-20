@@ -30,15 +30,9 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         ui_file = file_path + '\uc480_gui_design.ui'
         uic.loadUi(ui_file, self)
         
-        # maximise GUI window
-#        self.showMaximized()
-        
         # set initial tabs to display
         self.SettingsTabWidget.setCurrentIndex(0) 
-        
-        # set initial splitter sizes
-#        self.splitter.setSizes([50,60000])
-        
+                
         # enable / disable push buttons
         self.reset_gui_without_camera()
       
@@ -71,9 +65,7 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         self.horizontal_profile.showGrid(x=True, y=True)
         self.vertical_profile = self.image_widget.addPlot(row=0, col=1)
         self.vertical_profile.showGrid(x=True, y=True)
-        self.vertical_profile.invertX(True)        
-#        self.vertical_profile.hideAxis('left')
-#        self.vertical_profile.showAxis('right')                
+        self.vertical_profile.invertX(True)                        
         # hide axis tick labels
         for profile in [self.vertical_profile, self.horizontal_profile]:
             for ax in ['left','right','top','bottom']:
@@ -82,17 +74,14 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         # set column widths
         qGraphicsGridLayout = self.image_widget.ci.layout
         qGraphicsGridLayout.setColumnStretchFactor(0, 3)
-        qGraphicsGridLayout.setRowStretchFactor(0, 3)           
-        # show the image widget
-#        self.replace_widget(self.verticalLayout, self.LiveViewWidget, self.image_widget) # within the main widget                  
+        qGraphicsGridLayout.setRowStretchFactor(0, 3)                          
         
         # populate image format combobox
         self.ImageFormatComboBox.addItem('hdf5',0)
         self.ImageFormatComboBox.addItem('png',1)
         self.ImageFormatComboBox.addItem('tiff',2)
         self.ImageFormatComboBox.addItem('jpg',3)
-        self.ImageFormatComboBox.setCurrentIndex(0)    
-        
+        self.ImageFormatComboBox.setCurrentIndex(0)        
         # populate video format combobox
         self.VideoFormatComboBox.addItem('hdf5',0)
         self.VideoFormatComboBox.setCurrentIndex(0)    
