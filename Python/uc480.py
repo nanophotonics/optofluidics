@@ -37,7 +37,7 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         self.SettingsTabWidget.setCurrentIndex(0) 
         
         # set initial splitter sizes
-        self.splitter.setSizes([50,60000])
+#        self.splitter.setSizes([50,60000])
         
         # enable / disable push buttons
         self.reset_gui_without_camera()
@@ -53,29 +53,38 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         self.CloseCameraPushButton.clicked.connect(self.close_camera)    
         self.FindCamerasPushButton.clicked.connect(self.find_cameras)
                         
-        # create live view widget
-        image_widget = pg.GraphicsLayoutWidget()
-        image_widget.scene().sigMouseClicked.connect(self.mouse_click)
-        
+        # create the image widget
+        self.image_widget = pg.GraphicsLayoutWidget()
+        view_box = self.image_widget.addViewBox(row=0, col=0, lockAspect=True)        
+        # add image item
         self.imv = pg.ImageItem(row=0, col=0)
-        self.imv.setOpts(axisOrder='row-major')
-        
-        view_box = image_widget.addViewBox(row=0, col=0, lockAspect=True)
-        view_box.addItem(self.imv)
-        
-        self.line_vertical = image_widget.addPlot(row=0, col=1)
-        self.line_horizontal = image_widget.addPlot(row=1, col=0)
-        self.line_vertical.showGrid(x=True, y=True)
-        self.line_horizontal.showGrid(x=True, y=True)
-        self.line_vertical.hideAxis('left')
-        self.line_vertical.showAxis('right')
-        self.line_vertical.invertX(True)
-        
-        qGraphicsGridLayout = image_widget.ci.layout
+        self.imv.setOpts(axisOrder='row-major')               
+        view_box.addItem(self.imv)        
+        # add lines
+        pen = pg.mkPen(color='y', width=5)
+        self.vertical_line = pg.InfiniteLine(pos=0, angle=90, movable=True, pen=pen)
+        self.horizontal_line = pg.InfiniteLine(pos=0, angle=0, movable=True, pen=pen)
+        view_box.addItem(self.vertical_line)
+        view_box.addItem(self.horizontal_line)        
+        # add profile plots
+        self.horizontal_profile = self.image_widget.addPlot(row=1, col=0)
+        self.horizontal_profile.showGrid(x=True, y=True)
+        self.vertical_profile = self.image_widget.addPlot(row=0, col=1)
+        self.vertical_profile.showGrid(x=True, y=True)
+        self.vertical_profile.invertX(True)        
+#        self.vertical_profile.hideAxis('left')
+#        self.vertical_profile.showAxis('right')                
+        # hide axis tick labels
+        for profile in [self.vertical_profile, self.horizontal_profile]:
+            for ax in ['left','right','top','bottom']:
+                profile.showAxis(ax)
+                profile.axes[ax]['item'].setStyle(showValues=False)
+        # set column widths
+        qGraphicsGridLayout = self.image_widget.ci.layout
         qGraphicsGridLayout.setColumnStretchFactor(0, 3)
-        qGraphicsGridLayout.setRowStretchFactor(0, 3)   
-        
-        self.replace_widget(self.verticalLayout, self.LiveViewWidget, image_widget)
+        qGraphicsGridLayout.setRowStretchFactor(0, 3)           
+        # show the image widget
+#        self.replace_widget(self.verticalLayout, self.LiveViewWidget, self.image_widget) # within the main widget                  
         
         # populate image format combobox
         self.ImageFormatComboBox.addItem('hdf5',0)
@@ -114,9 +123,6 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         # take image with the initial parameters and calculate the best exposure
         self.auto_exposure()
     
-    def mouse_click(event):
-        print event.pos()
-    
     def open_camera_button(self):
         """Read serial number from GUI and connect to the camera."""
         serial = self.SerialComboBox.currentText()
@@ -137,6 +143,9 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         self.reset_gui_with_camera()
         print 'Camera connection successful.\n'  
         self.find_cameras()
+        
+        # set camera window title
+        self.image_widget.setWindowTitle(self.camera.serial + ' = uc480 camera serial no.' )
         
         # set camera width and height labels
         self.CameraWidthLabel.setText(str(self.camera.max_width))
@@ -180,6 +189,8 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         if self.df: self.df.close()
         # close the databrowser gui
         if self.df_gui: self.df_gui.close()
+        # close the image widget
+        self.image_widget.close()
     
     def find_cameras(self):
         """Find serial numbers of available cameras."""
@@ -197,7 +208,7 @@ class uc480(QtWidgets.QMainWindow, UiTools):
     
     def take_image(self):
         """Grab an image and display it."""
-        image = self.grab_image()
+        image = self.grab_image()        
         self.display_image(image)
         return image
 
@@ -265,20 +276,36 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         """Display the latest captured image."""
         # make a copy of the data so it can be accessed when saving an image
         self.image = image
+        
         # set levels to [0,255] because otherwise it autoscales when plotting
-        self.imv.setImage(image, autoDownsample=True, levels=[0,255], border=5)   
+        self.imv.setImage(image, autoDownsample=True, levels=[0,255], border='w')   
         
-        x_position = 200
-        y_position = 100
+        # make sure the line positions are within bounds
+        self.vertical_line.setBounds((0,image.shape[1]-1))
+        self.horizontal_line.setBounds((0,image.shape[0]-1))
         
-        self.line_horizontal.clear()
-        self.line_vertical.clear()
+        # get line positions from the gui
+        horizontal_line_position = int(self.horizontal_line.value())
+        vertical_line_position = int(self.vertical_line.value())
         
-        self.line_horizontal.plot(x=range(image.shape[1]), y=image[x_position,:])
-        self.line_vertical.plot(x=image[:,y_position], y=range(image.shape[0]))
+        # clear profile plots
+        self.horizontal_profile.clear()
+        self.vertical_profile.clear()
         
-        self.line_horizontal.setYRange(0,255)
-        self.line_vertical.setXRange(0,255)
+        # plot intensity profiles
+        if len(image.shape) == 3: # colour camera
+            c = ['r','g','b']
+            for i in range(image.shape[2]):
+                self.horizontal_profile.plot(x=range(image.shape[1]), y=image[horizontal_line_position,:,i], pen=c[i])
+                self.vertical_profile.plot(x=image[:,vertical_line_position,i], y=range(image.shape[0]), pen=c[i])
+        else: # monochrome camera
+            self.horizontal_profile.plot(x=range(image.shape[1]), y=image[horizontal_line_position,:])
+            self.vertical_profile.plot(x=image[:,vertical_line_position], y=range(image.shape[0]))
+        self.horizontal_profile.setYRange(0,255)
+        self.vertical_profile.setXRange(0,255)
+
+        # show the image widget
+        self.image_widget.show()
     
     def display_camera_parameters(self, camera_parameters):
         """Display the current camera parameters on the GUI."""
@@ -349,7 +376,7 @@ class uc480(QtWidgets.QMainWindow, UiTools):
                     'left':[self.ROILeftEdgeCheckBox, self.ROILeftEdgeNumberBox],
                     'right':[self.ROIRightEdgeCheckBox, self.ROIRightEdgeNumberBox],
                     'top':[self.ROITopEdgeCheckBox, self.ROITopEdgeNumberBox],
-                    'bottom':[self.ROIBottomEdgeCheckBox, self.ROIBottomEdgeNumberBox],
+                    'bot':[self.ROIBottomEdgeCheckBox, self.ROIBottomEdgeNumberBox],
                     'cx':[self.ROICentreXCheckBox, self.ROICentreXNumberBox],
                     'cy':[self.ROICentreYCheckBox, self.ROICentreYNumberBox],
                     }
@@ -476,7 +503,8 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         self.start_live_view(save=True, max_frames=max_frames)        
         
     def start_live_view(self, save=False, max_frames=100):
-        """Start continuous image acquisition."""
+        """Start continuous image acquisition."""     
+        
         # enable/disable gui buttons
         self.TakeImagePushButton.setEnabled(False)
         self.StartVideoPushButton.setEnabled(False)
