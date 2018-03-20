@@ -62,8 +62,8 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         view_box.addItem(self.imv)        
         # add lines
         pen = pg.mkPen(color='y', width=5)
-        self.vertical_line = pg.InfiniteLine(pos=0, angle=90, movable=True, pen=pen)
-        self.horizontal_line = pg.InfiniteLine(pos=0, angle=0, movable=True, pen=pen)
+        self.vertical_line = pg.InfiniteLine(pos=600, angle=90, movable=True, pen=pen)
+        self.horizontal_line = pg.InfiniteLine(pos=500, angle=0, movable=True, pen=pen)
         view_box.addItem(self.vertical_line)
         view_box.addItem(self.horizontal_line)        
         # add profile plots
@@ -294,13 +294,15 @@ class uc480(QtWidgets.QMainWindow, UiTools):
         
         # plot intensity profiles
         if len(image.shape) == 3: # colour camera
-            c = ['r','g','b']
+            c = ['r','g','b']            
             for i in range(image.shape[2]):
-                self.horizontal_profile.plot(x=range(image.shape[1]), y=image[horizontal_line_position,:,i], pen=c[i])
-                self.vertical_profile.plot(x=image[:,vertical_line_position,i], y=range(image.shape[0]), pen=c[i])
+                pen = pg.mkPen(color=c[i], width=5)
+                self.horizontal_profile.plot(x=range(image.shape[1]), y=image[horizontal_line_position,:,i], pen=pen)
+                self.vertical_profile.plot(x=image[:,vertical_line_position,i], y=range(image.shape[0]), pen=pen)
         else: # monochrome camera
-            self.horizontal_profile.plot(x=range(image.shape[1]), y=image[horizontal_line_position,:])
-            self.vertical_profile.plot(x=image[:,vertical_line_position], y=range(image.shape[0]))
+            pen = pg.mkPen(color='w', width=5)
+            self.horizontal_profile.plot(x=range(image.shape[1]), y=image[horizontal_line_position,:], pen=pen)
+            self.vertical_profile.plot(x=image[:,vertical_line_position], y=range(image.shape[0]), pen=pen)
         self.horizontal_profile.setYRange(0,255)
         self.vertical_profile.setXRange(0,255)
 
