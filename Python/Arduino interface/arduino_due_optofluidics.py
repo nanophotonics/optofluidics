@@ -44,7 +44,9 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
         self.incomming_data = []  
         # open a data file and set it as "current"
         self.data_file = datafile.current()  
-#        self.data = np.zeros(0)          
+        self.get_qt_ui()
+#        self.data = np.zeros(0)    
+        self.attributes = dict()      
 
     def __del__(self):
         if isinstance(self.data_file, datafile.DataFile):
@@ -59,7 +61,7 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
         self.data_signal1.fill(np.nan)        
             
     def close_scan(self):
-        curr_scan = self.datafile_group.create_group('scan_%d')
+        curr_scan = self.datafile_group.create_group('scan_%d', attrs=self.attributes)
         curr_scan.create_dataset('delay', data=self.data_delay)
         curr_scan.create_dataset('signal1', data=self.data_signal1)
         
@@ -152,6 +154,6 @@ if __name__ == '__main__':
 
     import sys
     from nplab.utils.gui import get_qt_app 
-    due = ArduinoDueOptofluidics("COM5")
+    due = ArduinoDueOptofluidics("COM9")
     due.show_gui(blocking=False)
     app = get_qt_app()

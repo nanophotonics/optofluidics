@@ -9,6 +9,7 @@ Created on Mon Dec 18 13:46:11 2017
 from qtpy import QtWidgets, uic
 import pyqtgraph as pg
 from nplab.ui.ui_tools import UiTools
+import arduino_due_optofluidics as arduino
 
 
 
@@ -30,20 +31,24 @@ class arduinoGUI(QtWidgets.QMainWindow,UiTools):
         
         #self.NumberOfPointsDoubleSpinBox.setValue(200)
         
+        # open arduino        
+        self.due = arduino.ArduinoDueOptofluidics("COM9")
+        # show data browser
+        self.due.data_file.show_gui(blocking=False)
         
-        
-        
-        plot_widget = pg.GraphicsLayoutWidget()
-        #self.replace_widget(self.VerticalLayout, self.SignalPlotWidget, plot_widget)
+#        plot_widget = pg.GraphicsLayoutWidget()
+        self.replace_widget(self.PlotVerticalLayout, self.SignalPlotWidget, self.due.gui)
         
         #self.select_new_folder()
     
     def laser_on(self):
         #self.send("set_laser_on",True)
+        self.due.laser_on(True)
         print 'Laser on'
         
     def laser_off(self):
         #self.send("set_laser_on",False)
+        self.due.laser_on(False)
         print 'Laser off'
         
     def run_measurement(self):
@@ -84,14 +89,21 @@ class arduinoGUI(QtWidgets.QMainWindow,UiTools):
                
         concentration = self.ConcentrationLineEdit.text()
         sample = self.SampleNameLineEdit.text()
-        print 'concentration = ' + concentration
-        print 'sample = ' + sample
+#        print 'concentration = ' + concentration
+#        print 'sample = ' + sample
 
+        # create attributes dictionary
+        self.due.attributes = dict(parameters)
+        self.due.attributes['sample'] = sample
+        self.due.attributes['concentration'] = concentration
+        
+        
         # running the measurement
         if TypeOfMeasurement == 'Delay Trace':
             self.delay_trace(**parameters)
         elif TypeOfMeasurement == 'Intensity Trace':
-            self.pulse_intensity_trace(**parameters)
+#            self.pulse_intensity_trace(**parameters)
+            self.due.pulse_intensity_trace(**parameters)
 
             
     def select_new_folder(self):
@@ -110,16 +122,18 @@ class arduinoGUI(QtWidgets.QMainWindow,UiTools):
         print time_increment_in_sec
 
     
-    def pulse_intensity_trace(self, num_points, num_pulses, points_per_pulse, time_delay_in_sec):
-        print num_points
-        print num_pulses
-        print points_per_pulse
-        print time_delay_in_sec
+#    def pulse_intensity_trace(self, num_points, num_pulses, points_per_pulse, time_delay_in_sec):
+#        print num_points
+#        print num_pulses
+#        print points_per_pulse
+#        print time_delay_in_sec
+#        self.due.pulse_intensity_trace(num_points, num_pulses, points_per_pulse, time_delay_in_sec)
         
         
 if __name__ == '__main__':
-    app =QtWidgets.QApplication([])
+    app = QtWidgets.QApplication([])
     gui = arduinoGUI()
     gui.show()
+    #due = arduino.ArduinoDueOptofluidics("COM5")
     gui.activateWindow()
     

@@ -60,10 +60,11 @@ class SpectrometerTimelapse(nplab.instrument.Instrument, HasTraits):
         df = nplab.current_datafile()
         dg = df.require_group(self.group_name)
   
-        datagroup = dg.create_group("timelapse_%d")
-        
+        dat
         self.acquisition_thread = threading.Thread(target=self.take_spectra, args=[datagroup],)
         self.acquisition_thread.start()
+        datagroup = dg.create_group("timelapse_%d")
+        
         
     def _button_stop_fired(self):
         """Stop the current acquisition"""
