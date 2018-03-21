@@ -25,6 +25,9 @@ class arduinoGUI(QtWidgets.QMainWindow,UiTools):
         self.TimeUnitComboBox.addItem('sec',1)
         self.TimeUnitComboBox.setCurrentIndex(0)
         self.SelectNewFolderPushButton.clicked.connect(self.select_new_folder)
+        self.LaserOnPushButton.clicked.connect(self.laser_on)
+        self.LaserOffPushButton.clicked.connect(self.laser_off)
+        
         #self.NumberOfPointsDoubleSpinBox.setValue(200)
         
         
@@ -34,8 +37,15 @@ class arduinoGUI(QtWidgets.QMainWindow,UiTools):
         #self.replace_widget(self.VerticalLayout, self.SignalPlotWidget, plot_widget)
         
         #self.select_new_folder()
-        
     
+    def laser_on(self):
+        #self.send("set_laser_on",True)
+        print 'Laser on'
+        
+    def laser_off(self):
+        #self.send("set_laser_on",False)
+        print 'Laser off'
+        
     def run_measurement(self):
         TypeOfMeasurement = self.MeasuremenTypeComboBox.currentText()
         TimeUnit = self.TimeUnitComboBox.currentText()

@@ -1,7 +1,7 @@
 __author__ = 'chrisgrosse'
 
 
-from PyCmdMessenger import CmdMessengerThreaded, ArduinoDueBoard
+#from PyCmdMessenger import CmdMessengerThreaded, ArduinoDueBoard
 
 import numpy as np
 import pyqtgraph as pg
@@ -147,6 +147,6 @@ if __name__ == '__main__':
 
     import sys
     from nplab.utils.gui import get_qt_app 
-    due = ArduinoDueOptofluidics("COM5")
+    #due = ArduinoDueOptofluidics("COM5")
     due.show_gui(blocking=False)
     app = get_qt_app()
