@@ -51,7 +51,8 @@ class arduinoGUI(QtWidgets.QMainWindow,UiTools):
         self.due.laser_on(False)
         print 'Laser off'
         
-    def run_SinglePulseResponse(self)
+    def run_SinglePulseResponse(self):
+        return
         
     def run_measurement(self):
         TypeOfMeasurement = self.MeasuremenTypeComboBox.currentText()
