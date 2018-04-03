@@ -51,6 +51,8 @@ class arduinoGUI(QtWidgets.QMainWindow,UiTools):
         self.due.laser_on(False)
         print 'Laser off'
         
+    def run_SinglePulseResponse(self)
+        
     def run_measurement(self):
         TypeOfMeasurement = self.MeasuremenTypeComboBox.currentText()
         TimeUnit = self.TimeUnitComboBox.currentText()
@@ -95,7 +97,7 @@ class arduinoGUI(QtWidgets.QMainWindow,UiTools):
         # create attributes dictionary
         self.due.attributes = dict(parameters)
         self.due.attributes['sample'] = sample
-        self.due.attributes['concentration'] = concentration
+        self.due.attributes['concentration_uM'] = concentration
         
         
         # running the measurement

@@ -20,7 +20,7 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
                 ["sweep_delay","iif"], # param: number of data points, averaged data points, delay increment in seconds
                 ["set_delay","f"],
                 ["get_delay","f"],
-                ["get_intensity_trace","iiif"],
+                ["get_intensity_trace","iiif"], 
                 ["osci_mode","i"],
                 ["set_laser_on","?"],
                 ["get_laser_on","?"],
