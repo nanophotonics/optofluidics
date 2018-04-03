@@ -28,7 +28,6 @@ class arduinoGUI(QtWidgets.QMainWindow,UiTools):
         self.SelectNewFolderPushButton.clicked.connect(self.select_new_folder)
         self.LaserOnPushButton.clicked.connect(self.laser_on)
         self.LaserOffPushButton.clicked.connect(self.laser_off)
-        
         #self.NumberOfPointsDoubleSpinBox.setValue(200)
         
         # open arduino        
@@ -50,6 +49,7 @@ class arduinoGUI(QtWidgets.QMainWindow,UiTools):
         #self.send("set_laser_on",False)
         self.due.laser_on(False)
         print 'Laser off'
+    
         
     def run_measurement(self):
         TypeOfMeasurement = self.MeasuremenTypeComboBox.currentText()

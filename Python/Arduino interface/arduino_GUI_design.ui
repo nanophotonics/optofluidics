@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>916</width>
-    <height>716</height>
+    <width>801</width>
+    <height>692</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -62,32 +62,51 @@
              </item>
             </layout>
            </item>
+           <item>
+            <widget class="QGroupBox" name="groupBox_3">
+             <property name="title">
+              <string>Alignment Mode</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_4">
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_2">
+                <item>
+                 <widget class="QPushButton" name="LaserOnPushButton">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="text">
+                   <string>Laser ON</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="LaserOffPushButton">
+                  <property name="text">
+                   <string>Laser OFF</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
+           </item>
           </layout>
          </widget>
         </item>
         <item>
          <widget class="QGroupBox" name="groupBox_2">
           <property name="title">
-           <string>Measurement Settings</string>
+           <string>Intensity Time Trace</string>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <item>
             <layout class="QGridLayout" name="gridLayout_3">
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_7">
-               <property name="text">
-                <string>Data Point Interval (sec)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="0">
-              <widget class="QLabel" name="label_5">
-               <property name="text">
-                <string>Measurement Type</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="1">
+             <item row="0" column="1">
               <layout class="QHBoxLayout" name="horizontalLayout_3">
                <item>
                 <widget class="QDoubleSpinBox" name="MeasurementTimeDoubleSpinBox">
@@ -110,46 +129,14 @@
                </item>
               </layout>
              </item>
-             <item row="4" column="0">
-              <widget class="QLabel" name="label_10">
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_7">
                <property name="text">
-                <string>Peak Integration (Points)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="1">
-              <widget class="QDoubleSpinBox" name="TimeDelayDoubleSpinBox">
-               <property name="decimals">
-                <number>3</number>
-               </property>
-               <property name="minimum">
-                <double>0.001000000000000</double>
-               </property>
-               <property name="maximum">
-                <double>1000000.000000000000000</double>
-               </property>
-               <property name="value">
-                <double>0.500000000000000</double>
+                <string>Time between Data Points (sec)</string>
                </property>
               </widget>
              </item>
              <item row="2" column="1">
-              <widget class="QDoubleSpinBox" name="FrequencyDoubleSpinBox">
-               <property name="decimals">
-                <number>0</number>
-               </property>
-               <property name="minimum">
-                <double>1.000000000000000</double>
-               </property>
-               <property name="maximum">
-                <double>1000000.000000000000000</double>
-               </property>
-               <property name="value">
-                <double>200.000000000000000</double>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="1">
               <widget class="QDoubleSpinBox" name="PointsPerPulseSpinBox">
                <property name="decimals">
                 <number>0</number>
@@ -168,66 +155,184 @@
                </property>
               </widget>
              </item>
-             <item row="0" column="1">
-              <widget class="QComboBox" name="MeasuremenTypeComboBox"/>
-             </item>
              <item row="2" column="0">
-              <widget class="QLabel" name="label_6">
+              <widget class="QLabel" name="label_10">
                <property name="text">
-                <string>Frequency of Pulses (Hz)</string>
+                <string>Peak Integration (Points)</string>
                </property>
               </widget>
              </item>
-             <item row="1" column="0">
+             <item row="1" column="1">
+              <widget class="QDoubleSpinBox" name="TimeDelayDoubleSpinBox">
+               <property name="decimals">
+                <number>3</number>
+               </property>
+               <property name="minimum">
+                <double>0.001000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>1000000.000000000000000</double>
+               </property>
+               <property name="value">
+                <double>0.500000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
               <widget class="QLabel" name="label_2">
                <property name="text">
                 <string>Measurement Time</string>
                </property>
               </widget>
              </item>
+             <item row="3" column="1">
+              <widget class="QDoubleSpinBox" name="FrequencyDoubleSpinBox">
+               <property name="decimals">
+                <number>0</number>
+               </property>
+               <property name="minimum">
+                <double>1.000000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>1000000.000000000000000</double>
+               </property>
+               <property name="value">
+                <double>200.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_6">
+               <property name="text">
+                <string>Frequency of Pulses (Hz)</string>
+               </property>
+              </widget>
+             </item>
             </layout>
            </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <widget class="QGroupBox" name="groupBox_3">
-          <property name="title">
-           <string>Alignment Mode</string>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout_4">
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_2">
-             <item>
-              <widget class="QPushButton" name="LaserOnPushButton">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="text">
-                <string>Laser ON</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="LaserOffPushButton">
-               <property name="text">
-                <string>Laser OFF</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
+            <widget class="QPushButton" name="StartMeasurementPushButton">
+             <property name="text">
+              <string>Start Intensity Time Trace</string>
+             </property>
+            </widget>
            </item>
           </layout>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="StartMeasurementPushButton">
-          <property name="text">
-           <string>Start Measurement</string>
+         <widget class="QGroupBox" name="groupBox_4">
+          <property name="title">
+           <string>Single Pulse Response</string>
           </property>
+          <widget class="QWidget" name="gridLayoutWidget">
+           <property name="geometry">
+            <rect>
+             <x>19</x>
+             <y>29</y>
+             <width>581</width>
+             <height>120</height>
+            </rect>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_2">
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_5">
+              <property name="text">
+               <string>Time Increment between Data Points (ms)</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QDoubleSpinBox" name="SPRTimeIncrementDoubleSpinBox">
+              <property name="decimals">
+               <number>1</number>
+              </property>
+              <property name="minimum">
+               <double>0.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>1000000.000000000000000</double>
+              </property>
+              <property name="value">
+               <double>1.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_15">
+              <property name="text">
+               <string>Averaging</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_4">
+              <property name="text">
+               <string>Number of Points</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QDoubleSpinBox" name="SPRNumberOfPointsDoubleSpinBox">
+              <property name="decimals">
+               <number>0</number>
+              </property>
+              <property name="minimum">
+               <double>10.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>10000.000000000000000</double>
+              </property>
+              <property name="value">
+               <double>200.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <layout class="QHBoxLayout" name="horizontalLayout_8">
+              <item>
+               <widget class="QDoubleSpinBox" name="SPRAveragingDoubleSpinBox">
+                <property name="decimals">
+                 <number>0</number>
+                </property>
+                <property name="minimum">
+                 <double>1.000000000000000</double>
+                </property>
+                <property name="maximum">
+                 <double>100000.000000000000000</double>
+                </property>
+                <property name="value">
+                 <double>5.000000000000000</double>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_14">
+                <property name="text">
+                 <string>Pulses</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QPushButton" name="SPRStartPushButton">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>150</y>
+             <width>601</width>
+             <height>32</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>Start Single Pulse Response</string>
+           </property>
+          </widget>
+          <zorder>label_2</zorder>
+          <zorder>gridLayoutWidget</zorder>
+          <zorder>SPRStartPushButton</zorder>
          </widget>
         </item>
        </layout>
