@@ -8,6 +8,7 @@
 // (https://github.com/thijse/Arduino-CmdMessenger).
 
 #include <CmdMessenger.h>  // sending/receiving user-defined commands
+#include <DueTimer.h>      // readout ADC within a timer interrupt
 
 // global variables
 // ================
@@ -15,12 +16,20 @@ int input_res = 4096;
 float input_max = 3.3;
 float input_min = 0;
 
+volatile int data_points;  // number of data points for intensity trace measurement
+volatile int data_points_counter;
+volatile int num_pulses;   // number of pulses the ADC signal should be averaged
+volatile int data_points_per_pulse;
+volatile double delay_increment;
+
+
 float read_delay = 38e-6;
 bool record_intensity = true;
 bool laser_is_on = false;
 
 // get class instances for serial communication with PC
 CmdMessenger cmd = CmdMessenger(SerialUSB);
+DueTimer adcTimer = DueTimer(2);  // use Timer 0, channel 3 for reading out the ADC
 
 // ==========================================================
 // Initialisation of CmdMessenger and definition of commands
@@ -36,6 +45,7 @@ enum
   get_delay,
   get_intensity_trace,
   oscilloscope_mode,
+  abort_measurement,
   set_laser_on,
   get_laser_on,
   ret_string,              // returns a string
@@ -56,6 +66,7 @@ void attachCommands()
   cmd.attach(set_delay, on_set_delay);
   cmd.attach(get_delay, on_get_delay);
   cmd.attach(get_intensity_trace, on_get_intensity_trace);
+  cmd.attach(abort_measurement, on_abort_measurement);
   cmd.attach(oscilloscope_mode, on_oscilloscope_mode);
   cmd.attach(set_laser_on, on_set_laser_on);
   cmd.attach(get_laser_on, on_get_laser_on);
@@ -81,101 +92,128 @@ void on_get_delay() {
 }
 
 void on_sweep_delay() {  
-  int data_points = cmd.readBinArg<int>();
-  int num_pulses = cmd.readBinArg<int>();
-  float delay_increment = cmd.readBinArg<float>();
-  
-  float pulse_off = 5e-3; // in seconds 
-  float curr_sig1;
-  float curr_delay;
-  uint32_t RA;
-  uint32_t RC;
-  uint32_t clock_counts;
+  data_points = cmd.readBinArg<int>();
+  num_pulses = cmd.readBinArg<int>();
+  delay_increment = double(cmd.readBinArg<float>());  // delay between averaged data points in seconds
 
-  for (int i = 0; i < data_points; i++) {
-    curr_sig1 = 0;
-    curr_delay = 0;    
-    // set register A of channel 0 of Timer 1 to number of clock periods that correspond to current delay
-    RA = (i+1)*delay_increment/23.8095e-9;
-    TC_SetRA(TC1,0, RA); 
-    // set register C to number of clock periods when (trigger) pulse should be off
-    RC = pulse_off/23.8095e-9;
-//    TC_SetRC(TC1,0, RC);
-
-    for (int avg_no = 0; avg_no < num_pulses; avg_no++) {         
-      curr_sig1 += (float(delayed_ADC_read(1)) / (input_res - 1)) * (input_max - input_min) / num_pulses;
-      clock_counts = REG_TC1_CV0;         // read counter (was stopped after ADC conversion finished)
-      curr_delay += clock_counts/num_pulses*23.8095e-9;           
-//      while ((REG_TC1_SR0 & 0x10) == 0); // check TC status register for occurance of RC compare
-      delay(4);  
-    }
-    // send (averaged) intensity to PC
-    cmd.sendCmdStart(ret_fast_intensity);
-    cmd.sendCmdBinArg(curr_sig1);
-    cmd.sendCmdBinArg(curr_delay);
-    cmd.sendCmdEnd();
-  }
+  // setup timer interrupt
+  adcTimer.attachInterrupt(acquire_delay_trace);
+  adcTimer.setPeriod(delay_increment*1e6);
+  data_points_counter = 0; 
+  adcTimer.start();
 }
 
 void on_get_intensity_trace() {
 
-  int data_points = cmd.readBinArg<int>();
-  int num_pulses = cmd.readBinArg<int>();
-  int points_per_pulse = cmd.readBinArg<int>();
-  float delay_increment = cmd.readBinArg<float>();  // in seconds
-  
-  float curr_sig1;
-  float curr_delay;
-  uint32_t RA;
-  uint32_t RC;
-  uint32_t clock_counts;
+  data_points = cmd.readBinArg<int>();
+  num_pulses = cmd.readBinArg<int>();
+  data_points_per_pulse = cmd.readBinArg<int>();
+  delay_increment = double(cmd.readBinArg<float>());  // delay between averaged data points in seconds
 
-  for (int i = 0; i < data_points; i++) {
-    curr_sig1 = 0;
-    curr_delay = i*delay_increment;
-    
-    // set register A of channel 0 of Timer 1 to number of clock periods that correspond to current delay
-    RA = read_delay/23.8095e-9;
-    TC_SetRA(TC1,0, RA); 
-    // set register C to number of clock periods when (trigger) pulse should be off
-//    RC = pulse_off/23.8095e-9;
-//    TC_SetRC(TC1,0, RC);
-
-    for (int avg_no = 0; avg_no < num_pulses; avg_no++) {         
-      curr_sig1 += (float(delayed_ADC_read(points_per_pulse)) / (input_res - 1)) * (input_max - input_min) / num_pulses;
-//      clock_counts = REG_TC1_CV0;         // read counter (was stopped after ADC conversion finished)
-//      curr_delay += clock_counts/avg_points*23.8095e-9;           
-//      while ((REG_TC1_SR0 & 0x10) == 0); // check TC status register for occurance of RC compare
-      delayMicroseconds(100);  
-    }    
-    // send (averaged) intensity to PC
-    cmd.sendCmdStart(ret_fast_intensity);
-    cmd.sendCmdBinArg(curr_sig1);
-    cmd.sendCmdBinArg(curr_delay);
-    cmd.sendCmdEnd();
-    delayMicroseconds(delay_increment*1e6);    // wait until next intensity measurement
-  } 
+  // setup timer interrupt
+  adcTimer.attachInterrupt(acquire_intensity_trace);
+  adcTimer.setPeriod(delay_increment*1e6);
+  data_points_counter = 0; 
+  adcTimer.start();
 }
 
-int delayed_ADC_read(int num_points) {
+void on_abort_measurement() {
+  adcTimer.stop();
+}
 
-  int intensity1_level=0;
-  uint32_t counter_status; 
+void acquire_delay_trace() {
 
-  REG_PIOB_SODR |= (1<<25);           // emit trigger by set pin 2 HIGH (port B, pin 25)     
-  counter_status = REG_TC1_SR0;       // clear status registers by reading them   
-  counter_status = REG_TC1_CV0;        
-  
-  REG_TC1_CCR0 = 0x5;                 // reset and enable counter of channel 0 of timer 1      
-  while ((REG_TC1_SR0 & 0x4) == 0);   // wait until RA compare by checking TC status register
-  for (int i = 0; i < num_points; i++) {		//MESSPUNKTE PRO PULS = 20
-    ADC->ADC_CR = 0x2;                  // start ADC conversion   
-    while ((ADC->ADC_ISR & 0x80) == 0); // wait until AD conversion of channel 7 finished by checking Interrupts Status Register (ADC_ISC)
-    intensity1_level += ADC->ADC_CDR[7]; //get values from Channel Data Register (ADC_CDR) of channel 7 
-  } 
-  REG_TC1_CCR0 = 0x2;                 // disable counter
-  REG_PIOB_CODR |= (1<<25);           // set pin 2 LOW (port B, pin 25)
-  return intensity1_level;    
+  uint32_t counter_status;
+  uint32_t clock_counts;
+  uint32_t adc_level = 0;
+  uint32_t adc_level_avg = 0;
+  float curr_delay;
+
+  if(data_points_counter == data_points) {
+    adcTimer.stop();  
+  }
+  else {
+    // set register A of channel 0 of Timer 1 to number of clock periods that correspond to current delay
+    int32_t RA = (data_points_counter+1)*delay_increment/23.8095e-9;
+    TC_SetRA(TC1,0, RA);
+    
+    for (int i = 0; i < num_pulses; i++) {     
+      counter_status = REG_TC1_SR0;       // clear status registers by reading them   
+      counter_status = REG_TC1_CV0;    
+      REG_PIOB_SODR |= (1<<25);           // emit trigger by set pin 2 HIGH (port B, pin 25)          
+      
+      REG_TC1_CCR0 = 0x5;                 // reset and enable counter of channel 0 of timer 1      
+      while ((REG_TC1_SR0 & 0x4) == 0);   // wait until RA compare by checking TC status register
+      for (int j = 0; j < data_points_per_pulse; j++) {    //MESSPUNKTE PRO PULS = 20
+        ADC->ADC_CR = 0x2;                  // start ADC conversion   
+        while ((ADC->ADC_ISR & 0x80) == 0); // wait until AD conversion of channel 7 finished by checking Interrupts Status Register (ADC_ISC)
+        adc_level += ADC->ADC_CDR[7]; //get values from Channel Data Register (ADC_CDR) of channel 7 
+      } 
+      adc_level_avg += adc_level;
+      REG_PIOB_CODR |= (1<<25);           // set pin 2 LOW (port B, pin 25)   
+      REG_TC1_CCR0 = 0x2;                 // disable counter
+
+      clock_counts = REG_TC1_CV0;         // read counter (was stopped after ADC conversion finished)
+      curr_delay += clock_counts/num_pulses*23.8095e-9;       
+      // do we need a delay here??   
+    }
+    // determin averaged ADC voltage
+    adc_level_avg /= (input_res - 1)/(input_max - input_min) * data_points_per_pulse * num_pulses; 
+    
+    // send (averaged) intensity to PC
+    cmd.sendCmdStart(ret_fast_intensity);
+    cmd.sendCmdBinArg(adc_level_avg);
+    cmd.sendCmdBinArg(curr_delay);
+    cmd.sendCmdEnd();
+    data_points_counter++;
+  }    
+}
+
+void acquire_intensity_trace() {
+
+  uint32_t counter_status;
+  uint32_t clock_counts;
+  uint32_t adc_level = 0;
+  uint32_t adc_level_avg = 0;
+  float curr_delay;
+
+  if(data_points_counter == data_points) {
+    adcTimer.stop();  
+  }
+  else {
+    // set register A of channel 0 of Timer 1 to number of clock periods that correspond delay between trigger and ADC read-out
+    int32_t RA = read_delay/23.8095e-9;
+    TC_SetRA(TC1,0, RA);
+    for (int i = 0; i < num_pulses; i++) {     
+      counter_status = REG_TC1_SR0;       // clear status registers by reading them   
+      counter_status = REG_TC1_CV0;    
+      REG_PIOB_SODR |= (1<<25);           // emit trigger by set pin 2 HIGH (port B, pin 25)          
+      
+      REG_TC1_CCR0 = 0x5;                 // reset and enable counter of channel 0 of timer 1      
+      while ((REG_TC1_SR0 & 0x4) == 0);   // wait until RA compare by checking TC status register
+      for (int j = 0; j < data_points_per_pulse; j++) {		//MESSPUNKTE PRO PULS = 20
+        ADC->ADC_CR = 0x2;                  // start ADC conversion   
+        while ((ADC->ADC_ISR & 0x80) == 0); // wait until AD conversion of channel 7 finished by checking Interrupts Status Register (ADC_ISC)
+        adc_level += ADC->ADC_CDR[7]; //get values from Channel Data Register (ADC_CDR) of channel 7 
+      } 
+      adc_level_avg += adc_level;
+      REG_PIOB_CODR |= (1<<25);           // set pin 2 LOW (port B, pin 25)   
+      REG_TC1_CCR0 = 0x2;                 // disable counter
+
+//      clock_counts = REG_TC1_CV0;         // read counter (was stopped after ADC conversion finished)
+//      curr_delay += clock_counts/num_pulses*23.8095e-9; 
+      // do we need a delay here??   
+    }
+    // determin averaged ADC voltage
+    adc_level_avg /= (input_res - 1)/(input_max - input_min) * data_points_per_pulse * num_pulses; 
+    
+    // send (averaged) intensity to PC
+    cmd.sendCmdStart(ret_fast_intensity);
+    cmd.sendCmdBinArg(adc_level_avg);
+    cmd.sendCmdBinArg(data_points_counter*delay_increment);
+    cmd.sendCmdEnd();
+    data_points_counter++;
+  }    
 }
 
 
