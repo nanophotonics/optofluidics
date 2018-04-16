@@ -19,20 +19,22 @@ class arduinoGUI(QtWidgets.QMainWindow,UiTools):
         ui_file='arduino_GUI_design.ui'
         uic.loadUi(ui_file, self)
         self.StartMeasurementPushButton.clicked.connect(self.run_measurement)
-        self.MeasuremenTypeComboBox.addItem('Delay Trace',0)
-        self.MeasuremenTypeComboBox.addItem('Intensity Trace',1)
-        self.MeasuremenTypeComboBox.setCurrentIndex(1)
+        self.SinglePulseResponsePushButton.clicked.connect(self.run_SinglePulseResponse)
+         #self.MeasuremenTypeComboBox.addItem('Delay Trace',0)
+         #self.MeasuremenTypeComboBox.addItem('Intensity Trace',1)
+         #self.MeasuremenTypeComboBox.setCurrentIndex(1)
         self.TimeUnitComboBox.addItem('min',0)
         self.TimeUnitComboBox.addItem('sec',1)
         self.TimeUnitComboBox.setCurrentIndex(0)
-        self.SelectNewFolderPushButton.clicked.connect(self.select_new_folder)
+#        self.SelectNewFolderPushButton.clicked.connect(self.select_new_folder)
         self.LaserOnPushButton.clicked.connect(self.laser_on)
         self.LaserOffPushButton.clicked.connect(self.laser_off)
-        
+        self.ClearGUIPushButton.clicked.connect(self.clearGUI)
         #self.NumberOfPointsDoubleSpinBox.setValue(200)
         
         # open arduino        
         self.due = arduino.ArduinoDueOptofluidics("COM9")
+        
         # show data browser
         self.due.data_file.show_gui(blocking=False)
         
@@ -43,19 +45,47 @@ class arduinoGUI(QtWidgets.QMainWindow,UiTools):
     
     def laser_on(self):
         #self.send("set_laser_on",True)
-        self.due.laser_on(True)
+        self.due
         print 'Laser on'
         
     def laser_off(self):
         #self.send("set_laser_on",False)
         self.due.laser_on(False)
         print 'Laser off'
+    
+    def clearGUI(self):
+        self.due.gui.clear()
+        print 'GUI cleared'
         
     def run_SinglePulseResponse(self):
-        return
+        print 'running single pulse response'
+
+        parametersSS = dict()
+#        
+        NumberOfPoints=int(self.SSNumberOfPointsDoubleSpinBox.value())
+        TimeIncrement=int(float(self.SSTimeIncrementDoubleSpinBox.value()))
+        Averaging=int(self.SSAveragingDoubleSpinBox.value())
+        
+        parametersSS['num_points']=NumberOfPoints
+        parametersSS['num_pulses']=Averaging
+        parametersSS['time_increment_in_sec']=float(TimeIncrement)*1e-6
+        print parametersSS
+        
+               
+        concentration = self.ConcentrationLineEdit.text()
+        sample = self.SampleNameLineEdit.text()
+
+        # create attributes dictionary
+        self.due.attributes = dict(parametersSS)
+        self.due.attributes['sample'] = sample
+        self.due.attributes['concentration_uM'] = concentration
+        
+        self.due.delay_trace(**parametersSS)
+
+        
         
     def run_measurement(self):
-        TypeOfMeasurement = self.MeasuremenTypeComboBox.currentText()
+        TypeOfMeasurement = 'Intensity Trace'
         TimeUnit = self.TimeUnitComboBox.currentText()
         
         print 'running ' + TypeOfMeasurement
@@ -80,13 +110,8 @@ class arduinoGUI(QtWidgets.QMainWindow,UiTools):
             
         parameters['num_pulses']=int(frequency*float(self.TimeDelayDoubleSpinBox.value()))
         
-        
-
-        if TypeOfMeasurement == 'Delay Trace':
-            parameters['time_increment_in_sec']=1
-        if TypeOfMeasurement == 'Intensity Trace':
-            parameters['time_delay_in_sec']=self.TimeDelayDoubleSpinBox.value()
-            parameters['points_per_pulse']=int(self.PointsPerPulseSpinBox.value())
+        parameters['time_delay_in_sec']=self.TimeDelayDoubleSpinBox.value()
+        parameters['points_per_pulse']=int(self.PointsPerPulseSpinBox.value())
         print parameters
         
                
@@ -102,20 +127,16 @@ class arduinoGUI(QtWidgets.QMainWindow,UiTools):
         
         
         # running the measurement
-        if TypeOfMeasurement == 'Delay Trace':
-            self.delay_trace(**parameters)
-        elif TypeOfMeasurement == 'Intensity Trace':
-#            self.pulse_intensity_trace(**parameters)
-            self.due.pulse_intensity_trace(**parameters)
+        self.due.pulse_intensity_trace(**parameters)
 
             
-    def select_new_folder(self):
-        print 'select new folder'
-        self.folder_path = self.FileNameLineEdit.text()
-        self.folder_path = QtWidgets.QFileDialog.getExistingDirectory(directory=self.folder_path)
-        self.FileNameLineEdit.clear()
-        self.FileNameLineEdit.insert(self.folder_path)
-        print self.folder_path
+#    def select_new_folder(self):
+#        print 'select new folder'
+#        self.folder_path = self.FileNameLineEdit.text()
+#        self.folder_path = QtWidgets.QFileDialog.getExistingDirectory(directory=self.folder_path)
+#        self.FileNameLineEdit.clear()
+#        self.FileNameLineEdit.insert(self.folder_path)
+#        print self.folder_path
         
         
     def delay_trace(self, num_points, num_pulses, time_increment_in_sec):

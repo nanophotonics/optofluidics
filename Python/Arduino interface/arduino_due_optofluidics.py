@@ -46,7 +46,8 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
         self.data_file = datafile.current()  
         self.get_qt_ui()
 #        self.data = np.zeros(0)    
-        self.attributes = dict()      
+        self.attributes = dict()  
+#        self.gui = None
 
     def __del__(self):
         if isinstance(self.data_file, datafile.DataFile):
@@ -73,11 +74,14 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
 #        self.curr_dataset = datafile_group.create_group('scan_%d', attrs=dict(description=description))
 
     def delay_trace(self, num_points, num_pulses, time_increment_in_sec):
+        print 'Measurement started'
         self.init_scan(num_points)
         self.send("sweep_delay", num_points, num_pulses, time_increment_in_sec)
         self.datafile_group = self.data_file.require_group('delay_traces')
+        
     
     def pulse_intensity_trace(self, num_points, num_pulses, points_per_pulse, time_delay_in_sec):
+        print 'Measurement started'
         self.init_scan(num_points)
         self.send("get_intensity_trace", num_points, num_pulses, points_per_pulse, time_delay_in_sec)
         self.datafile_group = self.data_file.require_group('pulse_intensity_traces')
@@ -99,6 +103,7 @@ class ArduinoDueOptofluidics(CmdMessengerThreaded, Instrument, QtCore.QObject):
             print cmd_name, msg
             
     def get_qt_ui(self):
+#        if self.gui==None:
         self.gui=ArduinoUI(self)
         return self.gui
 
@@ -155,5 +160,6 @@ if __name__ == '__main__':
     import sys
     from nplab.utils.gui import get_qt_app 
     due = ArduinoDueOptofluidics("COM9")
+    gui = ArduinoUI(due)
     due.show_gui(blocking=False)
     app = get_qt_app()
